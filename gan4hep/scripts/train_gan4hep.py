@@ -2,33 +2,27 @@
 """
 Training a GAN for modeling hadronic interactions
 """
-from root_gnn.trainer import get_signature
-from root_gnn.trainer import loop_dataset
-from root_gnn.trainer import read_dataset
-
-from root_gnn.src.generative import mlp_gan as toGan
-from scipy.sparse import coo_matrix
-import tensorflow as tf
 # import tensorflow.experimental.numpy as tnp
 
 import os
 import sys
 import argparse
+import importlib
 
 import re
 import time
 import random
 import functools
 import six
+from types import SimpleNamespace
 
 import numpy as np
-import sklearn.metrics
 import tqdm
 
+import gan4hep
+from gan4hep.graph import loop_dataset
+from gan4hep.graph import read_dataset
 
-import sonnet as snt
-
-from types import SimpleNamespace
 import tensorflow as tf
 from tensorflow.compat.v1 import logging
 logging.info("TF Version:{}".format(tf.__version__))
@@ -51,6 +45,11 @@ node_abs_max = np.array([
     [46.2, 40.5, 41.0, 39.5],
     [42.8, 36.4, 37.0, 35.5]
 ], dtype=np.float32)
+
+
+gan_types = ['mlp_gan', 'rnn_mlp_gan']
+def create_gan(gan_name):
+    return importlib.import_module("gan4hep."+gan_name)
 
 
 def init_workers(distributed=False):
@@ -131,6 +130,7 @@ def train_and_evaluate(args):
     logging.info("rank {} has {:,} training events and {:,} validating events".format(
         dist.rank, ngraphs_train, ngraphs_val))
 
+    toGan = create_gan(args.gan_type)
     gan = toGan.GAN()
 
     optimizer = toGan.GANOptimizer(
@@ -273,6 +273,7 @@ if __name__ == "__main__":
     add_arg("input_dir",
             help='input directory that contains subfolder of train, val and test')
     add_arg("output_dir", help="where the model and training info saved")
+    add_arg("--gan-type", help='which gan to use', required=True, choices=gan_types)
     add_arg("--patterns", help='file patterns', default='*')
     add_arg('-d', '--distributed', action='store_true',
             help='data distributed training')

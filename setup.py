@@ -21,6 +21,7 @@ setup(
     include_package_data=True,
     install_requires=[
         'tensorflow >= 2.4.0',
+        "graph_nets@ https://github.com/deepmind/graph_nets/tarball/master",
         "matplotlib",
         'tqdm',
     ],
@@ -32,8 +33,6 @@ setup(
         "Programming Language :: Python :: 3.8",
     ],
     scripts=[
-        'gan4hep/scripts/train_gan.py',
-        'gan4hep/scripts/train_mlp_gan.py',
-        'gan4hep/scripts/train_rnn_mlp_gan.py',
+        'gan4hep/scripts/train_gan4hep.py',
     ],
 )

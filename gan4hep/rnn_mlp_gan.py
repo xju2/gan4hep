@@ -1,5 +1,5 @@
 """
-Generative model based on Graph Neural Network
+RNN-based Generator and MLP-based Discriminator
 """
 from types import SimpleNamespace
 import functools
@@ -8,8 +8,11 @@ from typing import Callable, Iterable, Optional, Text
 import tensorflow as tf
 import sonnet as snt
 
-from gan4hep.src.models.mpl_gan import Discrimantor
-from gan4hep.src.models.mpl_gan import GAN
+from gan4hep.mlp_gan import Discriminator
+from gan4hep.mlp_gan import GANBase
+from gan4hep.mlp_gan import GANOptimizer
+from gan4hep.reader import n_max_nodes
+
 
 class Generator(snt.Module):
     def __init__(self, out_dim: int = 4,
@@ -76,3 +79,13 @@ class Generator(snt.Module):
             # add new node to the existing nodes
             nodes = tf.concat([nodes, node_prop], axis=1, name='add_new_node')
         return tf.reshape(nodes[:, 1:, :], [batch_size, -1])
+
+
+class GAN(GANBase):
+    def __init__(self, name=None):
+        super().__init__(name=name)
+        self.generator = Generator()
+        self.discriminator = Discriminator()
+
+    def generate(self, inputs, is_training=True):
+        return self.generator(inputs, n_max_nodes, is_training)

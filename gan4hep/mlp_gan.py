@@ -1,5 +1,5 @@
 """
-Generative model based on Graph Neural Network
+MLP-based GANs
 """
 from types import SimpleNamespace
 import functools
@@ -54,11 +54,11 @@ class Discriminator(snt.Module):
 def sum_trainables(module):
     return sum([tf.size(v) for v in module.trainable_variables])
 
-class GAN(snt.Module):
-    def __init__(self, generator, discriminator, name=None):
+class GANBase(snt.Module):
+    def __init__(self, name=None):
         super().__init__(name=name)
-        self.generator = generator
-        self.discriminator = discriminator
+        self.generator = None
+        self.discriminator = None
 
     def generate(self, inputs, is_training=True):
         return self.generator(inputs, is_training)
@@ -69,6 +69,11 @@ class GAN(snt.Module):
     def num_trainable_vars(self):
         return sum_trainables(self.generator), sum_trainables(self.discriminator)
 
+class GAN(GANBase):
+    def __init__(self, name=None):
+        super().__init__(name=name)
+        self.generator = Generator()
+        self.discriminator = Discriminator()
 
 def generator_loss(fake_output, alt_gen_loss=False):
     if alt_gen_loss:
