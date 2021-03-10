@@ -262,8 +262,15 @@ def train_and_evaluate(args):
                                     description="gradients of true logits")
                         tf.summary.scalar("grad_D2_logits_norm", grad_D_gen_logits_norm.numpy().mean(),
                                     description="gradients of generated logits")
-                    tf.summary.histogram("predict_4vec", predict_4vec)
-                    tf.summary.histogram("truth_4vec", truth_4vec)
+                    # plot the eight variables and pull plots
+                    for icol in range(predict_4vec.shape[1]):
+                        # tf.summary.histogram("predict_var{}".format(icol), predict_4vec[:, icol])
+                        tf.summary.histogram("pull_var{}".format(icol), (predict_4vec[:, icol] - truth_4vec[:, icol])/truth_4vec[:, icol])
+                        # tf.summary.histogram("truth_var{}".format(icol), truth_4vec[:, icol])
+
+
+                    # tf.summary.histogram("predict_4vec", predict_4vec)
+                    # tf.summary.histogram("truth_4vec", truth_4vec)
 
 
 if __name__ == "__main__":
