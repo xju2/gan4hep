@@ -115,6 +115,15 @@ def train_and_evaluate(args):
 
     logging.info("rank {} has {} training files and {} evaluation files".format(
         dist.rank, len(train_files), len(eval_files)))
+    input_frac = args.input_frac
+    if input_frac < 1 and input_frac > 0:
+        n_tr = int(len(train_files)*input_frac) + 1
+        n_ev = int(len(eval_files)* input_frac) + 1
+        train_files, eval_files = train_files[:n_tr], eval_files[:n_ev]
+        logging.info("However, only {} fraction of inputs were reqested".format(input_frac))
+        logging.info("rank {} has {} training files and {} evaluation files".format(
+            dist.rank, len(train_files), len(eval_files)))
+
 
     AUTO = tf.data.experimental.AUTOTUNE
     training_dataset, ngraphs_train = read_dataset(train_files)
@@ -198,12 +207,6 @@ def train_and_evaluate(args):
             inputs_tr, targets_tr = next(training_data)
 
             # --------------------------------------------------------
-            # scale the inputs and outputs to norm distribution
-            # inputs_tr = inputs_tr.replace(nodes=(inputs_tr.nodes - node_mean[0]) / node_scales[0])
-            # target_nodes = np.reshape(targets_tr.nodes, [batch_size, -1, 4])
-            # target_nodes = np.reshape((target_nodes - node_mean) / node_scales, [-1, 4])
-            # targets_tr = targets_tr.replace(nodes=target_nodes)
-            # --------------------------------------------------------
             # scale the inputs and outputs to [-1, 1]
             input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
             input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
@@ -280,6 +283,7 @@ if __name__ == "__main__":
     add_arg("input_dir",
             help='input directory that contains subfolder of train, val and test')
     add_arg("output_dir", help="where the model and training info saved")
+    add_arg("--input-frac", help="use a fraction of input files", default=1.)
     add_arg("--gan-type", help='which gan to use', required=True, choices=gan_types)
     add_arg("--patterns", help='file patterns', default='*')
     add_arg('-d', '--distributed', action='store_true',
