@@ -226,7 +226,7 @@ class GANOptimizer(snt.Module):
         self.gen_opt.apply(gen_grads, gen_params)
         return loss
 
-    def _get_lr_mult(self, epoch):
+    def _get_lr_mult2(self, epoch):
         # Linear decay to 0.
         decay_epoch = tf.cast(epoch - self.decay_lr_start_epoch, tf.float32)
         if decay_epoch < tf.constant(0, dtype=tf.float32):
@@ -235,6 +235,10 @@ class GANOptimizer(snt.Module):
         num_decay_epochs = tf.cast(self.num_epochs - self.decay_lr_start_epoch,
                                 dtype=tf.float32)
         return (num_decay_epochs - decay_epoch) / num_decay_epochs
+
+    def _get_lr_mult(self, epoch):
+        # No learning rate decay
+        return tf.constant(1., dtype=tf.float32)
 
     def step(self, inputs_tr, targets_tr, epoch):
         lr_mult = self._get_lr_mult(epoch)
