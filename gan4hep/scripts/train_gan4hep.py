@@ -283,7 +283,7 @@ if __name__ == "__main__":
     add_arg("input_dir",
             help='input directory that contains subfolder of train, val and test')
     add_arg("output_dir", help="where the model and training info saved")
-    add_arg("--input-frac", help="use a fraction of input files", default=1.)
+    add_arg("--input-frac", help="use a fraction of input files", default=1., type=float)
     add_arg("--gan-type", help='which gan to use', required=True, choices=gan_types)
     add_arg("--patterns", help='file patterns', default='*')
     add_arg('-d', '--distributed', action='store_true',
