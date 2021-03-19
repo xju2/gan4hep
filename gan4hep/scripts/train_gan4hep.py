@@ -127,7 +127,7 @@ def train_and_evaluate(args):
 
     AUTO = tf.data.experimental.AUTOTUNE
     training_dataset, ngraphs_train = read_dataset(train_files)
-    training_dataset = training_dataset.repeat(n_epochs).prefetch(AUTO)
+    training_dataset = training_dataset.repeat(n_epochs+1).prefetch(AUTO)
     if args.shuffle_size > 0:
         training_dataset = training_dataset.shuffle(
                 args.shuffle_size, seed=12345, reshuffle_each_iteration=False)
@@ -266,6 +266,8 @@ def train_and_evaluate(args):
                         tf.summary.scalar("grad_D2_logits_norm", grad_D_gen_logits_norm.numpy().mean(),
                                     description="gradients of generated logits")
                     # plot the eight variables and pull plots
+                    predict_4vec = tf.reshape(predict_4vec, [batch_size, -1])
+                    truth_4vec = tf.reshape(truth_4vec, [batch_size, -1])
                     for icol in range(predict_4vec.shape[1]):
                         # tf.summary.histogram("predict_var{}".format(icol), predict_4vec[:, icol])
                         tf.summary.histogram("pull_var{}".format(icol), (predict_4vec[:, icol] - truth_4vec[:, icol])/truth_4vec[:, icol])
