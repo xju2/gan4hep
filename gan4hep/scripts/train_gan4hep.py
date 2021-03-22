@@ -47,7 +47,7 @@ node_abs_max = np.array([
 ], dtype=np.float32)
 
 
-gan_types = ['mlp_gan', 'rnn_mlp_gan']
+gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan']
 def create_gan(gan_name):
     return importlib.import_module("gan4hep."+gan_name)
 

@@ -106,8 +106,8 @@ def Discriminator_Regularizer(p_true, grad_D_true_logits, p_gen, grad_D_gen_logi
         tf.reshape(grad_D_gen_logits, [batch_size, -1]),
         axis=1, keepdims=True
     )
-    assert grad_D_true_logits_norm.shape == p_true.shape
-    assert grad_D_gen_logits_norm.shape == p_gen.shape
+    assert grad_D_true_logits_norm.shape == p_true.shape, "{} {}".format(grad_D_true_logits_norm.shape, p_true.shape)
+    assert grad_D_gen_logits_norm.shape == p_gen.shape, "{} {}".format(grad_D_gen_logits_norm.shape, p_gen.shape)
         
     reg_true = tf.multiply(tf.square(1.0 - p_true), tf.square(grad_D_true_logits_norm))
     reg_gen = tf.multiply(tf.square(p_gen), tf.square(grad_D_gen_logits_norm))
