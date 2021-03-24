@@ -11,7 +11,6 @@ from functools import partial
 import tensorflow as tf
 from graph_nets import utils_tf
 
-
 n_node_features = 6
 n_max_nodes = 2 # maximum number of out-going particles
 
