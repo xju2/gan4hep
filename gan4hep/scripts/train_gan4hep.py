@@ -46,6 +46,9 @@ node_abs_max = np.array([
     [42.8, 36.4, 37.0, 35.5]
 ], dtype=np.float32)
 
+max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
+max_pt_eta_phi_energy = np.array([50, 5, np.pi, 50], dtype=np.float32)
+
 
 gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan']
 def create_gan(gan_name):
@@ -54,6 +57,15 @@ def create_gan(gan_name):
 
 def init_workers(distributed=False):
     return SimpleNamespace(rank=0, size=1, local_rank=0, local_size=1, comm=None)
+
+
+def get_pt_eta_phi(px, py, pz):
+    p = np.sqrt(px**2 + py**2 + pz**2)
+    pt = np.sqrt(px**2 + py**2)
+    phi = np.arctan2(py, px)
+    theta = np.arccos(pz/p)
+    eta = -np.log(np.tan(0.5*theta))
+    return pt,eta,phi
 
 
 def train_and_evaluate(args):
@@ -179,9 +191,20 @@ def train_and_evaluate(args):
 
     
     def normalize(inputs, targets):
-        input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
-        target_nodes = np.reshape(targets.nodes, [batch_size, -1, 4])
-        target_nodes = np.reshape(target_nodes/node_abs_max, [batch_size, -1])
+        # node features are [energy, px, py, pz]
+        if args.use_pt_eta_phi_e:
+            # inputs
+            pt, eta, phi = get_pt_eta_phi(
+                inputs.nodes[:, 1], inputs.nodes[:, 2], inputs.nodes[:, 3])
+            input_nodes = np.stack([pt, eta, phi, inputs.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
+            # outputs
+            o_pt, o_eta, o_phi = get_pt_eta_phi(
+                targets.nodes[:, 1], targets.nodes[:, 2], targets.nodes[:, 3])
+            target_nodes = np.stack([o_pt, o_eta, o_phi, targets.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
+        else:            
+            input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
+            target_nodes = targets.nodes / max_energy_px_py_pz
+        target_nodes = np.reshape(target_nodes, [batch_size, -1])
         return input_nodes, target_nodes
 
     if args.warm_up:
@@ -286,6 +309,7 @@ if __name__ == "__main__":
             help='input directory that contains subfolder of train, val and test')
     add_arg("output_dir", help="where the model and training info saved")
     add_arg("--input-frac", help="use a fraction of input files", default=1., type=float)
+    add_arg("--use-pt-eta-phi-e", help='use [pT, eta, phi, E]', action='store_true')
     add_arg("--gan-type", help='which gan to use', required=True, choices=gan_types)
     add_arg("--patterns", help='file patterns', default='*')
     add_arg('-d', '--distributed', action='store_true',
