@@ -25,6 +25,7 @@ setup(
         "matplotlib",
         'tqdm',
         'more_itertools',
+        'scipy',
     ],
     # package_data = {
     #     "gan4hep": ["config/*.yaml"]

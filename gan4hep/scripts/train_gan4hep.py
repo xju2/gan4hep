@@ -16,6 +16,7 @@ import functools
 import six
 from types import SimpleNamespace
 
+from scipy import stats
 from scipy.stats import wasserstein_distance
 
 import numpy as np
@@ -290,15 +291,26 @@ def train_and_evaluate(args):
                                     description="gradients of true logits")
                         tf.summary.scalar("grad_D2_logits_norm", grad_D_gen_logits_norm.numpy().mean(),
                                     description="gradients of generated logits")
-                    # plot the eight variables and pull plots
-                    predict_4vec = tf.reshape(predict_4vec, [batch_size, -1])
-                    truth_4vec = tf.reshape(truth_4vec, [batch_size, -1])
+                    
+                    # plot the eight variables and resepctive Wasserstein distance (i.e. Earch Mover Distance)
+                    # Use the Kolmogorov-Smirnov test, 
+                    # it turns a two-sided test for the null hypothesis that the two distributions
+                    # are drawn from the same continuous distribution.
+                    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.combine_pvalues.html#scipy.stats.combine_pvalues
+                    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html#scipy.stats.ks_2samp
+                    predict_4vec = tf.reshape(predict_4vec, [batch_size, -1]).numpy()
+                    truth_4vec = tf.reshape(truth_4vec, [batch_size, -1]).numpy()
                     earth_mover_dis = []
+                    ks_test = []
                     for icol in range(predict_4vec.shape[1]):
                         dis = wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+                        _, pvalue = stats.ks_2samp(predict_4vec[:, icol], truth_4vec[:, icol])
                         earth_mover_dis.append(dis)
+                        ks_test.append(pvalue)
                         tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
+                        tf.summary.scalar("KS_Test", pvalue)
                     tf.summary.scalar("tot_wasserstein_dis", sum(earth_mover_dis), description="total wasserstein distance")
+                    tf.summary.scalar("tot_KS", stats.combine_pvalues(ks_test, method='fisher'), description="total wasserstein distance")
 
 
 if __name__ == "__main__":
