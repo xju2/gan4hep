@@ -16,6 +16,8 @@ import functools
 import six
 from types import SimpleNamespace
 
+from scipy.stats import wasserstein_distance
+
 import numpy as np
 import tqdm
 
@@ -291,14 +293,12 @@ def train_and_evaluate(args):
                     # plot the eight variables and pull plots
                     predict_4vec = tf.reshape(predict_4vec, [batch_size, -1])
                     truth_4vec = tf.reshape(truth_4vec, [batch_size, -1])
+                    earth_mover_dis = []
                     for icol in range(predict_4vec.shape[1]):
-                        # tf.summary.histogram("predict_var{}".format(icol), predict_4vec[:, icol])
-                        tf.summary.histogram("pull_var{}".format(icol), (predict_4vec[:, icol] - truth_4vec[:, icol])/truth_4vec[:, icol])
-                        # tf.summary.histogram("truth_var{}".format(icol), truth_4vec[:, icol])
-
-
-                    # tf.summary.histogram("predict_4vec", predict_4vec)
-                    # tf.summary.histogram("truth_4vec", truth_4vec)
+                        dis = wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+                        earth_mover_dis.append(dis)
+                        tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
+                    tf.summary.scalar("tot_wasserstein_dis", sum(earth_mover_dis), description="total wasserstein distance")
 
 
 if __name__ == "__main__":
