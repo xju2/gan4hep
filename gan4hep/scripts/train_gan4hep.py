@@ -17,8 +17,6 @@ import six
 from types import SimpleNamespace
 
 from scipy import stats
-from scipy.stats import wasserstein_distance
-
 import numpy as np
 import tqdm
 
@@ -298,19 +296,24 @@ def train_and_evaluate(args):
                     # are drawn from the same continuous distribution.
                     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.combine_pvalues.html#scipy.stats.combine_pvalues
                     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html#scipy.stats.ks_2samp
+                    # https://docs.scipy.org/doc/scipy/reference/stats.html#statistical-distances
                     predict_4vec = tf.reshape(predict_4vec, [batch_size, -1]).numpy()
                     truth_4vec = tf.reshape(truth_4vec, [batch_size, -1]).numpy()
-                    earth_mover_dis = []
-                    ks_test = []
+                    distances = []
+
                     for icol in range(predict_4vec.shape[1]):
-                        dis = wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+                        dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
                         _, pvalue = stats.ks_2samp(predict_4vec[:, icol], truth_4vec[:, icol])
-                        earth_mover_dis.append(dis)
-                        ks_test.append(pvalue)
+                        energy_dis = stats.energy_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+
                         tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
+                        tf.summary.scalar("energy_distance", energy_dis)
                         tf.summary.scalar("KS_Test", pvalue)
-                    tf.summary.scalar("tot_wasserstein_dis", sum(earth_mover_dis), description="total wasserstein distance")
-                    tf.summary.scalar("tot_KS", stats.combine_pvalues(ks_test, method='fisher'), description="total wasserstein distance")
+                        distances.append([dis, pvalue, energy_dis])
+                    distances = np.array(distances)
+                    tf.summary.scalar("tot_wasserstein_dis", sum(distances[:, 0]), description="total wasserstein distance")
+                    tf.summary.scalar("tot_KS", stats.combine_pvalues(distances[:, 1], method='fisher'), description="total wasserstein distance")
+                    tf.summary.scalar("tot_energy_dis", stats.combine_pvalues(distances[:, 2], method='fisher'), description="total wasserstein distance")
 
 
 if __name__ == "__main__":
