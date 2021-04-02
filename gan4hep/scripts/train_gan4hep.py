@@ -21,6 +21,8 @@ import numpy as np
 import tqdm
 
 import gan4hep
+from gan4hep.gan_base import GANOptimizer
+
 from gan4hep.graph import loop_dataset
 from gan4hep.graph import read_dataset
 
@@ -52,8 +54,9 @@ max_pt_eta_phi_energy = np.array([50, 5, np.pi, 50], dtype=np.float32)
 
 
 gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan']
-def create_gan(gan_name):
-    return importlib.import_module("gan4hep."+gan_name)
+def create_gan(gan_name, ls=512, nl=10):
+    gan_module = importlib.import_module("gan4hep."+gan_name)
+    return gan_module.GAN(latent_size=ls, num_layers=nl)
 
 
 def init_workers(distributed=False):
@@ -139,23 +142,22 @@ def train_and_evaluate(args):
 
 
     AUTO = tf.data.experimental.AUTOTUNE
-    training_dataset, ngraphs_train = read_dataset(train_files)
+    training_dataset, ngraphs_train = read_dataset(train_files, args.evts_per_file)
     training_dataset = training_dataset.repeat(n_epochs+1).prefetch(AUTO)
     if args.shuffle_size > 0:
         training_dataset = training_dataset.shuffle(
                 args.shuffle_size, seed=12345, reshuffle_each_iteration=False)
 
-    validating_dataset, ngraphs_val = read_dataset(eval_files)
+    validating_dataset, ngraphs_val = read_dataset(eval_files, args.evts_per_file)
     validating_dataset = validating_dataset.repeat().prefetch(AUTO)
 
 
     logging.info("rank {} has {:,} training events and {:,} validating events".format(
         dist.rank, ngraphs_train, ngraphs_val))
 
-    toGan = create_gan(args.gan_type)
-    gan = toGan.GAN()
+    gan = create_gan(args.gan_type)
 
-    optimizer = toGan.GANOptimizer(
+    optimizer = GANOptimizer(
                         gan,
                         batch_size=batch_size,
                         noise_dim=args.noise_dim,
@@ -215,11 +217,12 @@ def train_and_evaluate(args):
         for _ in range(args.disc_batches):
             inputs_tr, targets_tr = next(training_data)
             input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
+            
             input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
             target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
-            disc_step(input_nodes, target_nodes)
-        print("finished the warm up")
+            disc_step(target_nodes, input_nodes)
 
+        print("finished the warm up")
 
     pre_gen_loss = pre_disc_loss = 0
     start_time = time.time()
@@ -236,9 +239,8 @@ def train_and_evaluate(args):
             input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
             target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
             # --------------------------------------------------------
-            # if args.debug:
-            #     print(input_nodes.shape, target_nodes.shape)
-            disc_loss, gen_loss, lr_mult = step(input_nodes, target_nodes, epoch)
+
+            disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
             if args.with_disc_reg:
                 disc_loss, disc_reg, grad_D_true_logits_norm, grad_D_gen_logits_norm, reg_true, reg_gen = disc_loss
             else:
@@ -251,12 +253,7 @@ def train_and_evaluate(args):
 
             disc_loss = disc_loss.numpy()
             gen_loss = gen_loss.numpy()
-            if step_num and (step_num % args.log_freq == 0):
-                t.set_description('Epoch {}/{}'.format(epoch.numpy(), n_epochs))
-                t.set_postfix(
-                    G_loss=gen_loss, G_loss_change=gen_loss-pre_gen_loss,
-                    D_loss=disc_loss, D_loss_change=disc_loss-pre_disc_loss,
-                )                
+            if step_num and (step_num % args.log_freq == 0):            
                 ckpt_manager.save()
                 pre_gen_loss = gen_loss
                 pre_disc_loss = disc_loss
@@ -304,16 +301,26 @@ def train_and_evaluate(args):
                     for icol in range(predict_4vec.shape[1]):
                         dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
                         _, pvalue = stats.ks_2samp(predict_4vec[:, icol], truth_4vec[:, icol])
+                        if pvalue < 1e-6: pvalue = 1e-6
                         energy_dis = stats.energy_distance(predict_4vec[:, icol], truth_4vec[:, icol])
 
                         tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
-                        tf.summary.scalar("energy_distance", energy_dis)
-                        tf.summary.scalar("KS_Test", pvalue)
-                        distances.append([dis, pvalue, energy_dis])
-                    distances = np.array(distances)
-                    tf.summary.scalar("tot_wasserstein_dis", sum(distances[:, 0]), description="total wasserstein distance")
-                    tf.summary.scalar("tot_KS", stats.combine_pvalues(distances[:, 1], method='fisher'), description="total wasserstein distance")
-                    tf.summary.scalar("tot_energy_dis", stats.combine_pvalues(distances[:, 2], method='fisher'), description="total wasserstein distance")
+                        tf.summary.scalar("energy_distance_var{}".format(icol), energy_dis)
+                        tf.summary.scalar("KS_Test_var{}".format(icol), pvalue)
+                        distances.append([dis, energy_dis, pvalue])
+                    distances = np.array(distances, dtype=np.float32)
+                    tot_wdis = sum(distances[:, 0])
+                    tot_edis = sum(distances[:, 1])
+                    tf.summary.scalar("tot_wasserstein_dis", tot_wdis, description="total wasserstein distance")
+                    tf.summary.scalar("tot_energy_dis", tot_edis, description="total energy distance")
+                    _ , comb_pvals = stats.combine_pvalues(distances[:, 2], method='fisher')
+                    tf.summary.scalar("tot_KS", comb_pvals, description="total wasserstein distance")
+
+                t.set_description('Epoch {}/{}'.format(epoch.numpy(), n_epochs))
+                t.set_postfix(
+                    G_loss=gen_loss, D_loss=disc_loss,
+                    Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis,
+                )   
 
 
 if __name__ == "__main__":
@@ -338,6 +345,7 @@ if __name__ == "__main__":
             help="number of events for shuffling", default=650)
     add_arg("--warm-up", action='store_true', help='warm up discriminator first')
     add_arg("--disc-batches", help='number of batches training discriminator only', type=int, default=100)
+    add_arg("--loss-type", choices=['logloss', 'mse'], default='logloss')
 
     add_arg("--noise-dim", type=int, help='dimension of noises', default=8)
     add_arg("--disc-num-iters", type=int,
@@ -350,6 +358,7 @@ if __name__ == "__main__":
     add_arg("--gamma-reg", type=float, help="scale the regularization term", default=1e-3)
     add_arg("--log-freq", type=int, help='log per number of steps', default=50)
     add_arg("--val-batches", type=int, default=1, help='number of batches for validation')
+    add_arg("--evts-per-file", default=5000, type=int, help='number of events per input file')
 
     add_arg("-v", "--verbose", help='verbosity', choices=['DEBUG', 'ERROR', 'FATAL', 'INFO', 'WARN'],
             default="INFO")

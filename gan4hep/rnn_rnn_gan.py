@@ -1,15 +1,12 @@
 """
 RNN-based Generator and MLP-based Discriminator
 """
-from types import SimpleNamespace
-import functools
 from typing import Callable, Iterable, Optional, Text
 
 import tensorflow as tf
 import sonnet as snt
 
-from gan4hep.mlp_gan import GANBase
-from gan4hep.mlp_gan import GANOptimizer
+from gan4hep.gan_base import GANBase
 from gan4hep.reader import n_max_nodes
 
 
@@ -91,10 +88,10 @@ class Discriminator(CommonRNN):
                 latent_size=latent_size, num_layers=num_layers)
 
 class GAN(GANBase):
-    def __init__(self, name=None):
+    def __init__(self, latent_size=512, num_layers=10, name=None):
         super().__init__(name=name)
-        self.generator = Generator()
-        self.discriminator = Discriminator()
+        self.generator = Generator(latent_size=latent_size, num_layers=num_layers)
+        self.discriminator = Discriminator(latent_size=latent_size, num_layers=num_layers)
 
     def generate(self, inputs, is_training=True):
         return self.generator(inputs, n_max_nodes, is_training)

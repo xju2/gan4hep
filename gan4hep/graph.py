@@ -299,7 +299,7 @@ def dtype_shape_from_graphs_tuple(input_graph, with_batch_dim=False, with_paddin
     return graphs.GraphsTuple(**graphs_tuple_dtype), graphs.GraphsTuple(**graphs_tuple_shape)
 
 
-def read_dataset(filenames):
+def read_dataset(filenames, nEvtsPerFile=5000):
     """
     Read dataset...
     """
@@ -309,7 +309,8 @@ def read_dataset(filenames):
 
     dataset = tf.data.TFRecordDataset(tr_filenames)
     dataset = dataset.map(parse_tfrec_function, num_parallel_calls=AUTO)
-    n_graphs = sum([1 for _ in dataset])
+    # n_graphs = sum([1 for _ in dataset])
+    n_graphs = n_files * nEvtsPerFile
     return dataset, n_graphs
 
 
