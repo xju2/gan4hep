@@ -50,7 +50,7 @@ node_abs_max = np.array([
 ], dtype=np.float32)
 
 max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
-max_pt_eta_phi_energy = np.array([50, 5, np.pi, 50], dtype=np.float32)
+max_pt_eta_phi_energy = np.array([5, 5, np.pi, 5], dtype=np.float32)
 
 
 gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan']
@@ -73,14 +73,16 @@ def get_pt_eta_phi(px, py, pz):
 
 
 def train_and_evaluate(
-    batch_size, # batch size
-    max_epochs, # maximum epochs
-    noise_dim,  # noise dimension
-    disc_lr,    # discriminator learning rate
-    gen_lr,     # generator learning rate
-    gamma_reg,  # strength of regularization term
+    batch_size, # batch size [HPO]
+    max_epochs, # maximum epochs 
+    noise_dim,  # noise dimension [HPO]
+    disc_lr,    # discriminator learning rate [HPO]
+    gen_lr,     # generator learning rate [HPO]
+    gamma_reg,  # strength of regularization term [HPO]
     input_dir,  # input directory
     output_dir, # output directory
+    layer_size=512, # layer size in MLP [HPO]
+    num_layers=10,  # number of layers [HPO]
     patterns="*",
     gan_type='rnn_mlp_gan',
     with_disc_reg=True,
@@ -94,6 +96,7 @@ def train_and_evaluate(
     disc_batches=10, # number of batches for warming up discriminator
     val_batches=2, # number of batches for validation
     log_freq=1000, # number of batches per log
+    use_pt_eta_phi_e=False, # Keep it false, not working...use [pt, eta, phi, E] as inputs, possible HPO
     *args, **kwargs
 ):
     dist = init_workers(distributed)
@@ -173,7 +176,7 @@ def train_and_evaluate(
     logging.info("rank {} has {:,} training events and {:,} validating events".format(
         dist.rank, ngraphs_train, ngraphs_val))
 
-    gan = create_gan(gan_type)
+    gan = create_gan(gan_type, ls=layer_size, nl=num_layers)
 
     optimizer = GANOptimizer(
                         gan,
@@ -213,14 +216,12 @@ def train_and_evaluate(
     
     def normalize(inputs, targets):
         # node features are [energy, px, py, pz]
-        if args.use_pt_eta_phi_e:
+        if use_pt_eta_phi_e:
             # inputs
-            pt, eta, phi = get_pt_eta_phi(
-                inputs.nodes[:, 1], inputs.nodes[:, 2], inputs.nodes[:, 3])
+            pt, eta, phi = get_pt_eta_phi(inputs.nodes[:, 1], inputs.nodes[:, 2], inputs.nodes[:, 3])
             input_nodes = np.stack([pt, eta, phi, inputs.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
             # outputs
-            o_pt, o_eta, o_phi = get_pt_eta_phi(
-                targets.nodes[:, 1], targets.nodes[:, 2], targets.nodes[:, 3])
+            o_pt, o_eta, o_phi = get_pt_eta_phi(targets.nodes[:, 1], targets.nodes[:, 2], targets.nodes[:, 3])
             target_nodes = np.stack([o_pt, o_eta, o_phi, targets.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
         else:            
             input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
@@ -242,7 +243,6 @@ def train_and_evaluate(
 
         print("finished the warm up")
 
-    pre_gen_loss = pre_disc_loss = 0
     start_time = time.time()
 
     wdis_all = []
@@ -266,7 +266,8 @@ def train_and_evaluate(
                 disc_loss, = disc_loss
 
             if step_num == 0:
-                print(">>>{:,} trainable variables in Generator; {:,} trainable variables in Discriminator<<<".format(
+                print(">>>{:,} trainable variables in Generator; "
+                      "{:,} trainable variables in Discriminator<<<".format(
                     *optimizer.gan.num_trainable_vars()
                 ))
 
@@ -274,14 +275,12 @@ def train_and_evaluate(
             gen_loss = gen_loss.numpy()
             if step_num and (step_num % log_freq == 0):            
                 ckpt_manager.save()
-                pre_gen_loss = gen_loss
-                pre_disc_loss = disc_loss
 
                 # adding testing results
                 predict_4vec = []
                 truth_4vec = []
-                for ib in range(val_batches):
-                    inputs_val, targets_val = normalize(* (next(validating_data)))
+                for _ in range(val_batches):
+                    inputs_val, targets_val = normalize(* next(validating_data))
                     gen_evts_val = optimizer.cond_gen(inputs_val)
                     predict_4vec.append(tf.reshape(gen_evts_val, [batch_size, -1, 4]))
                     truth_4vec.append(tf.reshape(targets_val, [batch_size, -1, 4])[:, 1:, :])
