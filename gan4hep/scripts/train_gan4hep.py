@@ -72,9 +72,31 @@ def get_pt_eta_phi(px, py, pz):
     return pt,eta,phi
 
 
-def train_and_evaluate(args):
-    dist = init_workers(args.distributed)
-    batch_size = args.batch_size
+def train_and_evaluate(
+    batch_size, # batch size
+    max_epochs, # maximum epochs
+    noise_dim,  # noise dimension
+    disc_lr,    # discriminator learning rate
+    gen_lr,     # generator learning rate
+    gamma_reg,  # strength of regularization term
+    input_dir,  # input directory
+    output_dir, # output directory
+    patterns="*",
+    gan_type='rnn_mlp_gan',
+    with_disc_reg=True,
+    distributed=False,
+    evts_per_file=5000,
+    shuffle_size=-1,
+    debug=False,
+    input_frac=0.1, # to use a fraction of training events
+    do_log=False,
+    warm_up=True,
+    disc_batches=10, # number of batches for warming up discriminator
+    val_batches=2, # number of batches for validation
+    log_freq=1000, # number of batches per log
+    *args, **kwargs
+):
+    dist = init_workers(distributed)
 
     device = 'CPU'
     gpus = tf.config.experimental.list_physical_devices("GPU")
@@ -85,30 +107,27 @@ def train_and_evaluate(args):
 
     if len(gpus) > 0:
         device = "{}GPUs".format(len(gpus))
-    if gpus and args.distributed:
+    if gpus and distributed:
         tf.config.experimental.set_visible_devices(
-            gpus[hvd.local_rank()], 'GPU')
+            gpus[dist.local_rank()], 'GPU')
 
     time_stamp = time.strftime('%Y%m%d-%H%M%S', time.localtime())
-    output_dir = args.output_dir
-    # output_dir = os.path.join(args.output_dir, "{}".format(time_stamp))
     if dist.rank == 0:
         os.makedirs(output_dir, exist_ok=True)
     logging.info("Checkpoints and models saved at {}".format(output_dir))
 
-    n_epochs = args.max_epochs
     logging.info("{} epochs with batch size {}".format(
-        n_epochs, batch_size))
+        max_epochs, batch_size))
     logging.info("I am in hvd rank: {} of  total {} ranks".format(
         dist.rank, dist.size))
 
     if dist.rank == 0:
-        train_input_dir = os.path.join(args.input_dir, 'train')
-        val_input_dir = os.path.join(args.input_dir, 'val')
+        train_input_dir = os.path.join(input_dir, 'train')
+        val_input_dir = os.path.join(input_dir, 'val')
         train_files = tf.io.gfile.glob(
-            os.path.join(train_input_dir, args.patterns))
+            os.path.join(train_input_dir, patterns))
         eval_files = tf.io.gfile.glob(
-            os.path.join(val_input_dir, args.patterns))
+            os.path.join(val_input_dir, patterns))
         # split the number of files evenly to all ranks
         train_files = [x.tolist()
                        for x in np.array_split(train_files, dist.size)]
@@ -118,20 +137,19 @@ def train_and_evaluate(args):
         train_files = None
         eval_files = None
 
-    if args.distributed:
+    if distributed:
         train_files = dist.comm.scatter(train_files, root=0)
         eval_files = dist.comm.scatter(eval_files, root=0)
     else:
         train_files = train_files[0]
         eval_files = eval_files[0]
 
-    if args.debug:
+    if debug:
         train_files = train_files[0:1]
         eval_files = eval_files[0:1]
 
     logging.info("rank {} has {} training files and {} evaluation files".format(
         dist.rank, len(train_files), len(eval_files)))
-    input_frac = args.input_frac
     if input_frac < 1 and input_frac > 0:
         n_tr = int(len(train_files)*input_frac) + 1
         n_ev = int(len(eval_files)* input_frac) + 1
@@ -142,35 +160,35 @@ def train_and_evaluate(args):
 
 
     AUTO = tf.data.experimental.AUTOTUNE
-    training_dataset, ngraphs_train = read_dataset(train_files, args.evts_per_file)
-    training_dataset = training_dataset.repeat(n_epochs+1).prefetch(AUTO)
-    if args.shuffle_size > 0:
+    training_dataset, ngraphs_train = read_dataset(train_files, evts_per_file)
+    training_dataset = training_dataset.repeat(max_epochs+1).prefetch(AUTO)
+    if shuffle_size > 0:
         training_dataset = training_dataset.shuffle(
-                args.shuffle_size, seed=12345, reshuffle_each_iteration=False)
+                shuffle_size, seed=12345, reshuffle_each_iteration=False)
 
-    validating_dataset, ngraphs_val = read_dataset(eval_files, args.evts_per_file)
+    validating_dataset, ngraphs_val = read_dataset(eval_files, evts_per_file)
     validating_dataset = validating_dataset.repeat().prefetch(AUTO)
 
 
     logging.info("rank {} has {:,} training events and {:,} validating events".format(
         dist.rank, ngraphs_train, ngraphs_val))
 
-    gan = create_gan(args.gan_type)
+    gan = create_gan(gan_type)
 
     optimizer = GANOptimizer(
                         gan,
                         batch_size=batch_size,
-                        noise_dim=args.noise_dim,
-                        num_epcohs=n_epochs,
-                        disc_lr=args.disc_lr,
-                        gen_lr=args.gen_lr,
-                        with_disc_reg=args.with_disc_reg, 
-                        gamma_reg=args.gamma_reg
+                        noise_dim=noise_dim,
+                        num_epcohs=max_epochs,
+                        disc_lr=disc_lr,
+                        gen_lr=gen_lr,
+                        with_disc_reg=with_disc_reg, 
+                        gamma_reg=gamma_reg
                         )
     
     disc_step = optimizer.disc_step
     step = optimizer.step
-    if not args.debug:
+    if not debug:
         step = tf.function(step)
         disc_step = tf.function(disc_step)
 
@@ -210,11 +228,11 @@ def train_and_evaluate(args):
         target_nodes = np.reshape(target_nodes, [batch_size, -1])
         return input_nodes, target_nodes
 
-    if args.warm_up:
+    if warm_up:
         # train discriminator for certain batches
         # to "warm up" the discriminator
-        print("start to warm up discriminator with {} batches".format(args.disc_batches))
-        for _ in range(args.disc_batches):
+        print("start to warm up discriminator with {} batches".format(disc_batches))
+        for _ in range(disc_batches):
             inputs_tr, targets_tr = next(training_data)
             input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
             
@@ -227,7 +245,8 @@ def train_and_evaluate(args):
     pre_gen_loss = pre_disc_loss = 0
     start_time = time.time()
 
-    with tqdm.trange(n_epochs*steps_per_epoch) as t:
+    wdis_all = []
+    with tqdm.trange(max_epochs*steps_per_epoch) as t:
 
         for step_num in t:
             epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
@@ -241,7 +260,7 @@ def train_and_evaluate(args):
             # --------------------------------------------------------
 
             disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
-            if args.with_disc_reg:
+            if with_disc_reg:
                 disc_loss, disc_reg, grad_D_true_logits_norm, grad_D_gen_logits_norm, reg_true, reg_gen = disc_loss
             else:
                 disc_loss, = disc_loss
@@ -253,7 +272,7 @@ def train_and_evaluate(args):
 
             disc_loss = disc_loss.numpy()
             gen_loss = gen_loss.numpy()
-            if step_num and (step_num % args.log_freq == 0):            
+            if step_num and (step_num % log_freq == 0):            
                 ckpt_manager.save()
                 pre_gen_loss = gen_loss
                 pre_disc_loss = disc_loss
@@ -261,7 +280,7 @@ def train_and_evaluate(args):
                 # adding testing results
                 predict_4vec = []
                 truth_4vec = []
-                for ib in range(args.val_batches):
+                for ib in range(val_batches):
                     inputs_val, targets_val = normalize(* (next(validating_data)))
                     gen_evts_val = optimizer.cond_gen(inputs_val)
                     predict_4vec.append(tf.reshape(gen_evts_val, [batch_size, -1, 4]))
@@ -278,7 +297,7 @@ def train_and_evaluate(args):
                     tf.summary.scalar("gen_loss", gen_loss, description='generator loss')
                     tf.summary.scalar("discr_loss", disc_loss, description="discriminator loss")
                     tf.summary.scalar("time", (this_epoch-start_time)/60.)
-                    if args.with_disc_reg:
+                    if with_disc_reg:
                         tf.summary.scalar("discr_reg", disc_reg.numpy().mean(), description='discriminator regularization')
                         tf.summary.scalar("reg_gen", reg_gen.numpy().mean(), description='regularization on generated events')
                         tf.summary.scalar("reg_true", reg_true.numpy().mean(), description='regularization on truth events')
@@ -314,13 +333,14 @@ def train_and_evaluate(args):
                     tf.summary.scalar("tot_wasserstein_dis", tot_wdis, description="total wasserstein distance")
                     tf.summary.scalar("tot_energy_dis", tot_edis, description="total energy distance")
                     _ , comb_pvals = stats.combine_pvalues(distances[:, 2], method='fisher')
-                    tf.summary.scalar("tot_KS", comb_pvals, description="total wasserstein distance")
+                    tf.summary.scalar("tot_KS", comb_pvals, description="total KS pvalues distance")
 
-                t.set_description('Epoch {}/{}'.format(epoch.numpy(), n_epochs))
+                t.set_description('Epoch {}/{}'.format(epoch.numpy(), max_epochs))
                 t.set_postfix(
                     G_loss=gen_loss, D_loss=disc_loss,
-                    Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis,
-                )   
+                    Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis)
+                wdis_all.append(tot_wdis)
+    return sum(wdis_all)/len(wdis_all)
 
 
 if __name__ == "__main__":
@@ -371,4 +391,4 @@ if __name__ == "__main__":
     logging.set_verbosity(args.verbose)
     # Suppress C++ level warnings.
     # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    train_and_evaluate(args)
+    train_and_evaluate(**vars(args))
