@@ -24,6 +24,8 @@ setup(
         "graph_nets@ https://github.com/deepmind/graph_nets/tarball/master",
         "matplotlib",
         'tqdm',
+        'more_itertools',
+        'scipy',
     ],
     # package_data = {
     #     "gan4hep": ["config/*.yaml"]
