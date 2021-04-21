@@ -294,7 +294,7 @@ def train_and_evaluate(
                     # log some metrics
                     this_epoch = time.time()
                     with train_summary_writer.as_default():
-                        tf.summary.experimental.set_step(step_num)
+                        tf.summary.experimental.set_step(epoch*steps_per_epoch + step_num)
                         # epoch = epoch.numpy()
                         tf.summary.scalar("gen_loss", gen_loss, description='generator loss')
                         tf.summary.scalar("discr_loss", disc_loss, description="discriminator loss")
