@@ -213,7 +213,7 @@ def train_and_evaluate(
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint)
 
     
-    def normalize(inputs, targets):
+    def normalize(inputs, targets, to_tf_tensor=True):
         # node features are [energy, px, py, pz]
         if use_pt_eta_phi_e:
             # inputs
@@ -226,6 +226,9 @@ def train_and_evaluate(
             input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
             target_nodes = targets.nodes / max_energy_px_py_pz
         target_nodes = np.reshape(target_nodes, [batch_size, -1])
+        if to_tf_tensor:
+            input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
+            target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
         return input_nodes, target_nodes
 
     if warm_up:
@@ -235,9 +238,6 @@ def train_and_evaluate(
         for _ in range(disc_batches):
             inputs_tr, targets_tr = next(training_data)
             input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
-            
-            input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
-            target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
             disc_step(target_nodes, input_nodes)
 
         print("finished the warm up")
@@ -254,8 +254,6 @@ def train_and_evaluate(
                 # --------------------------------------------------------
                 # scale the inputs and outputs to [-1, 1]
                 input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
-                input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
-                target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
                 # --------------------------------------------------------
 
                 disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
