@@ -53,10 +53,10 @@ max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
 max_pt_eta_phi_energy = np.array([5, 5, np.pi, 5], dtype=np.float32)
 
 
-gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan']
-def create_gan(gan_name, ls=512, nl=10):
+gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan', 'gnn_gnn_gan']
+def import_model(gan_name):
     gan_module = importlib.import_module("gan4hep."+gan_name)
-    return gan_module.GAN(latent_size=ls, num_layers=nl)
+    return gan_module
 
 
 def init_workers(distributed=False):
@@ -164,7 +164,7 @@ def train_and_evaluate(
 
     AUTO = tf.data.experimental.AUTOTUNE
     training_dataset, ngraphs_train = read_dataset(train_files, evts_per_file)
-    training_dataset = training_dataset.repeat(max_epochs+1).prefetch(AUTO)
+    training_dataset = training_dataset.repeat().prefetch(AUTO)
     if shuffle_size > 0:
         training_dataset = training_dataset.shuffle(
                 shuffle_size, seed=12345, reshuffle_each_iteration=False)
@@ -176,16 +176,15 @@ def train_and_evaluate(
     logging.info("rank {} has {:,} training events and {:,} validating events".format(
         dist.rank, ngraphs_train, ngraphs_val))
 
-    gan = create_gan(gan_type, ls=layer_size, nl=num_layers)
+    gan_model = import_model(gan_type)
+    gan = gan_model.GAN(noise_dim, batch_size, layer_size, num_layers)
 
     optimizer = GANOptimizer(
                         gan,
-                        batch_size=batch_size,
-                        noise_dim=noise_dim,
                         num_epcohs=max_epochs,
                         disc_lr=disc_lr,
                         gen_lr=gen_lr,
-                        with_disc_reg=with_disc_reg, 
+                        with_disc_reg=with_disc_reg,
                         gamma_reg=gamma_reg
                         )
     
@@ -246,99 +245,99 @@ def train_and_evaluate(
     start_time = time.time()
 
     wdis_all = []
-    with tqdm.trange(max_epochs*steps_per_epoch) as t:
+    for epoch in range(max_epochs):
+        with tqdm.trange(steps_per_epoch) as t:
+            for step_num in t:
+                # epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
+                inputs_tr, targets_tr = next(training_data)
 
-        for step_num in t:
-            epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
-            inputs_tr, targets_tr = next(training_data)
+                # --------------------------------------------------------
+                # scale the inputs and outputs to [-1, 1]
+                input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
+                input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
+                target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
+                # --------------------------------------------------------
 
-            # --------------------------------------------------------
-            # scale the inputs and outputs to [-1, 1]
-            input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
-            input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
-            target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
-            # --------------------------------------------------------
+                disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
+                if with_disc_reg:
+                    disc_loss, disc_reg, grad_D_true_logits_norm, grad_D_gen_logits_norm, reg_true, reg_gen = disc_loss
+                else:
+                    disc_loss = disc_loss[0]
 
-            disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
-            if with_disc_reg:
-                disc_loss, disc_reg, grad_D_true_logits_norm, grad_D_gen_logits_norm, reg_true, reg_gen = disc_loss
-            else:
-                disc_loss, = disc_loss
+                if step_num == 0:
+                    print(">>>{:,} trainable variables in Generator; "
+                        "{:,} trainable variables in Discriminator<<<".format(
+                        *optimizer.gan.num_trainable_vars()
+                    ))
 
-            if step_num == 0:
-                print(">>>{:,} trainable variables in Generator; "
-                      "{:,} trainable variables in Discriminator<<<".format(
-                    *optimizer.gan.num_trainable_vars()
-                ))
+                disc_loss = disc_loss.numpy()
+                gen_loss = gen_loss.numpy()
+                if step_num and (step_num % log_freq == 0):            
+                    ckpt_manager.save()
 
-            disc_loss = disc_loss.numpy()
-            gen_loss = gen_loss.numpy()
-            if step_num and (step_num % log_freq == 0):            
-                ckpt_manager.save()
+                    # adding testing results
+                    predict_4vec = []
+                    truth_4vec = []
+                    for _ in range(val_batches):
+                        inputs_val, targets_val = normalize(* next(validating_data))
+                        gen_evts_val = gan.generate(inputs_val)
+                        predict_4vec.append(tf.reshape(gen_evts_val, [batch_size, -1, 4]))
+                        truth_4vec.append(tf.reshape(targets_val, [batch_size, -1, 4]))
+            
+                    predict_4vec = tf.concat(predict_4vec, axis=0)
+                    truth_4vec = tf.concat(truth_4vec, axis=0)
 
-                # adding testing results
-                predict_4vec = []
-                truth_4vec = []
-                for _ in range(val_batches):
-                    inputs_val, targets_val = normalize(* next(validating_data))
-                    gen_evts_val = optimizer.cond_gen(inputs_val)
-                    predict_4vec.append(tf.reshape(gen_evts_val, [batch_size, -1, 4]))
-                    truth_4vec.append(tf.reshape(targets_val, [batch_size, -1, 4])[:, 1:, :])
-        
-                predict_4vec = tf.concat(predict_4vec, axis=0)
-                truth_4vec = tf.concat(truth_4vec, axis=0)
+                    # log some metrics
+                    this_epoch = time.time()
+                    with train_summary_writer.as_default():
+                        tf.summary.experimental.set_step(step_num)
+                        # epoch = epoch.numpy()
+                        tf.summary.scalar("gen_loss", gen_loss, description='generator loss')
+                        tf.summary.scalar("discr_loss", disc_loss, description="discriminator loss")
+                        tf.summary.scalar("time", (this_epoch-start_time)/60.)
+                        if with_disc_reg:
+                            tf.summary.scalar("discr_reg", disc_reg.numpy().mean(), description='discriminator regularization')
+                            tf.summary.scalar("reg_gen", reg_gen.numpy().mean(), description='regularization on generated events')
+                            tf.summary.scalar("reg_true", reg_true.numpy().mean(), description='regularization on truth events')
+                            tf.summary.scalar("grad_D1_logits_norm", grad_D_true_logits_norm.numpy().mean(),
+                                        description="gradients of true logits")
+                            tf.summary.scalar("grad_D2_logits_norm", grad_D_gen_logits_norm.numpy().mean(),
+                                        description="gradients of generated logits")
+                        
+                        # plot the eight variables and resepctive Wasserstein distance (i.e. Earch Mover Distance)
+                        # Use the Kolmogorov-Smirnov test, 
+                        # it turns a two-sided test for the null hypothesis that the two distributions
+                        # are drawn from the same continuous distribution.
+                        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.combine_pvalues.html#scipy.stats.combine_pvalues
+                        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html#scipy.stats.ks_2samp
+                        # https://docs.scipy.org/doc/scipy/reference/stats.html#statistical-distances
+                        predict_4vec = tf.reshape(predict_4vec, [batch_size, -1]).numpy()
+                        truth_4vec = tf.reshape(truth_4vec, [batch_size, -1]).numpy()
+                        distances = []
 
-                # log some metrics
-                this_epoch = time.time()
-                with train_summary_writer.as_default():
-                    tf.summary.experimental.set_step(step_num)
-                    # epoch = epoch.numpy()
-                    tf.summary.scalar("gen_loss", gen_loss, description='generator loss')
-                    tf.summary.scalar("discr_loss", disc_loss, description="discriminator loss")
-                    tf.summary.scalar("time", (this_epoch-start_time)/60.)
-                    if with_disc_reg:
-                        tf.summary.scalar("discr_reg", disc_reg.numpy().mean(), description='discriminator regularization')
-                        tf.summary.scalar("reg_gen", reg_gen.numpy().mean(), description='regularization on generated events')
-                        tf.summary.scalar("reg_true", reg_true.numpy().mean(), description='regularization on truth events')
-                        tf.summary.scalar("grad_D1_logits_norm", grad_D_true_logits_norm.numpy().mean(),
-                                    description="gradients of true logits")
-                        tf.summary.scalar("grad_D2_logits_norm", grad_D_gen_logits_norm.numpy().mean(),
-                                    description="gradients of generated logits")
-                    
-                    # plot the eight variables and resepctive Wasserstein distance (i.e. Earch Mover Distance)
-                    # Use the Kolmogorov-Smirnov test, 
-                    # it turns a two-sided test for the null hypothesis that the two distributions
-                    # are drawn from the same continuous distribution.
-                    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.combine_pvalues.html#scipy.stats.combine_pvalues
-                    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html#scipy.stats.ks_2samp
-                    # https://docs.scipy.org/doc/scipy/reference/stats.html#statistical-distances
-                    predict_4vec = tf.reshape(predict_4vec, [batch_size, -1]).numpy()
-                    truth_4vec = tf.reshape(truth_4vec, [batch_size, -1]).numpy()
-                    distances = []
+                        for icol in range(predict_4vec.shape[1]):
+                            dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+                            _, pvalue = stats.ks_2samp(predict_4vec[:, icol], truth_4vec[:, icol])
+                            if pvalue < 1e-6: pvalue = 1e-6
+                            energy_dis = stats.energy_distance(predict_4vec[:, icol], truth_4vec[:, icol])
 
-                    for icol in range(predict_4vec.shape[1]):
-                        dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
-                        _, pvalue = stats.ks_2samp(predict_4vec[:, icol], truth_4vec[:, icol])
-                        if pvalue < 1e-6: pvalue = 1e-6
-                        energy_dis = stats.energy_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+                            tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
+                            tf.summary.scalar("energy_distance_var{}".format(icol), energy_dis)
+                            tf.summary.scalar("KS_Test_var{}".format(icol), pvalue)
+                            distances.append([dis, energy_dis, pvalue])
+                        distances = np.array(distances, dtype=np.float32)
+                        tot_wdis = sum(distances[:, 0])
+                        tot_edis = sum(distances[:, 1])
+                        tf.summary.scalar("tot_wasserstein_dis", tot_wdis, description="total wasserstein distance")
+                        tf.summary.scalar("tot_energy_dis", tot_edis, description="total energy distance")
+                        _ , comb_pvals = stats.combine_pvalues(distances[:, 2], method='fisher')
+                        tf.summary.scalar("tot_KS", comb_pvals, description="total KS pvalues distance")
 
-                        tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
-                        tf.summary.scalar("energy_distance_var{}".format(icol), energy_dis)
-                        tf.summary.scalar("KS_Test_var{}".format(icol), pvalue)
-                        distances.append([dis, energy_dis, pvalue])
-                    distances = np.array(distances, dtype=np.float32)
-                    tot_wdis = sum(distances[:, 0])
-                    tot_edis = sum(distances[:, 1])
-                    tf.summary.scalar("tot_wasserstein_dis", tot_wdis, description="total wasserstein distance")
-                    tf.summary.scalar("tot_energy_dis", tot_edis, description="total energy distance")
-                    _ , comb_pvals = stats.combine_pvalues(distances[:, 2], method='fisher')
-                    tf.summary.scalar("tot_KS", comb_pvals, description="total KS pvalues distance")
-
-                t.set_description('Epoch {}/{}'.format(epoch.numpy(), max_epochs))
-                t.set_postfix(
-                    G_loss=gen_loss, D_loss=disc_loss,
-                    Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis)
-                wdis_all.append(tot_wdis)
+                    t.set_description('Epoch {}/{}'.format(epoch, max_epochs))
+                    t.set_postfix(
+                        G_loss=gen_loss, D_loss=disc_loss,
+                        Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis)
+                    wdis_all.append(tot_wdis)
     return sum(wdis_all)/len(wdis_all)
 
 
