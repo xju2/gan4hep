@@ -254,11 +254,6 @@ def train_and_evaluate(
     wdis_all = []
     with tqdm.trange(max_epochs, disable=disable_tqdm) as t0:
         for epoch in t0:
-            if epoch == 0:
-                print(">>>{:,} trainable variables in Generator; "
-                    "{:,} trainable variables in Discriminator<<<".format(
-                    *optimizer.gan.num_trainable_vars()
-                ))
             t0.set_description('Epoch {}/{}'.format(epoch, max_epochs))
             with tqdm.trange(steps_per_epoch, disable=disable_tqdm) as t:
                 for step_num in t:
@@ -275,6 +270,12 @@ def train_and_evaluate(
                         disc_loss, disc_reg, grad_D_true_logits_norm, grad_D_gen_logits_norm, reg_true, reg_gen = disc_loss
                     else:
                         disc_loss = disc_loss[0]
+
+                    if step_num==0 and epoch == 0:
+                        print(">>>{:,} trainable variables in Generator; "
+                            "{:,} trainable variables in Discriminator<<<".format(
+                            *optimizer.gan.num_trainable_vars()
+                        ))
 
                     disc_loss = disc_loss.numpy()
                     gen_loss = gen_loss.numpy()
@@ -386,7 +387,7 @@ if __name__ == "__main__":
     add_arg("-v", "--verbose", help='verbosity', choices=['DEBUG', 'ERROR', 'FATAL', 'INFO', 'WARN'],
             default="INFO")
     add_arg("--debug", help='in debug mode', action='store_true')
-    add_arg("--disable-tqdm", help='do not show progress bar', action='store_false')
+    add_arg("--disable-tqdm", help='do not show progress bar', action='store_true')
     # args, _ = parser.parse_known_args()
     args = parser.parse_args()
     # print(args)
