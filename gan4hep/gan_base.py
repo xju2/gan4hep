@@ -86,7 +86,8 @@ class GANOptimizer(snt.Module):
                 decay_epochs=2,
                 decay_base=0.96,
                 loss_type='logloss',
-                gamma_reg=1e-3, 
+                gamma_reg=1e-3,
+                debug=False,
                 name=None, *args, **kwargs):
         super().__init__(name=name)
         self.gan = gan
@@ -100,6 +101,7 @@ class GANOptimizer(snt.Module):
             decay_gen_lr=decay_gen_lr,
             gamma_reg=gamma_reg
         )
+        self.debug = debug
 
         # learning rate decay
         # https://www.tensorflow.org/api_docs/python/tf/compat/v1/train/exponential_decay
@@ -124,9 +126,12 @@ class GANOptimizer(snt.Module):
 
     def disc_step(self, truth_inputs, cond_inputs=None, lr_mult=1.0):
         gan = self.gan
-
+        if self.debug and cond_inputs is not None:
+            print("cond inputs:", cond_inputs.shape)
         with tf.GradientTape() as tape, tf.GradientTape() as true_tape, tf.GradientTape() as fake_tape:
             gen_evts = gan.generate(cond_inputs)
+            if self.debug:
+                print("generated info:", gen_evts.shape)
 
             true_tape.watch(truth_inputs)
             fake_tape.watch(gen_evts)

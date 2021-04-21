@@ -97,6 +97,8 @@ def train_and_evaluate(
     val_batches=2, # number of batches for validation
     log_freq=1000, # number of batches per log
     use_pt_eta_phi_e=False, # Keep it false, not working...use [pt, eta, phi, E] as inputs, possible HPO
+    decay_epochs=2,
+    decay_base=0.96,
     *args, **kwargs
 ):
     dist = init_workers(distributed)
@@ -177,7 +179,7 @@ def train_and_evaluate(
         dist.rank, ngraphs_train, ngraphs_val))
 
     gan_model = import_model(gan_type)
-    gan = gan_model.GAN(noise_dim, batch_size, layer_size, num_layers)
+    gan = gan_model.GAN(noise_dim, batch_size, latent_size=layer_size, num_layers=num_layers, name=gan_type)
 
     optimizer = GANOptimizer(
                         gan,
@@ -185,7 +187,10 @@ def train_and_evaluate(
                         disc_lr=disc_lr,
                         gen_lr=gen_lr,
                         with_disc_reg=with_disc_reg,
-                        gamma_reg=gamma_reg
+                        gamma_reg=gamma_reg,
+                        decay_epochs=decay_epochs,
+                        decay_base=decay_base,
+                        debug=debug
                         )
     
     disc_step = optimizer.disc_step
@@ -226,6 +231,7 @@ def train_and_evaluate(
             input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
             target_nodes = targets.nodes / max_energy_px_py_pz
         target_nodes = np.reshape(target_nodes, [batch_size, -1])
+
         if to_tf_tensor:
             input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
             target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
@@ -364,13 +370,13 @@ if __name__ == "__main__":
     add_arg("--loss-type", choices=['logloss', 'mse'], default='logloss')
 
     add_arg("--noise-dim", type=int, help='dimension of noises', default=8)
-    add_arg("--disc-num-iters", type=int,
-            help='number of message passing for discriminator', default=4)
-    add_arg("--disc-alpha", type=float,
-            help='inversely scale true dataset in the loss calculation', default=0.1)
-    add_arg("--disc-beta", type=float,
-            help='scales generated dataset in the loss calculation', default=0.8)
     add_arg("--with-disc-reg", action='store_true', help='with discriminator regularizer')
+
+    # learning rate decay --> decay_base ^ (epoch / decay_epoch)
+    add_arg("--decay-epochs", type=int, help='how often learning rate decays', default=2)
+    add_arg("--decay-base", type=float, help='base value for learning rate decay', default=0.96)
+
+    #
     add_arg("--gamma-reg", type=float, help="scale the regularization term", default=1e-3)
     add_arg("--log-freq", type=int, help='log per number of steps', default=50)
     add_arg("--val-batches", type=int, default=1, help='number of batches for validation')
