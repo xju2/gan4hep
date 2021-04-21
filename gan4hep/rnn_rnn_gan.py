@@ -89,10 +89,10 @@ class Discriminator(CommonRNN):
                 latent_size=latent_size, num_layers=num_layers)
 
 class GAN(GANBase):
-    def __init__(self, latent_size=512, num_layers=10, name=None):
-        super().__init__(name=name)
-        self.generator = Generator(latent_size=latent_size, num_layers=num_layers)
-        self.discriminator = Discriminator(latent_size=latent_size, num_layers=num_layers)
+    def __init__(self, noise_dim, batch_size, max_nodes=2, latent_size=512, num_layers=10, name=None):
+        super().__init__(noise_dim, batch_size, name=name)
+        self.generator = Generator(max_nodes=max_nodes, latent_size=latent_size, num_layers=num_layers)
+        self.discriminator = Discriminator(max_nodes=max_nodes, latent_size=latent_size, num_layers=num_layers)
 
     def discriminate(self, inputs, is_training=True):
         return tf.math.reduce_sum(self.discriminator(inputs, is_training), axis=-1, keepdims=True)

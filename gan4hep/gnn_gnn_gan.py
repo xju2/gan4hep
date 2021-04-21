@@ -2,6 +2,7 @@
 GNN-based discriminator and generator
 """
 from typing import Callable, Iterable, Optional, Text
+import numpy as np
 
 import tensorflow as tf
 import sonnet as snt
@@ -44,4 +45,5 @@ class GAN(GANBase):
         
 
     def discriminate(self, inputs, is_training=True):
-        return self.discriminator(inputs, is_training)
+        out_graph = self.discriminator(inputs, is_training)
+        return out_graph.globals
