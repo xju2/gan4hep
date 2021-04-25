@@ -229,7 +229,8 @@ def train_and_evaluate(
             o_pt, o_eta, o_phi = get_pt_eta_phi(targets.nodes[:, 1], targets.nodes[:, 2], targets.nodes[:, 3])
             target_nodes = np.stack([o_pt, o_eta, o_phi, targets.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
         else:            
-            input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
+            # input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
+            input_nodes = inputs.nodes / max_energy_px_py_pz
             target_nodes = targets.nodes / max_energy_px_py_pz
         target_nodes = np.reshape(target_nodes, [batch_size, -1])
 
