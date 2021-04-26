@@ -115,8 +115,8 @@ class GANOptimizer(snt.Module):
         self.gamma_reg = tf.Variable(gamma_reg, trainable=False, name="gamma_reg", dtype=tf.float32)
 
         # two different optimizers        
-        self.disc_opt = snt.optimizers.SGD(learning_rate=self.hyparams.disc_lr)
-        self.gen_opt = snt.optimizers.Adam(learning_rate=self.hyparams.gen_lr)
+        self.disc_opt = snt.optimizers.Adam(learning_rate=self.hyparams.disc_lr, beta1=0.5, beta2=0.9)
+        self.gen_opt = snt.optimizers.Adam(learning_rate=self.hyparams.gen_lr, beta1=0.5, beta2=0.9)
 
         self.num_epochs = tf.constant(num_epochs, dtype=tf.int32)
 
@@ -128,18 +128,36 @@ class GANOptimizer(snt.Module):
         gan = self.gan
         if self.debug and cond_inputs is not None:
             print("cond inputs:", cond_inputs.shape)
+
+        # shuffle the inputs before feeding discriminator
+        # gen_evts = gan.generate(cond_inputs)
+        # all_inputs = tf.concat([gen_evts, truth_inputs], axis=0)
+        # all_truths = tf.concat([tf.zeros_like(gen_evts),
+        #                     tf.ones_like(truth_inputs)], axis=0)
+        # indices = tf.range(start=0, limit=tf.shape(all_inputs)[0], dtype=tf.int32)
+        # shuffled_idx = tf.random.shuffle(indices)
+        # shuffled_inputs = tf.gather(all_inputs, shuffled_idx)
+        # shuffled_truths = tf.gather(all_truths, shuffled_idx)
+
         with tf.GradientTape() as tape, tf.GradientTape() as true_tape, tf.GradientTape() as fake_tape:
             gen_evts = gan.generate(cond_inputs)
-            if self.debug:
-                print("generated info:", gen_evts.shape)
 
             true_tape.watch(truth_inputs)
             fake_tape.watch(gen_evts)
             real_output = gan.discriminate(truth_inputs)
             fake_output = gan.discriminate(gen_evts)
+            if self.debug:
+                print("generated info:", gen_evts.shape)
+                print("discriminator inputs:", truth_inputs.shape)
+                print("discriminator info:", real_output.shape, real_output[0])
 
-            loss = tf.reduce_mean(self.loss_fn(tf.ones_like(real_output), real_output) \
-                                + self.loss_fn(tf.zeros_like(fake_output), fake_output))
+
+            # loss = tf.reduce_mean(self.loss_fn(tf.ones_like(real_output), real_output) \
+            #                     + self.loss_fn(tf.zeros_like(fake_output), fake_output))
+
+            loss = tf.reduce_mean(self.loss_fn(tf.zeros_like(fake_output), fake_output) \
+                                + self.loss_fn(tf.ones_like(real_output), real_output))
+
 
             if self.hyparams.with_disc_reg:
                 grad_logits_true = true_tape.gradient(real_output, truth_inputs)

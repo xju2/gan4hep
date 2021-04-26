@@ -17,6 +17,7 @@ import six
 from types import SimpleNamespace
 
 from scipy import stats
+import sklearn.metrics
 import numpy as np
 import tqdm
 
@@ -286,14 +287,28 @@ def train_and_evaluate(
                         # adding testing results
                         predict_4vec = []
                         truth_4vec = []
+                        gen_scores = []
+                        g4_scores = []
                         for _ in range(val_batches):
                             inputs_val, targets_val = normalize(* next(validating_data))
                             gen_evts_val = gan.generate(inputs_val)
                             predict_4vec.append(tf.reshape(gen_evts_val, [batch_size, -1, 4]))
                             truth_4vec.append(tf.reshape(targets_val, [batch_size, -1, 4]))
+                            # check the performance of discriminator
+                            gen_scores.append(tf.sigmoid(gan.discriminate(gen_evts_val)))
+                            g4_scores.append(tf.sigmoid(gan.discriminate(targets_val)))
                 
                         predict_4vec = tf.concat(predict_4vec, axis=0)
                         truth_4vec = tf.concat(truth_4vec, axis=0)
+                        # print("discrminator scores for generated events:", gen_scores)
+                        # print("discrminator scores for true events:", g4_scores)
+
+                        all_scores = tf.concat(gen_scores + g4_scores, axis=0)
+                        truth_scores = tf.concat([tf.zeros_like(x) for x in gen_scores] \
+                            + [tf.ones_like(x) for x in g4_scores], axis=0)
+                        y_true = (truth_scores > 0.5)
+                        fpr, tpr, _ = sklearn.metrics.roc_curve(y_true, all_scores)
+                        disc_auc = sklearn.metrics.auc(fpr, tpr)
 
                         # log some metrics
                         this_epoch = time.time()
@@ -302,6 +317,7 @@ def train_and_evaluate(
                             # epoch = epoch.numpy()
                             tf.summary.scalar("gen_loss", gen_loss, description='generator loss')
                             tf.summary.scalar("discr_loss", disc_loss, description="discriminator loss")
+                            tf.summary.scalar("disc_auc", disc_auc, description="AUC of disciminator")
                             tf.summary.scalar("time", (this_epoch-start_time)/60.)
                             if with_disc_reg:
                                 tf.summary.scalar("discr_reg", disc_reg.numpy().mean(), description='discriminator regularization')
@@ -334,15 +350,15 @@ def train_and_evaluate(
                                 tf.summary.scalar("KS_Test_var{}".format(icol), pvalue)
                                 distances.append([dis, energy_dis, pvalue])
                             distances = np.array(distances, dtype=np.float32)
-                            tot_wdis = sum(distances[:, 0])
-                            tot_edis = sum(distances[:, 1])
+                            tot_wdis = sum(distances[:, 0]) / distances.shape[0]
+                            tot_edis = sum(distances[:, 1]) / distances.shape[0]
                             tf.summary.scalar("tot_wasserstein_dis", tot_wdis, description="total wasserstein distance")
                             tf.summary.scalar("tot_energy_dis", tot_edis, description="total energy distance")
                             _ , comb_pvals = stats.combine_pvalues(distances[:, 2], method='fisher')
                             tf.summary.scalar("tot_KS", comb_pvals, description="total KS pvalues distance")
 
                         t.set_postfix(
-                            G_loss=gen_loss, D_loss=disc_loss,
+                            G_loss=gen_loss, D_loss=disc_loss, D_AUC=disc_auc,
                             Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis)
                         wdis_all.append(tot_wdis)
     return sum(wdis_all)/len(wdis_all)

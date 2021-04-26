@@ -28,7 +28,7 @@ def make_mlp_model():
       snt.nets.MLP([128, 64],
                    activation=tf.nn.relu,
                    activate_final=True),
-      # snt.LayerNorm()
+      snt.LayerNorm(axis=-1, create_offset=True, create_scale=True)
   ])
 
 class MLPGraphNetwork(snt.Module):
@@ -54,7 +54,7 @@ class MLPGraphNetwork(snt.Module):
 class Classifier(snt.Module):
 
   def __init__(self, name="Classifier"):
-    super(Classifier, self).__init__(name=name)
+    super().__init__(name=name)
 
     self._edge_block = blocks.EdgeBlock(
         edge_model_fn=make_mlp_model,
@@ -80,17 +80,17 @@ class Classifier(snt.Module):
 
     # Transforms the outputs into appropriate shapes.
     node_output_size = 4
-    node_fn = snt.nets.MLP([node_output_size],
+    node_fn = lambda: snt.nets.MLP([node_output_size],
                     activate_final=False,
                     name='edge_output')
     global_output_size = 1
-    glob_fn = snt.nets.MLP([global_output_size],
+    glob_fn = lambda: snt.nets.MLP([global_output_size],
                     activate_final=False,
                     name='global_output')
 
     self._output_transform = modules.GraphIndependent(None, node_fn, glob_fn)
 
-  def __call__(self, input_op, num_processing_steps):
+  def __call__(self, input_op, num_processing_steps=4):
     latent = self._global_encoder_block(self._edge_block(self._node_encoder_block(input_op)))
 
     latent0 = latent

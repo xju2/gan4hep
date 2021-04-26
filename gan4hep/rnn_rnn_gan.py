@@ -95,4 +95,5 @@ class GAN(GANBase):
         self.discriminator = Discriminator(max_nodes=max_nodes, latent_size=latent_size, num_layers=num_layers)
 
     def discriminate(self, inputs, is_training=True):
-        return tf.math.reduce_sum(self.discriminator(inputs, is_training), axis=-1, keepdims=True)
+        out_dis = self.discriminator(inputs, is_training)
+        return tf.math.reduce_sum(out_dis, axis=-1, keepdims=True)
