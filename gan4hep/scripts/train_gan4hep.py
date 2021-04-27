@@ -292,16 +292,16 @@ def train_and_evaluate(
                         for _ in range(val_batches):
                             inputs_val, targets_val = normalize(* next(validating_data))
                             gen_evts_val = gan.generate(inputs_val)
-                            predict_4vec.append(tf.reshape(gen_evts_val, [batch_size, -1, 4]))
-                            truth_4vec.append(tf.reshape(targets_val, [batch_size, -1, 4]))
+                            predict_4vec.append(gen_evts_val)
+                            truth_4vec.append(targets_val)
+  
                             # check the performance of discriminator
                             gen_scores.append(tf.sigmoid(gan.discriminate(gen_evts_val)))
                             g4_scores.append(tf.sigmoid(gan.discriminate(targets_val)))
                 
                         predict_4vec = tf.concat(predict_4vec, axis=0)
                         truth_4vec = tf.concat(truth_4vec, axis=0)
-                        # print("discrminator scores for generated events:", gen_scores)
-                        # print("discrminator scores for true events:", g4_scores)
+
 
                         all_scores = tf.concat(gen_scores + g4_scores, axis=0)
                         truth_scores = tf.concat([tf.zeros_like(x) for x in gen_scores] \
@@ -335,20 +335,25 @@ def train_and_evaluate(
                             # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.combine_pvalues.html#scipy.stats.combine_pvalues
                             # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html#scipy.stats.ks_2samp
                             # https://docs.scipy.org/doc/scipy/reference/stats.html#statistical-distances
-                            predict_4vec = tf.reshape(predict_4vec, [batch_size, -1]).numpy()
-                            truth_4vec = tf.reshape(truth_4vec, [batch_size, -1]).numpy()
+
+                            predict_4vec = predict_4vec.numpy()
+                            truth_4vec = truth_4vec.numpy()
                             distances = []
 
                             for icol in range(predict_4vec.shape[1]):
+                                # print("predict -->", icol, predict_4vec[:, icol])
+                                # print("truth -->", icol, truth_4vec[:, icol])
                                 dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
                                 _, pvalue = stats.ks_2samp(predict_4vec[:, icol], truth_4vec[:, icol])
                                 if pvalue < 1e-6: pvalue = 1e-6
                                 energy_dis = stats.energy_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+                                mse_loss = np.sum((predict_4vec[:, icol] - truth_4vec[:, icol])**2)/predict_4vec.shape[0]
 
                                 tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
                                 tf.summary.scalar("energy_distance_var{}".format(icol), energy_dis)
                                 tf.summary.scalar("KS_Test_var{}".format(icol), pvalue)
-                                distances.append([dis, energy_dis, pvalue])
+                                tf.summary.scalar("MSE_distance_var{}".format(icol), mse_loss)
+                                distances.append([dis, energy_dis, pvalue, mse_loss])
                             distances = np.array(distances, dtype=np.float32)
                             tot_wdis = sum(distances[:, 0]) / distances.shape[0]
                             tot_edis = sum(distances[:, 1]) / distances.shape[0]
@@ -356,10 +361,12 @@ def train_and_evaluate(
                             tf.summary.scalar("tot_energy_dis", tot_edis, description="total energy distance")
                             _ , comb_pvals = stats.combine_pvalues(distances[:, 2], method='fisher')
                             tf.summary.scalar("tot_KS", comb_pvals, description="total KS pvalues distance")
+                            tot_mse = sum(distances[:, 3]) / distances.shape[0]
+                            tf.summary.scalar("tot_mse", tot_mse, description='mean squared loss')
 
                         t.set_postfix(
                             G_loss=gen_loss, D_loss=disc_loss, D_AUC=disc_auc,
-                            Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis)
+                            Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis, MSE=tot_mse)
                         wdis_all.append(tot_wdis)
     return sum(wdis_all)/len(wdis_all)
 

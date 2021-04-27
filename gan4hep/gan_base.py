@@ -147,8 +147,8 @@ class GANOptimizer(snt.Module):
             real_output = gan.discriminate(truth_inputs)
             fake_output = gan.discriminate(gen_evts)
             if self.debug:
-                print("generated info:", gen_evts.shape)
-                print("discriminator inputs:", truth_inputs.shape)
+                print("generated info:", gen_evts.shape, gen_evts[0])
+                print("discriminator inputs:", truth_inputs.shape, truth_inputs[0])
                 print("discriminator info:", real_output.shape, real_output[0])
 
 
