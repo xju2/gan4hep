@@ -52,7 +52,7 @@ class Discriminator(snt.Module):
 
 
 class GAN(GANBase):
-    def __init__(self, latent_size=512, num_layers=10, name=None):
-        super().__init__(name=name)
+    def __init__(self, noise_dim, batch_size, latent_size=512, num_layers=10, name=None):
+        super().__init__(noise_dim, batch_size, name=name)
         self.generator = Generator(latent_size=latent_size, num_layers=num_layers)
         self.discriminator = Discriminator(latent_size=latent_size, num_layers=num_layers)

@@ -17,6 +17,7 @@ import six
 from types import SimpleNamespace
 
 from scipy import stats
+import sklearn.metrics
 import numpy as np
 import tqdm
 
@@ -53,10 +54,10 @@ max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
 max_pt_eta_phi_energy = np.array([5, 5, np.pi, 5], dtype=np.float32)
 
 
-gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan']
-def create_gan(gan_name, ls=512, nl=10):
+gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan', 'gnn_gnn_gan']
+def import_model(gan_name):
     gan_module = importlib.import_module("gan4hep."+gan_name)
-    return gan_module.GAN(latent_size=ls, num_layers=nl)
+    return gan_module
 
 
 def init_workers(distributed=False):
@@ -97,6 +98,9 @@ def train_and_evaluate(
     val_batches=2, # number of batches for validation
     log_freq=1000, # number of batches per log
     use_pt_eta_phi_e=False, # Keep it false, not working...use [pt, eta, phi, E] as inputs, possible HPO
+    decay_epochs=2,
+    decay_base=0.96,
+    disable_tqdm=False,
     *args, **kwargs
 ):
     dist = init_workers(distributed)
@@ -164,7 +168,7 @@ def train_and_evaluate(
 
     AUTO = tf.data.experimental.AUTOTUNE
     training_dataset, ngraphs_train = read_dataset(train_files, evts_per_file)
-    training_dataset = training_dataset.repeat(max_epochs+1).prefetch(AUTO)
+    training_dataset = training_dataset.repeat().prefetch(AUTO)
     if shuffle_size > 0:
         training_dataset = training_dataset.shuffle(
                 shuffle_size, seed=12345, reshuffle_each_iteration=False)
@@ -176,17 +180,19 @@ def train_and_evaluate(
     logging.info("rank {} has {:,} training events and {:,} validating events".format(
         dist.rank, ngraphs_train, ngraphs_val))
 
-    gan = create_gan(gan_type, ls=layer_size, nl=num_layers)
+    gan_model = import_model(gan_type)
+    gan = gan_model.GAN(noise_dim, batch_size, latent_size=layer_size, num_layers=num_layers, name=gan_type)
 
     optimizer = GANOptimizer(
                         gan,
-                        batch_size=batch_size,
-                        noise_dim=noise_dim,
                         num_epcohs=max_epochs,
                         disc_lr=disc_lr,
                         gen_lr=gen_lr,
-                        with_disc_reg=with_disc_reg, 
-                        gamma_reg=gamma_reg
+                        with_disc_reg=with_disc_reg,
+                        gamma_reg=gamma_reg,
+                        decay_epochs=decay_epochs,
+                        decay_base=decay_base,
+                        debug=debug
                         )
     
     disc_step = optimizer.disc_step
@@ -214,7 +220,7 @@ def train_and_evaluate(
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint)
 
     
-    def normalize(inputs, targets):
+    def normalize(inputs, targets, to_tf_tensor=True):
         # node features are [energy, px, py, pz]
         if use_pt_eta_phi_e:
             # inputs
@@ -224,9 +230,14 @@ def train_and_evaluate(
             o_pt, o_eta, o_phi = get_pt_eta_phi(targets.nodes[:, 1], targets.nodes[:, 2], targets.nodes[:, 3])
             target_nodes = np.stack([o_pt, o_eta, o_phi, targets.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
         else:            
-            input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
+            # input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
+            input_nodes = inputs.nodes / max_energy_px_py_pz
             target_nodes = targets.nodes / max_energy_px_py_pz
         target_nodes = np.reshape(target_nodes, [batch_size, -1])
+
+        if to_tf_tensor:
+            input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
+            target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
         return input_nodes, target_nodes
 
     if warm_up:
@@ -236,9 +247,6 @@ def train_and_evaluate(
         for _ in range(disc_batches):
             inputs_tr, targets_tr = next(training_data)
             input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
-            
-            input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
-            target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
             disc_step(target_nodes, input_nodes)
 
         print("finished the warm up")
@@ -246,99 +254,120 @@ def train_and_evaluate(
     start_time = time.time()
 
     wdis_all = []
-    with tqdm.trange(max_epochs*steps_per_epoch) as t:
+    with tqdm.trange(max_epochs, disable=disable_tqdm) as t0:
+        for epoch in t0:
+            t0.set_description('Epoch {}/{}'.format(epoch, max_epochs))
+            with tqdm.trange(steps_per_epoch, disable=disable_tqdm) as t:
+                for step_num in t:
+                    # epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
+                    inputs_tr, targets_tr = next(training_data)
 
-        for step_num in t:
-            epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
-            inputs_tr, targets_tr = next(training_data)
+                    # --------------------------------------------------------
+                    # scale the inputs and outputs to [-1, 1]
+                    input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
+                    # --------------------------------------------------------
 
-            # --------------------------------------------------------
-            # scale the inputs and outputs to [-1, 1]
-            input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
-            input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
-            target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
-            # --------------------------------------------------------
-
-            disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
-            if with_disc_reg:
-                disc_loss, disc_reg, grad_D_true_logits_norm, grad_D_gen_logits_norm, reg_true, reg_gen = disc_loss
-            else:
-                disc_loss, = disc_loss
-
-            if step_num == 0:
-                print(">>>{:,} trainable variables in Generator; "
-                      "{:,} trainable variables in Discriminator<<<".format(
-                    *optimizer.gan.num_trainable_vars()
-                ))
-
-            disc_loss = disc_loss.numpy()
-            gen_loss = gen_loss.numpy()
-            if step_num and (step_num % log_freq == 0):            
-                ckpt_manager.save()
-
-                # adding testing results
-                predict_4vec = []
-                truth_4vec = []
-                for _ in range(val_batches):
-                    inputs_val, targets_val = normalize(* next(validating_data))
-                    gen_evts_val = optimizer.cond_gen(inputs_val)
-                    predict_4vec.append(tf.reshape(gen_evts_val, [batch_size, -1, 4]))
-                    truth_4vec.append(tf.reshape(targets_val, [batch_size, -1, 4])[:, 1:, :])
-        
-                predict_4vec = tf.concat(predict_4vec, axis=0)
-                truth_4vec = tf.concat(truth_4vec, axis=0)
-
-                # log some metrics
-                this_epoch = time.time()
-                with train_summary_writer.as_default():
-                    tf.summary.experimental.set_step(step_num)
-                    # epoch = epoch.numpy()
-                    tf.summary.scalar("gen_loss", gen_loss, description='generator loss')
-                    tf.summary.scalar("discr_loss", disc_loss, description="discriminator loss")
-                    tf.summary.scalar("time", (this_epoch-start_time)/60.)
+                    disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
                     if with_disc_reg:
-                        tf.summary.scalar("discr_reg", disc_reg.numpy().mean(), description='discriminator regularization')
-                        tf.summary.scalar("reg_gen", reg_gen.numpy().mean(), description='regularization on generated events')
-                        tf.summary.scalar("reg_true", reg_true.numpy().mean(), description='regularization on truth events')
-                        tf.summary.scalar("grad_D1_logits_norm", grad_D_true_logits_norm.numpy().mean(),
-                                    description="gradients of true logits")
-                        tf.summary.scalar("grad_D2_logits_norm", grad_D_gen_logits_norm.numpy().mean(),
-                                    description="gradients of generated logits")
-                    
-                    # plot the eight variables and resepctive Wasserstein distance (i.e. Earch Mover Distance)
-                    # Use the Kolmogorov-Smirnov test, 
-                    # it turns a two-sided test for the null hypothesis that the two distributions
-                    # are drawn from the same continuous distribution.
-                    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.combine_pvalues.html#scipy.stats.combine_pvalues
-                    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html#scipy.stats.ks_2samp
-                    # https://docs.scipy.org/doc/scipy/reference/stats.html#statistical-distances
-                    predict_4vec = tf.reshape(predict_4vec, [batch_size, -1]).numpy()
-                    truth_4vec = tf.reshape(truth_4vec, [batch_size, -1]).numpy()
-                    distances = []
+                        disc_loss, disc_reg, grad_D_true_logits_norm, grad_D_gen_logits_norm, reg_true, reg_gen = disc_loss
+                    else:
+                        disc_loss = disc_loss[0]
 
-                    for icol in range(predict_4vec.shape[1]):
-                        dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
-                        _, pvalue = stats.ks_2samp(predict_4vec[:, icol], truth_4vec[:, icol])
-                        if pvalue < 1e-6: pvalue = 1e-6
-                        energy_dis = stats.energy_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+                    if step_num==0 and epoch == 0:
+                        print(">>>{:,} trainable variables in Generator; "
+                            "{:,} trainable variables in Discriminator<<<".format(
+                            *optimizer.gan.num_trainable_vars()
+                        ))
 
-                        tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
-                        tf.summary.scalar("energy_distance_var{}".format(icol), energy_dis)
-                        tf.summary.scalar("KS_Test_var{}".format(icol), pvalue)
-                        distances.append([dis, energy_dis, pvalue])
-                    distances = np.array(distances, dtype=np.float32)
-                    tot_wdis = sum(distances[:, 0])
-                    tot_edis = sum(distances[:, 1])
-                    tf.summary.scalar("tot_wasserstein_dis", tot_wdis, description="total wasserstein distance")
-                    tf.summary.scalar("tot_energy_dis", tot_edis, description="total energy distance")
-                    _ , comb_pvals = stats.combine_pvalues(distances[:, 2], method='fisher')
-                    tf.summary.scalar("tot_KS", comb_pvals, description="total KS pvalues distance")
+                    disc_loss = disc_loss.numpy()
+                    gen_loss = gen_loss.numpy()
+                    if step_num and (step_num % log_freq == 0):            
+                        ckpt_manager.save()
 
-                t.set_description('Epoch {}/{}'.format(epoch.numpy(), max_epochs))
-                t.set_postfix(
-                    G_loss=gen_loss, D_loss=disc_loss,
-                    Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis)
-                wdis_all.append(tot_wdis)
+                        # adding testing results
+                        predict_4vec = []
+                        truth_4vec = []
+                        gen_scores = []
+                        g4_scores = []
+                        for _ in range(val_batches):
+                            inputs_val, targets_val = normalize(* next(validating_data))
+                            gen_evts_val = gan.generate(inputs_val)
+                            predict_4vec.append(gen_evts_val)
+                            truth_4vec.append(targets_val)
+  
+                            # check the performance of discriminator
+                            gen_scores.append(tf.sigmoid(gan.discriminate(gen_evts_val)))
+                            g4_scores.append(tf.sigmoid(gan.discriminate(targets_val)))
+                
+                        predict_4vec = tf.concat(predict_4vec, axis=0)
+                        truth_4vec = tf.concat(truth_4vec, axis=0)
+
+
+                        all_scores = tf.concat(gen_scores + g4_scores, axis=0)
+                        truth_scores = tf.concat([tf.zeros_like(x) for x in gen_scores] \
+                            + [tf.ones_like(x) for x in g4_scores], axis=0)
+                        y_true = (truth_scores > 0.5)
+                        fpr, tpr, _ = sklearn.metrics.roc_curve(y_true, all_scores)
+                        disc_auc = sklearn.metrics.auc(fpr, tpr)
+
+                        # log some metrics
+                        this_epoch = time.time()
+                        with train_summary_writer.as_default():
+                            tf.summary.experimental.set_step(epoch*steps_per_epoch + step_num)
+                            # epoch = epoch.numpy()
+                            tf.summary.scalar("gen_loss", gen_loss, description='generator loss')
+                            tf.summary.scalar("discr_loss", disc_loss, description="discriminator loss")
+                            tf.summary.scalar("disc_auc", disc_auc, description="AUC of disciminator")
+                            tf.summary.scalar("time", (this_epoch-start_time)/60.)
+                            if with_disc_reg:
+                                tf.summary.scalar("discr_reg", disc_reg.numpy().mean(), description='discriminator regularization')
+                                tf.summary.scalar("reg_gen", reg_gen.numpy().mean(), description='regularization on generated events')
+                                tf.summary.scalar("reg_true", reg_true.numpy().mean(), description='regularization on truth events')
+                                tf.summary.scalar("grad_D1_logits_norm", grad_D_true_logits_norm.numpy().mean(),
+                                            description="gradients of true logits")
+                                tf.summary.scalar("grad_D2_logits_norm", grad_D_gen_logits_norm.numpy().mean(),
+                                            description="gradients of generated logits")
+                            
+                            # plot the eight variables and resepctive Wasserstein distance (i.e. Earch Mover Distance)
+                            # Use the Kolmogorov-Smirnov test, 
+                            # it turns a two-sided test for the null hypothesis that the two distributions
+                            # are drawn from the same continuous distribution.
+                            # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.combine_pvalues.html#scipy.stats.combine_pvalues
+                            # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html#scipy.stats.ks_2samp
+                            # https://docs.scipy.org/doc/scipy/reference/stats.html#statistical-distances
+
+                            predict_4vec = predict_4vec.numpy()
+                            truth_4vec = truth_4vec.numpy()
+                            distances = []
+
+                            for icol in range(predict_4vec.shape[1]):
+                                # print("predict -->", icol, predict_4vec[:, icol])
+                                # print("truth -->", icol, truth_4vec[:, icol])
+                                dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+                                _, pvalue = stats.ks_2samp(predict_4vec[:, icol], truth_4vec[:, icol])
+                                if pvalue < 1e-6: pvalue = 1e-6
+                                energy_dis = stats.energy_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+                                mse_loss = np.sum((predict_4vec[:, icol] - truth_4vec[:, icol])**2)/predict_4vec.shape[0]
+
+                                tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
+                                tf.summary.scalar("energy_distance_var{}".format(icol), energy_dis)
+                                tf.summary.scalar("KS_Test_var{}".format(icol), pvalue)
+                                tf.summary.scalar("MSE_distance_var{}".format(icol), mse_loss)
+                                distances.append([dis, energy_dis, pvalue, mse_loss])
+                            distances = np.array(distances, dtype=np.float32)
+                            tot_wdis = sum(distances[:, 0]) / distances.shape[0]
+                            tot_edis = sum(distances[:, 1]) / distances.shape[0]
+                            tf.summary.scalar("tot_wasserstein_dis", tot_wdis, description="total wasserstein distance")
+                            tf.summary.scalar("tot_energy_dis", tot_edis, description="total energy distance")
+                            _ , comb_pvals = stats.combine_pvalues(distances[:, 2], method='fisher')
+                            tf.summary.scalar("tot_KS", comb_pvals, description="total KS pvalues distance")
+                            tot_mse = sum(distances[:, 3]) / distances.shape[0]
+                            tf.summary.scalar("tot_mse", tot_mse, description='mean squared loss')
+
+                        t.set_postfix(
+                            G_loss=gen_loss, D_loss=disc_loss, D_AUC=disc_auc,
+                            Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis, MSE=tot_mse)
+                        wdis_all.append(tot_wdis)
     return sum(wdis_all)/len(wdis_all)
 
 
@@ -367,13 +396,13 @@ if __name__ == "__main__":
     add_arg("--loss-type", choices=['logloss', 'mse'], default='logloss')
 
     add_arg("--noise-dim", type=int, help='dimension of noises', default=8)
-    add_arg("--disc-num-iters", type=int,
-            help='number of message passing for discriminator', default=4)
-    add_arg("--disc-alpha", type=float,
-            help='inversely scale true dataset in the loss calculation', default=0.1)
-    add_arg("--disc-beta", type=float,
-            help='scales generated dataset in the loss calculation', default=0.8)
     add_arg("--with-disc-reg", action='store_true', help='with discriminator regularizer')
+
+    # learning rate decay --> decay_base ^ (epoch / decay_epoch)
+    add_arg("--decay-epochs", type=int, help='how often learning rate decays', default=2)
+    add_arg("--decay-base", type=float, help='base value for learning rate decay', default=0.96)
+
+    #
     add_arg("--gamma-reg", type=float, help="scale the regularization term", default=1e-3)
     add_arg("--log-freq", type=int, help='log per number of steps', default=50)
     add_arg("--val-batches", type=int, default=1, help='number of batches for validation')
@@ -382,6 +411,7 @@ if __name__ == "__main__":
     add_arg("-v", "--verbose", help='verbosity', choices=['DEBUG', 'ERROR', 'FATAL', 'INFO', 'WARN'],
             default="INFO")
     add_arg("--debug", help='in debug mode', action='store_true')
+    add_arg("--disable-tqdm", help='do not show progress bar', action='store_true')
     # args, _ = parser.parse_known_args()
     args = parser.parse_args()
     # print(args)
