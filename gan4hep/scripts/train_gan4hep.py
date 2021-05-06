@@ -340,7 +340,7 @@ def train_and_evaluate(
                             truth_4vec = truth_4vec.numpy()
                             distances = []
 
-                            for icol in range(predict_4vec.shape[1]):
+                            for icol in range(1, predict_4vec.shape[1]):
                                 # print("predict -->", icol, predict_4vec[:, icol])
                                 # print("truth -->", icol, truth_4vec[:, icol])
                                 dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])

@@ -71,27 +71,19 @@ class GAN(GANBase):
         # print(input_graphs.n_edge)
         output = self.generator(input_graphs, is_training)
         # print_graph(output)
-        
 
-        # utils_tf.stop_gradient(output)
+        # replace the first node with inputs
         n_nodes = output.n_node
-        tot_nodes = tf.constant([self.batch_size, 1], tf.int32) 
-        # print(n_nodes)
-        # first_node_pos = tf.convert_to_tensor(np.array([i for x in n_nodes for i in [1]+[0]*(x-1)]))
+        tot_nodes = tf.constant([self.batch_size, 1], tf.int32)
         first_node_pos = tf.tile(tf.reshape(tf.repeat(np.array([1, 0, 0], np.float32), [4, 4, 4]), [-1, 4]), tot_nodes)
-        # print(first_node_pos)
-        # first_node_neg = tf.convert_to_tensor(np.array([i for x in n_nodes for i in [0]+[1]*(x-1)]))
         first_node_neg = tf.tile(tf.reshape(tf.repeat(np.array([0, 1, 1], np.float32), [4, 4, 4]), [-1, 4]), tot_nodes)
-        # print(first_node_neg)
 
         # print(output.nodes)
         # print(cond_inputs.shape)
         # print(tf.repeat(cond_inputs,  repeats=n_nodes, axis=0).shape)
         nodes = output.nodes * first_node_neg + tf.repeat(cond_inputs, repeats=n_nodes, axis=0) * first_node_pos
         # print(nodes)
-
         return tf.reshape(nodes, [self.batch_size, -1])
-        
 
     def discriminate(self, inputs, is_training=True):
         inputs = tf.reshape(inputs, [self.batch_size, -1, 4])
