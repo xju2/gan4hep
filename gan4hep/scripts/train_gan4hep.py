@@ -28,7 +28,7 @@ from gan4hep.graph import loop_dataset
 from gan4hep.graph import read_dataset
 
 import tensorflow as tf
-from tensorflow.compat.v1 import logging
+from tensorflow.compat.v1 import logging #
 logging.info("TF Version:{}".format(tf.__version__))
 
 node_mean = np.array([
@@ -340,7 +340,7 @@ def train_and_evaluate(
                             truth_4vec = truth_4vec.numpy()
                             distances = []
 
-                            for icol in range(predict_4vec.shape[1]):
+                            for icol in range(4, predict_4vec.shape[1]):
                                 # print("predict -->", icol, predict_4vec[:, icol])
                                 # print("truth -->", icol, truth_4vec[:, icol])
                                 dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
@@ -368,7 +368,7 @@ def train_and_evaluate(
                             G_loss=gen_loss, D_loss=disc_loss, D_AUC=disc_auc,
                             Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis, MSE=tot_mse)
                         wdis_all.append(tot_wdis)
-    return sum(wdis_all)/len(wdis_all)
+    return min(wdis_all)
 
 
 if __name__ == "__main__":
