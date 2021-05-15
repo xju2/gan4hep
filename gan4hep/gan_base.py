@@ -22,7 +22,8 @@ class GANBase(snt.Module):
 
     def get_noise_batch(self):
         noise_shape = [self.batch_size, self.noise_dim]
-        return tf.random.normal(noise_shape, dtype=tf.float32)
+        #return tf.random.normal(noise_shape, dtype=tf.float32)
+        return tf.random.uniform(noise_shape, minval=-1, maxval=1, seed=None)
 
     def create_ganenerator_inputs(self, cond_inputs=None):
         inputs = self.get_noise_batch()
