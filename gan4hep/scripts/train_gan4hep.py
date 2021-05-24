@@ -51,7 +51,7 @@ node_abs_max = np.array([
 ], dtype=np.float32)
 
 max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
-max_energy_px_py_pz_HI = np.array([1, 1, 1, 10000], dtype=np.float32)
+max_energy_px_py_pz_HI = np.array([10]*4, dtype=np.float32)
 
 max_pt_eta_phi_energy = np.array([5, 5, np.pi, 5], dtype=np.float32)
 
@@ -243,8 +243,8 @@ def train_and_evaluate(
 
         target_nodes = np.reshape(target_nodes, [batch_size, -1])
         if hadronic:
-            target_nodes = target_nodes[..., :4*3]
-
+            target_nodes = target_nodes[..., :4*3]*np.array([1e4]*3+[0.1]+[1.0]*8)
+            input_nodes = input_nodes*np.array([1e4, 1e4, 1e4, 0.1])
 
         if to_tf_tensor:
             input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
@@ -272,6 +272,9 @@ def train_and_evaluate(
                 for step_num in t:
                     # epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
                     inputs_tr, targets_tr = next(training_data)
+                    if hadronic:
+                        if np.sum(targets_tr.n_node)//batch_size < 3:
+                            continue
 
                     # --------------------------------------------------------
                     # scale the inputs and outputs to [-1, 1]
@@ -280,6 +283,8 @@ def train_and_evaluate(
                     input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
                     print(input_nodes.shape)
                     print(target_nodes.shape)
+                    print(input_nodes[0])
+                    print(target_nodes[0])
                     # --------------------------------------------------------
 
                     disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)

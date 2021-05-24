@@ -69,16 +69,15 @@ class GAN(GANBase):
     def generate(self, cond_inputs, is_training=True):
         input_graphs = self.create_ganenerator_inputs(cond_inputs)
         output = self.generator(input_graphs, is_training)
-        print_graph(output)
+        # print_graph(output)
 
         # replace the first node with input information
         # use masks to do that
         n_nodes = output.n_node
-        print(cond_inputs.shape, n_nodes.shape, output.nodes.shape)
-        batch_size = tf.constant([self.batch_size, 1], tf.int32)
-        num_f = tf.constant(self.num_outfeatures, tf.int32)
-        first_node_pos = tf.tile(tf.reshape(tf.repeat(np.array([1]+[0]*(n_nodes-1), np.float32), [num_f]*n_nodes), [-1, 4]), batch_size)
-        first_node_neg = tf.tile(tf.reshape(tf.repeat(np.array([0]+[1]*(n_nodes-1), np.float32), [num_f]*n_nodes), [-1, 4]), batch_size)
+        # print(cond_inputs.shape, n_nodes.shape, output.nodes.shape)
+        tot_nodes = tf.constant([self.batch_size, 1], tf.int32)
+        first_node_pos = tf.tile(tf.reshape(tf.repeat(np.array([1, 0, 0], np.float32), [4, 4, 4]), [-1, 4]), tot_nodes)
+        first_node_neg = tf.tile(tf.reshape(tf.repeat(np.array([0, 1, 1], np.float32), [4, 4, 4]), [-1, 4]), tot_nodes)
         nodes = output.nodes * first_node_neg + tf.repeat(cond_inputs, repeats=n_nodes, axis=0) * first_node_pos
 
         return tf.reshape(nodes, [self.batch_size, -1])
