@@ -383,7 +383,7 @@ def train_and_evaluate(
                             G_loss=gen_loss, D_loss=disc_loss, D_AUC=disc_auc,
                             Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis, MSE=tot_mse)
                         wdis_all.append(tot_wdis)
-    return sum(wdis_all)/len(wdis_all)
+    return min(wdis_all)
 
 
 if __name__ == "__main__":
