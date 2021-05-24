@@ -51,6 +51,8 @@ node_abs_max = np.array([
 ], dtype=np.float32)
 
 max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
+max_energy_px_py_pz_HI = np.array([1, 1, 1, 10000], dtype=np.float32)
+
 max_pt_eta_phi_energy = np.array([5, 5, np.pi, 5], dtype=np.float32)
 
 
@@ -101,6 +103,7 @@ def train_and_evaluate(
     decay_epochs=2,
     decay_base=0.96,
     disable_tqdm=False,
+    hadronic=False, ## if data is hadronic interactions
     *args, **kwargs
 ):
     dist = init_workers(distributed)
@@ -181,7 +184,9 @@ def train_and_evaluate(
         dist.rank, ngraphs_train, ngraphs_val))
 
     gan_model = import_model(gan_type)
-    gan = gan_model.GAN(noise_dim, batch_size, latent_size=layer_size, num_layers=num_layers, name=gan_type)
+    gan = gan_model.GAN(
+        noise_dim, batch_size, latent_size=layer_size,
+        num_layers=num_layers, name=gan_type)
 
     optimizer = GANOptimizer(
                         gan,
@@ -220,7 +225,9 @@ def train_and_evaluate(
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint)
 
     
-    def normalize(inputs, targets, to_tf_tensor=True):
+    def normalize(inputs, targets, to_tf_tensor=True, hadronic=False):
+        scales = max_energy_px_py_pz_HI if hadronic else max_energy_px_py_pz
+
         # node features are [energy, px, py, pz]
         if use_pt_eta_phi_e:
             # inputs
@@ -231,9 +238,13 @@ def train_and_evaluate(
             target_nodes = np.stack([o_pt, o_eta, o_phi, targets.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
         else:            
             # input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
-            input_nodes = inputs.nodes / max_energy_px_py_pz
-            target_nodes = targets.nodes / max_energy_px_py_pz
+            input_nodes = inputs.nodes / scales
+            target_nodes = targets.nodes / scales
+
         target_nodes = np.reshape(target_nodes, [batch_size, -1])
+        if hadronic:
+            target_nodes = target_nodes[..., :4*3]
+
 
         if to_tf_tensor:
             input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
@@ -246,7 +257,7 @@ def train_and_evaluate(
         print("start to warm up discriminator with {} batches".format(disc_batches))
         for _ in range(disc_batches):
             inputs_tr, targets_tr = next(training_data)
-            input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
+            input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
             disc_step(target_nodes, input_nodes)
 
         print("finished the warm up")
@@ -264,7 +275,11 @@ def train_and_evaluate(
 
                     # --------------------------------------------------------
                     # scale the inputs and outputs to [-1, 1]
-                    input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
+                    print(inputs_tr.nodes.shape)
+                    print(targets_tr.nodes.shape)
+                    input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
+                    print(input_nodes.shape)
+                    print(target_nodes.shape)
                     # --------------------------------------------------------
 
                     disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
@@ -412,6 +427,7 @@ if __name__ == "__main__":
             default="INFO")
     add_arg("--debug", help='in debug mode', action='store_true')
     add_arg("--disable-tqdm", help='do not show progress bar', action='store_true')
+    add_arg("--hadronic", help='the inputs are hadronic interactions', action='store_true')
     # args, _ = parser.parse_known_args()
     args = parser.parse_args()
     # print(args)

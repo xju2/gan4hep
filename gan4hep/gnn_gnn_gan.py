@@ -53,10 +53,12 @@ def print_graph(G):
 
 
 class GAN(GANBase):
-    def __init__(self, noise_dim, batch_size, latent_size=512, num_layers=10, name=None):
+    def __init__(self, noise_dim, batch_size, latent_size=512, num_layers=10,
+        num_outfeatures=4, name=None):
         super().__init__(noise_dim, batch_size, name=name)
         self.generator = GNN(latent_size=latent_size, num_layers=num_layers, name='generator')
         self.discriminator = GNN(latent_size=latent_size, num_layers=num_layers, name='discriminator')
+        self.num_outfeatures=num_outfeatures
 
     def create_ganenerator_inputs(self, cond_inputs=None):
         inputs = self.get_noise_batch()
@@ -66,23 +68,19 @@ class GAN(GANBase):
 
     def generate(self, cond_inputs, is_training=True):
         input_graphs = self.create_ganenerator_inputs(cond_inputs)
-        # print_graph(input_graphs)
-        # print(input_graphs.n_node)
-        # print(input_graphs.n_edge)
         output = self.generator(input_graphs, is_training)
-        # print_graph(output)
+        print_graph(output)
 
-        # replace the first node with inputs
+        # replace the first node with input information
+        # use masks to do that
         n_nodes = output.n_node
-        tot_nodes = tf.constant([self.batch_size, 1], tf.int32)
-        first_node_pos = tf.tile(tf.reshape(tf.repeat(np.array([1, 0, 0], np.float32), [4, 4, 4]), [-1, 4]), tot_nodes)
-        first_node_neg = tf.tile(tf.reshape(tf.repeat(np.array([0, 1, 1], np.float32), [4, 4, 4]), [-1, 4]), tot_nodes)
-
-        # print(output.nodes)
-        # print(cond_inputs.shape)
-        # print(tf.repeat(cond_inputs,  repeats=n_nodes, axis=0).shape)
+        print(cond_inputs.shape, n_nodes.shape, output.nodes.shape)
+        batch_size = tf.constant([self.batch_size, 1], tf.int32)
+        num_f = tf.constant(self.num_outfeatures, tf.int32)
+        first_node_pos = tf.tile(tf.reshape(tf.repeat(np.array([1]+[0]*(n_nodes-1), np.float32), [num_f]*n_nodes), [-1, 4]), batch_size)
+        first_node_neg = tf.tile(tf.reshape(tf.repeat(np.array([0]+[1]*(n_nodes-1), np.float32), [num_f]*n_nodes), [-1, 4]), batch_size)
         nodes = output.nodes * first_node_neg + tf.repeat(cond_inputs, repeats=n_nodes, axis=0) * first_node_pos
-        # print(nodes)
+
         return tf.reshape(nodes, [self.batch_size, -1])
 
     def discriminate(self, inputs, is_training=True):
