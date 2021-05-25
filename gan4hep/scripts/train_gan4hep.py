@@ -221,7 +221,7 @@ def train_and_evaluate(
         gan=gan)
     step_counter = tf.Variable(0, trainable=False, dtype=tf.int32, name='step_counter')
     ckpt_manager = tf.train.CheckpointManager(checkpoint, directory=ckpt_dir,
-                                              max_to_keep=50, keep_checkpoint_every_n_hours=1,
+                                              max_to_keep=100, keep_checkpoint_every_n_hours=1,
                                               step_counter=step_counter
                                             )
     logging.info("Loading latest checkpoint from: {}".format(ckpt_dir))
