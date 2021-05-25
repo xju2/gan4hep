@@ -257,6 +257,9 @@ def train_and_evaluate(
         print("start to warm up discriminator with {} batches".format(disc_batches))
         for _ in range(disc_batches):
             inputs_tr, targets_tr = next(training_data)
+            if hadronic:
+                if np.sum(targets_tr.n_node) // batch_size < 3:
+                    continue
             input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
             disc_step(target_nodes, input_nodes)
 
@@ -278,13 +281,13 @@ def train_and_evaluate(
 
                     # --------------------------------------------------------
                     # scale the inputs and outputs to [-1, 1]
-                    print(inputs_tr.nodes.shape)
-                    print(targets_tr.nodes.shape)
+                    # print(inputs_tr.nodes.shape)
+                    # print(targets_tr.nodes.shape)
                     input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
-                    print(input_nodes.shape)
-                    print(target_nodes.shape)
-                    print(input_nodes[0])
-                    print(target_nodes[0])
+                    # print(input_nodes.shape)
+                    # print(target_nodes.shape)
+                    # print(input_nodes[0])
+                    # print(target_nodes[0])
                     # --------------------------------------------------------
 
                     disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
