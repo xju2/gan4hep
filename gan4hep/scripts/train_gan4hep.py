@@ -219,8 +219,11 @@ def train_and_evaluate(
     checkpoint = tf.train.Checkpoint(
         optimizer=optimizer,
         gan=gan)
+    step_counter = tf.Variable(0, trainable=False, dtype=tf.int32, name='step_counter')
     ckpt_manager = tf.train.CheckpointManager(checkpoint, directory=ckpt_dir,
-                                              max_to_keep=5, keep_checkpoint_every_n_hours=8)
+                                              max_to_keep=50, keep_checkpoint_every_n_hours=1,
+                                              step_counter=step_counter
+                                            )
     logging.info("Loading latest checkpoint from: {}".format(ckpt_dir))
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint)
 
@@ -304,7 +307,9 @@ def train_and_evaluate(
 
                     disc_loss = disc_loss.numpy()
                     gen_loss = gen_loss.numpy()
-                    if step_num and (step_num % log_freq == 0):            
+                    if step_num and (step_num % log_freq == 0):
+                        tot_steps = epoch*steps_per_epoch + step_num
+                        step_counter.assign(tot_steps)        
                         ckpt_manager.save()
 
                         # adding testing results
@@ -336,7 +341,7 @@ def train_and_evaluate(
                         # log some metrics
                         this_epoch = time.time()
                         with train_summary_writer.as_default():
-                            tf.summary.experimental.set_step(epoch*steps_per_epoch + step_num)
+                            tf.summary.experimental.set_step(tot_steps)
                             # epoch = epoch.numpy()
                             tf.summary.scalar("gen_loss", gen_loss, description='generator loss')
                             tf.summary.scalar("discr_loss", disc_loss, description="discriminator loss")
