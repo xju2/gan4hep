@@ -206,7 +206,6 @@ def train_and_evaluate(
         step = tf.function(step)
         disc_step = tf.function(disc_step)
 
-
     training_data = loop_dataset(training_dataset, batch_size)
     validating_data = loop_dataset(validating_dataset, batch_size)
     steps_per_epoch = ngraphs_train // batch_size
@@ -239,7 +238,7 @@ def train_and_evaluate(
             # outputs
             o_pt, o_eta, o_phi = get_pt_eta_phi(targets.nodes[:, 1], targets.nodes[:, 2], targets.nodes[:, 3])
             target_nodes = np.stack([o_pt, o_eta, o_phi, targets.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
-        else:            
+        else:
             # input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
             input_nodes = inputs.nodes / scales
             target_nodes = targets.nodes / scales
@@ -279,13 +278,15 @@ def train_and_evaluate(
                     # epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
                     inputs_tr, targets_tr = next(training_data)
                     if hadronic:
-                        if np.sum(targets_tr.n_node)//batch_size < 3:
+                        if np.sum(targets_tr.n_node)//batch_size < 4:
                             continue
 
                     # --------------------------------------------------------
                     # scale the inputs and outputs to [-1, 1]
                     # print(inputs_tr.nodes.shape)
                     # print(targets_tr.nodes.shape)
+                    # print(inputs_tr.nodes)
+                    # print(targets_tr.nodes)
                     input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
                     # print(input_nodes.shape)
                     # print(target_nodes.shape)
