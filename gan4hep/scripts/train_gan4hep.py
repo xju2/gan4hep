@@ -220,7 +220,7 @@ def train_and_evaluate(
         gan=gan)
     step_counter = tf.Variable(0, trainable=False, dtype=tf.int32, name='step_counter')
     ckpt_manager = tf.train.CheckpointManager(checkpoint, directory=ckpt_dir,
-                                              max_to_keep=100, keep_checkpoint_every_n_hours=1,
+                                              max_to_keep=10, keep_checkpoint_every_n_hours=1,
                                               step_counter=step_counter
                                             )
     logging.info("Loading latest checkpoint from: {}".format(ckpt_dir))
@@ -270,6 +270,7 @@ def train_and_evaluate(
     start_time = time.time()
 
     wdis_all = []
+    min_wdis = 9999
     with tqdm.trange(max_epochs, disable=disable_tqdm) as t0:
         for epoch in t0:
             t0.set_description('Epoch {}/{}'.format(epoch, max_epochs))
@@ -310,8 +311,7 @@ def train_and_evaluate(
                     gen_loss = gen_loss.numpy()
                     if step_num and (step_num % log_freq == 0):
                         tot_steps = epoch*steps_per_epoch + step_num
-                        step_counter.assign(tot_steps)        
-                        ckpt_manager.save()
+                        step_counter.assign(tot_steps)
 
                         # adding testing results
                         predict_4vec = []
@@ -397,7 +397,11 @@ def train_and_evaluate(
                             G_loss=gen_loss, D_loss=disc_loss, D_AUC=disc_auc,
                             Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis, MSE=tot_mse)
                         wdis_all.append(tot_wdis)
-    return min(wdis_all)
+                        # only save the model if the Wasserstein distance is smaller
+                        if tot_wdis < min_wdis:
+                            min_wdis = tot_wdis
+                            ckpt_manager.save()
+    return min_wdis
 
 
 if __name__ == "__main__":
