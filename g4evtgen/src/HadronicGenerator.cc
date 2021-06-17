@@ -623,8 +623,10 @@ G4VParticleChange* HadronicGenerator::GenerateInteraction( G4ParticleDefinition*
   }
 
   // This print-out is helpful for debugging, but it can be safely removed/commented-out
+  /** 
   G4cout << "\t" << projectileDefinition->GetParticleName() << "\t" << projectileEnergy/CLHEP::GeV
          << " GeV \t" << projectileDirection << "\t" << ( targetMaterial ? targetMaterial->GetName() : "NULL" );
+  **/
 
   if ( ! IsApplicable( projectileDefinition, projectileEnergy ) ) {
     G4cout << " -> NOT applicable !" ; //<< G4endl;
