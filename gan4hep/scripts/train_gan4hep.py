@@ -52,7 +52,6 @@ node_abs_max = np.array([
 
 max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
 max_energy_px_py_pz_HI = np.array([10]*4, dtype=np.float32)
-
 max_pt_eta_phi_energy = np.array([5, 5, np.pi, 5], dtype=np.float32)
 
 
@@ -259,9 +258,9 @@ def train_and_evaluate(
         print("start to warm up discriminator with {} batches".format(disc_batches))
         for _ in range(disc_batches):
             inputs_tr, targets_tr = next(training_data)
-            if hadronic:
-                if np.sum(targets_tr.n_node) // batch_size < 3:
-                    continue
+            # if hadronic:
+            #     if np.sum(targets_tr.n_node) // batch_size < 3:
+            #         continue
             input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
             disc_step(target_nodes, input_nodes)
 
@@ -278,9 +277,9 @@ def train_and_evaluate(
                 for step_num in t:
                     # epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
                     inputs_tr, targets_tr = next(training_data)
-                    if hadronic:
-                        if np.sum(targets_tr.n_node)//batch_size < 4:
-                            continue
+                    # if hadronic:
+                    #     if np.sum(targets_tr.n_node)//batch_size < 4:
+                    #         continue
 
                     # --------------------------------------------------------
                     # scale the inputs and outputs to [-1, 1]
