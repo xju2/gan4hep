@@ -51,6 +51,7 @@ node_abs_max = np.array([
 ], dtype=np.float32)
 
 max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
+max_energy_px_py_pz_HI = np.array([10]*4, dtype=np.float32)
 max_pt_eta_phi_energy = np.array([5, 5, np.pi, 5], dtype=np.float32)
 
 
@@ -101,6 +102,8 @@ def train_and_evaluate(
     decay_epochs=2,
     decay_base=0.96,
     disable_tqdm=False,
+    hadronic=False, ## if data is hadronic interactions
+    num_processing_steps=None,
     *args, **kwargs
 ):
     dist = init_workers(distributed)
@@ -181,7 +184,16 @@ def train_and_evaluate(
         dist.rank, ngraphs_train, ngraphs_val))
 
     gan_model = import_model(gan_type)
-    gan = gan_model.GAN(noise_dim, batch_size, latent_size=layer_size, num_layers=num_layers, name=gan_type)
+    
+    if num_processing_steps and gan_type == "gnn_gnn_gan":
+        gan = gan_model.GAN(
+            noise_dim, batch_size, layer_size, num_layers,
+            num_processing_steps, name=gan_type)
+    else:
+        gan = gan_model.GAN(
+            noise_dim, batch_size, latent_size=layer_size,
+            num_layers=num_layers, name=gan_type)
+
 
     optimizer = GANOptimizer(
                         gan,
@@ -201,7 +213,6 @@ def train_and_evaluate(
         step = tf.function(step)
         disc_step = tf.function(disc_step)
 
-
     training_data = loop_dataset(training_dataset, batch_size)
     validating_data = loop_dataset(validating_dataset, batch_size)
     steps_per_epoch = ngraphs_train // batch_size
@@ -214,13 +225,18 @@ def train_and_evaluate(
     checkpoint = tf.train.Checkpoint(
         optimizer=optimizer,
         gan=gan)
+    step_counter = tf.Variable(0, trainable=False, dtype=tf.int32, name='step_counter')
     ckpt_manager = tf.train.CheckpointManager(checkpoint, directory=ckpt_dir,
-                                              max_to_keep=5, keep_checkpoint_every_n_hours=8)
+                                              max_to_keep=10, keep_checkpoint_every_n_hours=1,
+                                              step_counter=step_counter
+                                            )
     logging.info("Loading latest checkpoint from: {}".format(ckpt_dir))
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint)
 
     
-    def normalize(inputs, targets, to_tf_tensor=True):
+    def normalize(inputs, targets, to_tf_tensor=True, hadronic=False):
+        scales = max_energy_px_py_pz_HI if hadronic else max_energy_px_py_pz
+
         # node features are [energy, px, py, pz]
         if use_pt_eta_phi_e:
             # inputs
@@ -229,11 +245,15 @@ def train_and_evaluate(
             # outputs
             o_pt, o_eta, o_phi = get_pt_eta_phi(targets.nodes[:, 1], targets.nodes[:, 2], targets.nodes[:, 3])
             target_nodes = np.stack([o_pt, o_eta, o_phi, targets.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
-        else:            
+        else:
             # input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
-            input_nodes = inputs.nodes / max_energy_px_py_pz
-            target_nodes = targets.nodes / max_energy_px_py_pz
+            input_nodes = inputs.nodes / scales
+            target_nodes = targets.nodes / scales
+
         target_nodes = np.reshape(target_nodes, [batch_size, -1])
+        if hadronic:
+            target_nodes = target_nodes[..., :4*3]*np.array([1e4]*3+[0.1]+[1.0]*8)
+            input_nodes = input_nodes*np.array([1e4, 1e4, 1e4, 0.1])
 
         if to_tf_tensor:
             input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
@@ -246,7 +266,10 @@ def train_and_evaluate(
         print("start to warm up discriminator with {} batches".format(disc_batches))
         for _ in range(disc_batches):
             inputs_tr, targets_tr = next(training_data)
-            input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
+            # if hadronic:
+            #     if np.sum(targets_tr.n_node) // batch_size < 3:
+            #         continue
+            input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
             disc_step(target_nodes, input_nodes)
 
         print("finished the warm up")
@@ -254,6 +277,7 @@ def train_and_evaluate(
     start_time = time.time()
 
     wdis_all = []
+    min_wdis = 9999
     with tqdm.trange(max_epochs, disable=disable_tqdm) as t0:
         for epoch in t0:
             t0.set_description('Epoch {}/{}'.format(epoch, max_epochs))
@@ -261,10 +285,13 @@ def train_and_evaluate(
                 for step_num in t:
                     # epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
                     inputs_tr, targets_tr = next(training_data)
+                    # if hadronic:
+                    #     if np.sum(targets_tr.n_node)//batch_size < 4:
+                    #         continue
 
                     # --------------------------------------------------------
                     # scale the inputs and outputs to [-1, 1]
-                    input_nodes, target_nodes = normalize(inputs_tr, targets_tr)
+                    input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
                     # --------------------------------------------------------
 
                     disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
@@ -281,8 +308,9 @@ def train_and_evaluate(
 
                     disc_loss = disc_loss.numpy()
                     gen_loss = gen_loss.numpy()
-                    if step_num and (step_num % log_freq == 0):            
-                        ckpt_manager.save()
+                    if step_num and (step_num % log_freq == 0):
+                        tot_steps = epoch*steps_per_epoch + step_num
+                        step_counter.assign(tot_steps)
 
                         # adding testing results
                         predict_4vec = []
@@ -313,7 +341,7 @@ def train_and_evaluate(
                         # log some metrics
                         this_epoch = time.time()
                         with train_summary_writer.as_default():
-                            tf.summary.experimental.set_step(epoch*steps_per_epoch + step_num)
+                            tf.summary.experimental.set_step(tot_steps)
                             # epoch = epoch.numpy()
                             tf.summary.scalar("gen_loss", gen_loss, description='generator loss')
                             tf.summary.scalar("discr_loss", disc_loss, description="discriminator loss")
@@ -368,7 +396,11 @@ def train_and_evaluate(
                             G_loss=gen_loss, D_loss=disc_loss, D_AUC=disc_auc,
                             Wdis=tot_wdis, Pval=comb_pvals, Edis=tot_edis, MSE=tot_mse)
                         wdis_all.append(tot_wdis)
-    return min(wdis_all)
+                        # only save the model if the Wasserstein distance is smaller
+                        if tot_wdis < min_wdis:
+                            min_wdis = tot_wdis
+                            ckpt_manager.save()
+    return min_wdis
 
 
 if __name__ == "__main__":
@@ -412,6 +444,7 @@ if __name__ == "__main__":
             default="INFO")
     add_arg("--debug", help='in debug mode', action='store_true')
     add_arg("--disable-tqdm", help='do not show progress bar', action='store_true')
+    add_arg("--hadronic", help='the inputs are hadronic interactions', action='store_true')
     # args, _ = parser.parse_known_args()
     args = parser.parse_args()
     # print(args)
