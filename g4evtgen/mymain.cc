@@ -226,7 +226,7 @@ int main( int argc, char** argv) {
       delete aChange->GetSecondary(j);
     }
     outfile << "\n";
-    G4cout << "--------\n";
+    // G4cout << "--------\n";
     if ( aChange ) aChange->Clear();
   }
   outfile.close();
