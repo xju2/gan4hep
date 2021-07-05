@@ -19,12 +19,12 @@ from gan4hep.gnn_model import Classifier
 
 
 class GNN(snt.Module):
-    def __init__(self, latent_size=512, num_layers=5, name=None):
+    def __init__(self, latent_size=512, num_layers=5, node_output_size=4, name=None):
         super().__init__(name=name)
-        self._gnn = Classifier()
+        self._gnn = Classifier(latent_size, num_layers, node_output_size, name=name+"_GNN")
 
-    def __call__(self, input_op, training: bool = True) -> tf.Tensor:
-        return self._gnn(input_op)
+    def __call__(self, input_op, num_processing_steps=4, is_training: bool = True) -> tf.Tensor:
+        return self._gnn(input_op, num_processing_steps, is_training)
 
 
 def nodes_to_graph(nodes):
@@ -53,12 +53,12 @@ def print_graph(G):
 
 
 class GAN(GANBase):
-    def __init__(self, noise_dim, batch_size, latent_size=512, num_layers=10,
-        num_outfeatures=4, name=None):
+    def __init__(self, noise_dim, batch_size,
+        latent_size=512, num_layers=10, num_processing_steps=4, node_output_size=4, name=None):
         super().__init__(noise_dim, batch_size, name=name)
-        self.generator = GNN(latent_size=latent_size, num_layers=num_layers, name='generator')
-        self.discriminator = GNN(latent_size=latent_size, num_layers=num_layers, name='discriminator')
-        self.num_outfeatures=num_outfeatures
+        self.generator = GNN(latent_size, num_layers, node_output_size, name='generator')
+        self.discriminator = GNN(latent_size, num_layers, node_output_size, name='discriminator')
+        self.num_processing_steps=num_processing_steps
 
     def create_ganenerator_inputs(self, cond_inputs=None):
         inputs = self.get_noise_batch()
@@ -68,7 +68,7 @@ class GAN(GANBase):
 
     def generate(self, cond_inputs, is_training=True):
         input_graphs = self.create_ganenerator_inputs(cond_inputs)
-        output = self.generator(input_graphs, is_training)
+        output = self.generator(input_graphs, self.num_processing_steps, is_training)
         # print_graph(output)
 
         # replace the first node with input information
@@ -85,5 +85,5 @@ class GAN(GANBase):
     def discriminate(self, inputs, is_training=True):
         inputs = tf.reshape(inputs, [self.batch_size, -1, 4])
         G = nodes_to_graph(inputs)
-        out_graph = self.discriminator(G, is_training)
+        out_graph = self.discriminator(G, self.num_processing_steps, is_training)
         return out_graph.globals

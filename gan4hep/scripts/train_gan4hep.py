@@ -103,6 +103,7 @@ def train_and_evaluate(
     decay_base=0.96,
     disable_tqdm=False,
     hadronic=False, ## if data is hadronic interactions
+    num_processing_steps=None,
     *args, **kwargs
 ):
     dist = init_workers(distributed)
@@ -183,9 +184,16 @@ def train_and_evaluate(
         dist.rank, ngraphs_train, ngraphs_val))
 
     gan_model = import_model(gan_type)
-    gan = gan_model.GAN(
-        noise_dim, batch_size, latent_size=layer_size,
-        num_layers=num_layers, name=gan_type)
+    
+    if num_processing_steps and gan_type == "gnn_gnn_gan":
+        gan = gan_model.GAN(
+            noise_dim, batch_size, layer_size, num_layers,
+            num_processing_steps, name=gan_type)
+    else:
+        gan = gan_model.GAN(
+            noise_dim, batch_size, latent_size=layer_size,
+            num_layers=num_layers, name=gan_type)
+
 
     optimizer = GANOptimizer(
                         gan,
@@ -283,15 +291,7 @@ def train_and_evaluate(
 
                     # --------------------------------------------------------
                     # scale the inputs and outputs to [-1, 1]
-                    # print(inputs_tr.nodes.shape)
-                    # print(targets_tr.nodes.shape)
-                    # print(inputs_tr.nodes)
-                    # print(targets_tr.nodes)
                     input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
-                    # print(input_nodes.shape)
-                    # print(target_nodes.shape)
-                    # print(input_nodes[0])
-                    # print(target_nodes[0])
                     # --------------------------------------------------------
 
                     disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
