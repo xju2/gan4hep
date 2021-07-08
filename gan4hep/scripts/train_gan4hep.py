@@ -23,32 +23,13 @@ import tqdm
 
 import gan4hep
 from gan4hep.gan_base import GANOptimizer
-
+from gan4hep import data_handler as DataHandler
 from gan4hep.graph import loop_dataset
 from gan4hep.graph import read_dataset
 
 import tensorflow as tf
 from tensorflow.compat.v1 import logging #
 logging.info("TF Version:{}".format(tf.__version__))
-
-node_mean = np.array([
-    [14.13, 0.05, -0.10, -0.04], 
-    [7.73, 0.02, -0.04, -0.08],
-    [6.41, 0.04, -0.06, 0.04]
-], dtype=np.float32)
-
-node_scales = np.array([
-    [13.29, 10.54, 10.57, 12.20], 
-    [8.62, 6.29, 6.35, 7.29],
-    [6.87, 5.12, 5.13, 5.90]
-], dtype=np.float32)
-
-
-node_abs_max = np.array([
-    [49.1, 47.7, 46.0, 47.0],
-    [46.2, 40.5, 41.0, 39.5],
-    [42.8, 36.4, 37.0, 35.5]
-], dtype=np.float32)
 
 max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
 max_energy_px_py_pz_HI = np.array([10]*4, dtype=np.float32)
@@ -233,32 +214,6 @@ def train_and_evaluate(
     logging.info("Loading latest checkpoint from: {}".format(ckpt_dir))
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint)
 
-    
-    def normalize(inputs, targets, to_tf_tensor=True, hadronic=False):
-        scales = max_energy_px_py_pz_HI if hadronic else max_energy_px_py_pz
-
-        # node features are [energy, px, py, pz]
-        if use_pt_eta_phi_e:
-            # inputs
-            pt, eta, phi = get_pt_eta_phi(inputs.nodes[:, 1], inputs.nodes[:, 2], inputs.nodes[:, 3])
-            input_nodes = np.stack([pt, eta, phi, inputs.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
-            # outputs
-            o_pt, o_eta, o_phi = get_pt_eta_phi(targets.nodes[:, 1], targets.nodes[:, 2], targets.nodes[:, 3])
-            target_nodes = np.stack([o_pt, o_eta, o_phi, targets.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
-        else:
-            # input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
-            input_nodes = inputs.nodes / scales
-            target_nodes = targets.nodes / scales
-
-        target_nodes = np.reshape(target_nodes, [batch_size, -1])
-        if hadronic:
-            target_nodes = target_nodes[..., :4*3]*np.array([1e4]*3+[0.1]+[1.0]*8)
-            input_nodes = input_nodes*np.array([1e4, 1e4, 1e4, 0.1])
-
-        if to_tf_tensor:
-            input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
-            target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
-        return input_nodes, target_nodes
 
     if warm_up:
         # train discriminator for certain batches
@@ -266,10 +221,9 @@ def train_and_evaluate(
         print("start to warm up discriminator with {} batches".format(disc_batches))
         for _ in range(disc_batches):
             inputs_tr, targets_tr = next(training_data)
-            # if hadronic:
-            #     if np.sum(targets_tr.n_node) // batch_size < 3:
-            #         continue
-            input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
+
+            input_nodes, target_nodes = DataHandler.normalize(
+                inputs_tr, targets_tr, hadronic=hadronic)
             disc_step(target_nodes, input_nodes)
 
         print("finished the warm up")
