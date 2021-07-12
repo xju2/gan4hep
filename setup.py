@@ -26,6 +26,7 @@ setup(
         'tqdm',
         'more_itertools',
         'scipy',
+        'scikit-learn',
     ],
     # package_data = {
     #     "gan4hep": ["config/*.yaml"]
