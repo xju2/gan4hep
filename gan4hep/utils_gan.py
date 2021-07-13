@@ -15,7 +15,7 @@ def import_model(gan_name):
   return gan_module
 
 
-def load_model_from_ckpt(gan_type, noise_dim, batch_size, ckpt_dir):
+def load_model_from_ckpt(gan_type, noise_dim, batch_size, ckpt_dir, **kwargs):
   toGan = import_model(gan_type)
   gan = toGan.GAN(noise_dim, batch_size)
   optimizer = GANOptimizer(gan)

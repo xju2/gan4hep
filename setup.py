@@ -15,7 +15,7 @@ setup(
     long_description=description,
     author="Xiangyang Ju",
     license="Apache License, Version 2.0",
-    keywords=["GAN", "HEP"],
+    keywords=["GAN", "HEP", "GNN"],
     url="https://github.com/xju2/gan4hep",
     packages=find_packages(),
     include_package_data=True,
@@ -36,5 +36,6 @@ setup(
     ],
     scripts=[
         'gan4hep/scripts/train_gan4hep.py',
+        'gan4hep/scripts/apply_gan4hep.py',
     ],
 )

@@ -26,14 +26,11 @@ from gan4hep.gan_base import GANOptimizer
 from gan4hep import data_handler as DataHandler
 from gan4hep.graph import loop_dataset
 from gan4hep.graph import read_dataset
+from gan4hep.utils_plot import load_yaml
 
 import tensorflow as tf
 from tensorflow.compat.v1 import logging #
 logging.info("TF Version:{}".format(tf.__version__))
-
-max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
-max_energy_px_py_pz_HI = np.array([10]*4, dtype=np.float32)
-max_pt_eta_phi_energy = np.array([5, 5, np.pi, 5], dtype=np.float32)
 
 
 gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan', 'gnn_gnn_gan']
@@ -244,8 +241,7 @@ def train_and_evaluate(
                     #         continue
 
                     # --------------------------------------------------------
-                    # scale the inputs and outputs to [-1, 1]
-                    input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
+                    input_nodes, target_nodes = DataHandler.normalize(inputs_tr, targets_tr, hadronic=hadronic)
                     # --------------------------------------------------------
 
                     disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
@@ -272,7 +268,7 @@ def train_and_evaluate(
                         gen_scores = []
                         g4_scores = []
                         for _ in range(val_batches):
-                            inputs_val, targets_val = normalize(* next(validating_data))
+                            inputs_val, targets_val = DataHandler.normalize(* next(validating_data))
                             gen_evts_val = gan.generate(inputs_val)
                             predict_4vec.append(gen_evts_val)
                             truth_4vec.append(targets_val)
@@ -357,19 +353,17 @@ def train_and_evaluate(
     return min_wdis
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description='Train nx-graph with configurations')
+def add_training_args(parser):
     add_arg = parser.add_argument
     add_arg("input_dir",
             help='input directory that contains subfolder of train, val and test')
     add_arg("output_dir", help="where the model and training info saved")
     add_arg("--input-frac", help="use a fraction of input files", default=1., type=float)
-    add_arg("--use-pt-eta-phi-e", help='use [pT, eta, phi, E]', action='store_true')
+    # add_arg("--use-pt-eta-phi-e", help='use [pT, eta, phi, E]', action='store_true')
     add_arg("--gan-type", help='which gan to use', required=True, choices=gan_types)
     add_arg("--patterns", help='file patterns', default='*')
-    add_arg('-d', '--distributed', action='store_true',
-            help='data distributed training')
+    # add_arg('-d', '--distributed', action='store_true',
+    #         help='data distributed training')
     add_arg("--disc-lr", help='learning rate for discriminator', default=2e-4, type=float)
     add_arg("--gen-lr", help='learning rate for generator', default=5e-5, type=float)
     add_arg("--max-epochs", help='number of epochs', default=1, type=int)
@@ -399,12 +393,24 @@ if __name__ == "__main__":
     add_arg("--debug", help='in debug mode', action='store_true')
     add_arg("--disable-tqdm", help='do not show progress bar', action='store_true')
     add_arg("--hadronic", help='the inputs are hadronic interactions', action='store_true')
-    # args, _ = parser.parse_known_args()
-    args = parser.parse_args()
-    # print(args)
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Train The GAN')
+    add_arg = parser.add_argument
+    add_arg("--config-file", help='use configuration file', default=None)
+    add_training_args(parser)
+
+    args = parser.parse_args()
+
+    config = vars(args)
+    print(config)
+    if args.config_file:
+        add_config = load_yaml(args.config_file)
+        config.update(**add_config)
+
+    print(config)
     # Set python level verbosity
-    logging.set_verbosity(args.verbose)
+    # logging.set_verbosity(args.verbose)
     # Suppress C++ level warnings.
     # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    train_and_evaluate(**vars(args))
+    train_and_evaluate(**config)

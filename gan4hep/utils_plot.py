@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+import yaml
 
 def add_mean_std(array, x, y, ax, color='k', dy=None, digits=2, fontsize=12, with_std=True):
     this_mean, this_std = np.mean(array), np.std(array)
@@ -55,3 +56,7 @@ def compare_4vec(predicts, truths, labels=None, nbins=35, min_x=-0.5, max_x=3, *
     }
     axs = view_particle_4vec(predicts, label='prediction', labels=labels, bins=nbins, range=(min_x, max_x), **hist_config, **kwargs)
     view_particle_4vec(truths, axs=axs, label='truth', labels=labels, bins=nbins, range=(min_x, max_x), **hist_config, **kwargs)
+
+def load_yaml(filename):
+    with open(filename) as f:
+        return yaml.load(f, Loader=yaml.FullLoader)
