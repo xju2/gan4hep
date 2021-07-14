@@ -26,6 +26,7 @@ setup(
         'tqdm',
         'more_itertools',
         'scipy',
+        'pyyaml>=5.1',
     ],
     # package_data = {
     #     "gan4hep": ["config/*.yaml"]
