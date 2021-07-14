@@ -37,6 +37,6 @@ setup(
     ],
     scripts=[
         'gan4hep/scripts/train_gan4hep.py',
-        'gan4hep/scripts/apply_gan4hep.py',
+        # 'gan4hep/scripts/apply_gan4hep.py',
     ],
 )
