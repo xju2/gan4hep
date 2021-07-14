@@ -12,9 +12,7 @@ from graph_nets import utils_tf
 from graph_nets import graphs
 
 import sonnet as snt
-
 from gan4hep.gan_base import GANBase
-from gan4hep.reader import n_max_nodes
 from gan4hep.gnn_model import Classifier
 
 

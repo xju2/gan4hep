@@ -1,0 +1,30 @@
+# inputs
+input_dir:  "inputs"
+patterns: "*"
+input_frac: 0.2
+evts_per_file: 5000
+
+# is hadronic interaction data?
+hadronic: False
+
+# output directory
+output_dir: "gnn_gnn_v1"
+# model
+gan_type:   "gnn_gnn_gan"
+
+# training parameters
+max_epochs: 7
+batch_size: 128
+shuffle_size: -1
+noise_dim: 8
+log_freq: 1000
+with_disc_reg: True
+gamma_reg: 1.0
+disc_lr: 0.0003
+gen_lr: 0.0001
+warm_up: True
+disc_batches: 100
+disable_tqdm: True
+val_batches: 100
+decay_epochs: 2
+decay_base: 0.96
