@@ -26,7 +26,7 @@ from gan4hep.gan_base import GANOptimizer
 from gan4hep import data_handler as DataHandler
 from gan4hep.graph import loop_dataset
 from gan4hep.graph import read_dataset
-from gan4hep.utils_plot import load_yaml
+from gan4hep import utils_gan as GanUtils
 
 import tensorflow as tf
 from tensorflow.compat.v1 import logging #
@@ -34,14 +34,9 @@ logging.info("TF Version:{}".format(tf.__version__))
 
 
 gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan', 'gnn_gnn_gan']
-def import_model(gan_name):
-    gan_module = importlib.import_module("gan4hep."+gan_name)
-    return gan_module
-
 
 def init_workers(distributed=False):
     return SimpleNamespace(rank=0, size=1, local_rank=0, local_size=1, comm=None)
-
 
 def get_pt_eta_phi(px, py, pz):
     p = np.sqrt(px**2 + py**2 + pz**2)
@@ -50,7 +45,6 @@ def get_pt_eta_phi(px, py, pz):
     theta = np.arccos(pz/p)
     eta = -np.log(np.tan(0.5*theta))
     return pt,eta,phi
-
 
 def train_and_evaluate(
     batch_size, # batch size [HPO]
@@ -84,6 +78,10 @@ def train_and_evaluate(
     num_processing_steps=None,
     *args, **kwargs
 ):
+    """
+    The reason that hyperparameters are given as parameters is that
+    one can easily perform HPO.
+    """
     dist = init_workers(distributed)
 
     device = 'CPU'
@@ -161,17 +159,9 @@ def train_and_evaluate(
     logging.info("rank {} has {:,} training events and {:,} validating events".format(
         dist.rank, ngraphs_train, ngraphs_val))
 
-    gan_model = import_model(gan_type)
-    
-    if num_processing_steps and gan_type == "gnn_gnn_gan":
-        gan = gan_model.GAN(
-            noise_dim, batch_size, layer_size, num_layers,
-            num_processing_steps, name=gan_type)
-    else:
-        gan = gan_model.GAN(
-            noise_dim, batch_size, latent_size=layer_size,
-            num_layers=num_layers, name=gan_type)
-
+    gan = GanUtils.create_gan(
+        gan_type, noise_dim, batch_size,
+        layer_sizer, number_layers, num_processing_steps)
 
     optimizer = GANOptimizer(
                         gan,
@@ -199,7 +189,7 @@ def train_and_evaluate(
     log_dir = os.path.join(output_dir, "logs/{}/train".format(time_stamp))
     train_summary_writer = tf.summary.create_file_writer(log_dir)
 
-    ckpt_dir = os.path.join(output_dir, "checkpoints")
+    ckpt_dir = GanUtils.get_ckptdir(output_dir)
     checkpoint = tf.train.Checkpoint(
         optimizer=optimizer,
         gan=gan)
@@ -269,13 +259,13 @@ def train_and_evaluate(
                         g4_scores = []
                         for _ in range(val_batches):
                             inputs_val, targets_val = DataHandler.normalize(* next(validating_data))
-                            gen_evts_val = gan.generate(inputs_val)
+                            gen_evts_val = gan.generate(inputs_val, is_training=False)
                             predict_4vec.append(gen_evts_val)
                             truth_4vec.append(targets_val)
   
                             # check the performance of discriminator
-                            gen_scores.append(tf.sigmoid(gan.discriminate(gen_evts_val)))
-                            g4_scores.append(tf.sigmoid(gan.discriminate(targets_val)))
+                            gen_scores.append(tf.sigmoid(gan.discriminate(gen_evts_val, is_training=False)))
+                            g4_scores.append(tf.sigmoid(gan.discriminate(targets_val, is_training=False)))
                 
                         predict_4vec = tf.concat(predict_4vec, axis=0)
                         truth_4vec = tf.concat(truth_4vec, axis=0)
@@ -361,6 +351,9 @@ def add_training_args(parser):
     add_arg("--input-frac", help="use a fraction of input files", default=1., type=float)
     # add_arg("--use-pt-eta-phi-e", help='use [pT, eta, phi, E]', action='store_true')
     add_arg("--gan-type", help='which gan to use', required=True, choices=gan_types)
+    add_arg("--layer-size", help='MLP layer size', default=512, type=int)
+    add_arg("--num-layers", help='MLP number of layers', default=10, type=int)
+    add_arg("--num-processing-steps", default=None, type=int, help="number of processing steps")
     add_arg("--patterns", help='file patterns', default='*')
     # add_arg('-d', '--distributed', action='store_true',
     #         help='data distributed training')
@@ -403,14 +396,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = vars(args)
-    print(config)
     if args.config_file:
-        add_config = load_yaml(args.config_file)
+        add_config = GanUtils.load_yaml(args.config_file)
         config.update(**add_config)
 
-    print(config)
+    GanUtils.save_configurations(config)
     # Set python level verbosity
-    # logging.set_verbosity(args.verbose)
+    logging.set_verbosity(args.verbose)
     # Suppress C++ level warnings.
-    # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    train_and_evaluate(**config)
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+    # train_and_evaluate(**config)
