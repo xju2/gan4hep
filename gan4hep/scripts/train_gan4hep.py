@@ -220,7 +220,7 @@ def train_and_evaluate(
             inputs_tr, targets_tr = next(training_data)
 
             input_nodes, target_nodes = DataHandler.normalize(
-                inputs_tr, targets_tr, hadronic=hadronic)
+                inputs_tr, targets_tr, batch_size, hadronic=hadronic)
             disc_step(target_nodes, input_nodes)
 
         print("finished the warm up")
@@ -241,7 +241,7 @@ def train_and_evaluate(
                     #         continue
 
                     # --------------------------------------------------------
-                    input_nodes, target_nodes = DataHandler.normalize(inputs_tr, targets_tr, hadronic=hadronic)
+                    input_nodes, target_nodes = DataHandler.normalize(inputs_tr, targets_tr, batch_size, hadronic=hadronic)
                     # --------------------------------------------------------
 
                     disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
