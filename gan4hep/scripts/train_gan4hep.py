@@ -161,7 +161,7 @@ def train_and_evaluate(
 
     gan = GanUtils.create_gan(
         gan_type, noise_dim, batch_size,
-        layer_sizer, number_layers, num_processing_steps)
+        layer_size, num_layers, num_processing_steps)
 
     optimizer = GanUtils.create_optimizer(
                         gan, max_epochs,
@@ -251,7 +251,7 @@ def train_and_evaluate(
                         gen_scores = []
                         g4_scores = []
                         for _ in range(val_batches):
-                            inputs_val, targets_val = DataHandler.normalize(* next(validating_data))
+                            inputs_val, targets_val = DataHandler.normalize(* next(validating_data), batch_size=batch_size, hadronic=hadronic)
                             gen_evts_val = gan.generate(inputs_val, is_training=False)
                             predict_4vec.append(gen_evts_val)
                             truth_4vec.append(targets_val)

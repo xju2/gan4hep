@@ -114,7 +114,7 @@ def get_file_ctime(path):
     return time_stamp
 
 def save_configurations(config: dict):
-    outname = config['output_dir'].replace("/", '_')+'.yml'
+    outname = "config_"+config['output_dir'].replace("/", '_')+'.yml'
     if os.path.exists(outname):
         existing_config = load_yaml(outname)
         if compare_two_dicts(existing_config, config):
