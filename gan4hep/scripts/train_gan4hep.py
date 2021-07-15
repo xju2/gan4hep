@@ -393,10 +393,11 @@ if __name__ == "__main__":
         add_config = GanUtils.load_yaml(args.config_file)
         config.update(**add_config)
 
+    config['num_epochs'] = config['max_epochs']
     GanUtils.save_configurations(config)
     # Set python level verbosity
     logging.set_verbosity(args.verbose)
     # Suppress C++ level warnings.
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
-    # train_and_evaluate(**config)
+    train_and_evaluate(**config)

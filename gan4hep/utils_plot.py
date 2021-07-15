@@ -43,6 +43,7 @@ def view_particle_4vec(particles, axs=None, labels=None, outname=None, **kwargs)
         array2hist(particles[:, idx], axs[idx], **kwargs)
         axs[idx].set_xlabel(labels[idx])
 
+    plt.legend()
     if outname is not None:
         plt.savefig(outname+'.pdf')
     return axs
@@ -53,5 +54,7 @@ def compare_4vec(predicts, truths, labels=None, nbins=35, min_x=-0.5, max_x=3, *
         "lw": 2,
         'histtype': 'step',
     }
-    axs = view_particle_4vec(predicts, label='prediction', labels=labels, bins=nbins, range=(min_x, max_x), **hist_config, **kwargs)
-    view_particle_4vec(truths, axs=axs, label='truth', labels=labels, bins=nbins, range=(min_x, max_x), **hist_config, **kwargs)
+    axs = view_particle_4vec(predicts, label='prediction',
+        labels=labels, bins=nbins, range=(min_x, max_x), **hist_config, **kwargs)
+    view_particle_4vec(truths, axs=axs, label='truth',
+        labels=labels, bins=nbins, range=(min_x, max_x), **hist_config, **kwargs)

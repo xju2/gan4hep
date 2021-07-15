@@ -11,8 +11,6 @@ from gan4hep.gan_base import GANOptimizer
 from gan4hep.graph import read_dataset, loop_dataset
 from gan4hep import data_handler as DataHandler
 
-config_fname = 'gan_config.yml'
-
 def import_model(gan_name):
     gan_module = importlib.import_module("gan4hep."+gan_name)
     return gan_module
@@ -36,7 +34,7 @@ def create_optimizer(gan, num_epochs, disc_lr, gen_lr, with_disc_reg, gamma_reg,
         decay_epochs, decay_base, debug, **kwargs):
     return GANOptimizer(
         gan,
-        num_epcohs=max_epochs,
+        num_epcohs=num_epochs,
         disc_lr=disc_lr,
         gen_lr=gen_lr,
         with_disc_reg=with_disc_reg,
@@ -61,12 +59,12 @@ def load_gan(config_name: str):
 
     checkpoint = tf.train.Checkpoint(optimizer=optimizer, gan=gan)
     ckpt_manager = tf.train.CheckpointManager(
-        checkpoint, directory=ckpt_dir)
+        checkpoint, directory=ckpt_dir, max_to_keep=10, keep_checkpoint_every_n_hours=1)
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint)
     return gan
 
 
-def run_generators(gan, batch_size, filename, ngen=1000):
+def run_generator(gan, batch_size, filename, ngen=1000):
     dataset, n_graphs = read_dataset(filename)
     print("total {} graphs iterated with batch size of {}".format(n_graphs, batch_size))
     print('averaging {} geneveted events for each input'.format(ngen))
@@ -116,14 +114,14 @@ def get_file_ctime(path):
     return time_stamp
 
 def save_configurations(config: dict):
-    outname = config_fname
-    if os.path.exists(config_fname):
-        existing_config = load_yaml(config_fname)
+    outname = config['output_dir'].replace("/", '_')+'.yml'
+    if os.path.exists(outname):
+        existing_config = load_yaml(outname)
         if compare_two_dicts(existing_config, config):
             return
-        back_name = config_fname.replace(".yml", "")
-        back_name += "_"+get_file_ctime(config_fname) + '.yml'
-        os.rename(config_fname, back_name)
+        back_name = outname.replace(".yml", "")
+        back_name += "_"+get_file_ctime(outname) + '.yml'
+        os.rename(outname, back_name)
 
     with open(outname, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
