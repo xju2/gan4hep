@@ -64,7 +64,7 @@ def load_gan(config_name: str):
     return gan
 
 
-def run_generator(gan, batch_size, filename, ngen=1000):
+def run_generator(gan, batch_size, filename, hadronic, ngen=1000):
     dataset, n_graphs = read_dataset(filename)
     print("total {} graphs iterated with batch size of {}".format(n_graphs, batch_size))
     print('averaging {} geneveted events for each input'.format(ngen))
@@ -73,7 +73,7 @@ def run_generator(gan, batch_size, filename, ngen=1000):
     predict_4vec = []
     truth_4vec = []
     for inputs,targets in test_data:
-        input_nodes, target_nodes = DataHandler.normalize(inputs, targets, batch_size)
+        input_nodes, target_nodes = DataHandler.normalize(inputs, targets, batch_size, hadronic=hadronic)
         
         gen_evts = []
         for igen in range(ngen):

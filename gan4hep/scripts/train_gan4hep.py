@@ -217,14 +217,8 @@ def train_and_evaluate(
             t0.set_description('Epoch {}/{}'.format(epoch, max_epochs))
             with tqdm.trange(steps_per_epoch, disable=disable_tqdm) as t:
                 for step_num in t:
-                    # epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
-                    inputs_tr, targets_tr = next(training_data)
-                    # if hadronic:
-                    #     if np.sum(targets_tr.n_node)//batch_size < 4:
-                    #         continue
-
                     # --------------------------------------------------------
-                    input_nodes, target_nodes = DataHandler.normalize(inputs_tr, targets_tr, batch_size, hadronic=hadronic)
+                    input_nodes, target_nodes = DataHandler.normalize(* next(training_data), batch_size=batch_size, hadronic=hadronic)
                     # --------------------------------------------------------
 
                     disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
