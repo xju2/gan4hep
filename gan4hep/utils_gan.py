@@ -32,6 +32,20 @@ def create_gan(gan_type, noise_dim, batch_size, layer_size, num_layers,
 
     return gan
 
+def create_optimizer(gan, num_epochs, disc_lr, gen_lr, with_disc_reg, gamma_reg,
+        decay_epochs, decay_base, debug, **kwargs):
+    return GANOptimizer(
+        gan,
+        num_epcohs=max_epochs,
+        disc_lr=disc_lr,
+        gen_lr=gen_lr,
+        with_disc_reg=with_disc_reg,
+        gamma_reg=gamma_reg,
+        decay_epochs=decay_epochs,
+        decay_base=decay_base,
+        debug=debug
+    )
+
 def get_ckptdir(output_dir, **kwargs):
     return os.path.join(output_dir, "checkpoints")
 
@@ -41,7 +55,7 @@ def load_gan(config_name: str):
 
     config = load_yaml(config_name)
     gan = create_gan(**config)
-    optimizer = GANOptimizer(gan)
+    optimizer = create_optimizer(gan, **config)
 
     ckpt_dir = get_ckptdir(**config)
 

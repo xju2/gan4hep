@@ -163,17 +163,11 @@ def train_and_evaluate(
         gan_type, noise_dim, batch_size,
         layer_sizer, number_layers, num_processing_steps)
 
-    optimizer = GANOptimizer(
-                        gan,
-                        num_epcohs=max_epochs,
-                        disc_lr=disc_lr,
-                        gen_lr=gen_lr,
-                        with_disc_reg=with_disc_reg,
-                        gamma_reg=gamma_reg,
-                        decay_epochs=decay_epochs,
-                        decay_base=decay_base,
-                        debug=debug
-                        )
+    optimizer = GanUtils.create_optimizer(
+                        gan, max_epochs,
+                        disc_lr, gen_lr,
+                        with_disc_reg, gamma_reg,
+                        decay_epochs, decay_base, debug)
     
     disc_step = optimizer.disc_step
     step = optimizer.step
@@ -184,7 +178,6 @@ def train_and_evaluate(
     training_data = loop_dataset(training_dataset, batch_size)
     validating_data = loop_dataset(validating_dataset, batch_size)
     steps_per_epoch = ngraphs_train // batch_size
-
 
     log_dir = os.path.join(output_dir, "logs/{}/train".format(time_stamp))
     train_summary_writer = tf.summary.create_file_writer(log_dir)
