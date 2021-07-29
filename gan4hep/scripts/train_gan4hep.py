@@ -332,12 +332,12 @@ def train_and_evaluate(
 
 def add_training_args(parser):
     add_arg = parser.add_argument
-    add_arg("input_dir",
-            help='input directory that contains subfolder of train, val and test')
-    add_arg("output_dir", help="where the model and training info saved")
+    add_arg("--input_dir",
+            help='input directory that contains subfolder of train, val and test', default=None)
+    add_arg("--output_dir", help="where the model and training info saved", default=None)
     add_arg("--input-frac", help="use a fraction of input files", default=1., type=float)
     # add_arg("--use-pt-eta-phi-e", help='use [pT, eta, phi, E]', action='store_true')
-    add_arg("--gan-type", help='which gan to use', required=True, choices=gan_types)
+    add_arg("--gan-type", help='which gan to use', default='gnn_gnn_gan', choices=gan_types)
     add_arg("--layer-size", help='MLP layer size', default=512, type=int)
     add_arg("--num-layers", help='MLP number of layers', default=10, type=int)
     add_arg("--num-processing-steps", default=None, type=int, help="number of processing steps")
@@ -377,14 +377,14 @@ def add_training_args(parser):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Train The GAN')
     add_arg = parser.add_argument
-    add_arg("--config-file", help='use configuration file', default=None)
+    add_arg("--config", help='use configuration file', default=None)
     add_training_args(parser)
 
     args = parser.parse_args()
 
     config = vars(args)
-    if args.config_file:
-        add_config = GanUtils.load_yaml(args.config_file)
+    if args.config:
+        add_config = GanUtils.load_yaml(args.config)
         config.update(**add_config)
 
     config['num_epochs'] = config['max_epochs']
