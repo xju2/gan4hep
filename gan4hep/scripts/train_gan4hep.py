@@ -332,9 +332,9 @@ def train_and_evaluate(
 
 def add_training_args(parser):
     add_arg = parser.add_argument
-    add_arg("--input_dir",
+    add_arg("--input-dir",
             help='input directory that contains subfolder of train, val and test', default=None)
-    add_arg("--output_dir", help="where the model and training info saved", default=None)
+    add_arg("--output-dir", help="where the model and training info saved", default=None)
     add_arg("--input-frac", help="use a fraction of input files", default=1., type=float)
     # add_arg("--use-pt-eta-phi-e", help='use [pT, eta, phi, E]', action='store_true')
     add_arg("--gan-type", help='which gan to use', default='gnn_gnn_gan', choices=gan_types)
