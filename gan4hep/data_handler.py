@@ -1,5 +1,6 @@
 import tensorflow as tf
 import numpy as np
+import sonnet as snt
 from gan4hep.graph import read_dataset
 
 

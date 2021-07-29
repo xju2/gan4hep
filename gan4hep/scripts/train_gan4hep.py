@@ -23,47 +23,20 @@ import tqdm
 
 import gan4hep
 from gan4hep.gan_base import GANOptimizer
-
+from gan4hep import data_handler as DataHandler
 from gan4hep.graph import loop_dataset
 from gan4hep.graph import read_dataset
+from gan4hep import utils_gan as GanUtils
 
 import tensorflow as tf
 from tensorflow.compat.v1 import logging #
 logging.info("TF Version:{}".format(tf.__version__))
 
-node_mean = np.array([
-    [14.13, 0.05, -0.10, -0.04], 
-    [7.73, 0.02, -0.04, -0.08],
-    [6.41, 0.04, -0.06, 0.04]
-], dtype=np.float32)
-
-node_scales = np.array([
-    [13.29, 10.54, 10.57, 12.20], 
-    [8.62, 6.29, 6.35, 7.29],
-    [6.87, 5.12, 5.13, 5.90]
-], dtype=np.float32)
-
-
-node_abs_max = np.array([
-    [49.1, 47.7, 46.0, 47.0],
-    [46.2, 40.5, 41.0, 39.5],
-    [42.8, 36.4, 37.0, 35.5]
-], dtype=np.float32)
-
-max_energy_px_py_pz = np.array([49.1, 47.7, 46.0, 47.0], dtype=np.float32)
-max_energy_px_py_pz_HI = np.array([10]*4, dtype=np.float32)
-max_pt_eta_phi_energy = np.array([5, 5, np.pi, 5], dtype=np.float32)
-
 
 gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan', 'gnn_gnn_gan']
-def import_model(gan_name):
-    gan_module = importlib.import_module("gan4hep."+gan_name)
-    return gan_module
-
 
 def init_workers(distributed=False):
     return SimpleNamespace(rank=0, size=1, local_rank=0, local_size=1, comm=None)
-
 
 def get_pt_eta_phi(px, py, pz):
     p = np.sqrt(px**2 + py**2 + pz**2)
@@ -72,7 +45,6 @@ def get_pt_eta_phi(px, py, pz):
     theta = np.arccos(pz/p)
     eta = -np.log(np.tan(0.5*theta))
     return pt,eta,phi
-
 
 def train_and_evaluate(
     batch_size, # batch size [HPO]
@@ -106,6 +78,10 @@ def train_and_evaluate(
     num_processing_steps=None,
     *args, **kwargs
 ):
+    """
+    The reason that hyperparameters are given as parameters is that
+    one can easily perform HPO.
+    """
     dist = init_workers(distributed)
 
     device = 'CPU'
@@ -183,29 +159,15 @@ def train_and_evaluate(
     logging.info("rank {} has {:,} training events and {:,} validating events".format(
         dist.rank, ngraphs_train, ngraphs_val))
 
-    gan_model = import_model(gan_type)
-    
-    if num_processing_steps and gan_type == "gnn_gnn_gan":
-        gan = gan_model.GAN(
-            noise_dim, batch_size, layer_size, num_layers,
-            num_processing_steps, name=gan_type)
-    else:
-        gan = gan_model.GAN(
-            noise_dim, batch_size, latent_size=layer_size,
-            num_layers=num_layers, name=gan_type)
+    gan = GanUtils.create_gan(
+        gan_type, noise_dim, batch_size,
+        layer_size, num_layers, num_processing_steps)
 
-
-    optimizer = GANOptimizer(
-                        gan,
-                        num_epcohs=max_epochs,
-                        disc_lr=disc_lr,
-                        gen_lr=gen_lr,
-                        with_disc_reg=with_disc_reg,
-                        gamma_reg=gamma_reg,
-                        decay_epochs=decay_epochs,
-                        decay_base=decay_base,
-                        debug=debug
-                        )
+    optimizer = GanUtils.create_optimizer(
+                        gan, max_epochs,
+                        disc_lr, gen_lr,
+                        with_disc_reg, gamma_reg,
+                        decay_epochs, decay_base, debug)
     
     disc_step = optimizer.disc_step
     step = optimizer.step
@@ -217,11 +179,10 @@ def train_and_evaluate(
     validating_data = loop_dataset(validating_dataset, batch_size)
     steps_per_epoch = ngraphs_train // batch_size
 
-
     log_dir = os.path.join(output_dir, "logs/{}/train".format(time_stamp))
     train_summary_writer = tf.summary.create_file_writer(log_dir)
 
-    ckpt_dir = os.path.join(output_dir, "checkpoints")
+    ckpt_dir = GanUtils.get_ckptdir(output_dir)
     checkpoint = tf.train.Checkpoint(
         optimizer=optimizer,
         gan=gan)
@@ -233,32 +194,6 @@ def train_and_evaluate(
     logging.info("Loading latest checkpoint from: {}".format(ckpt_dir))
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint)
 
-    
-    def normalize(inputs, targets, to_tf_tensor=True, hadronic=False):
-        scales = max_energy_px_py_pz_HI if hadronic else max_energy_px_py_pz
-
-        # node features are [energy, px, py, pz]
-        if use_pt_eta_phi_e:
-            # inputs
-            pt, eta, phi = get_pt_eta_phi(inputs.nodes[:, 1], inputs.nodes[:, 2], inputs.nodes[:, 3])
-            input_nodes = np.stack([pt, eta, phi, inputs.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
-            # outputs
-            o_pt, o_eta, o_phi = get_pt_eta_phi(targets.nodes[:, 1], targets.nodes[:, 2], targets.nodes[:, 3])
-            target_nodes = np.stack([o_pt, o_eta, o_phi, targets.nodes[:, 0]], axis=1) / max_pt_eta_phi_energy
-        else:
-            # input_nodes = (inputs.nodes - node_mean[0])/node_scales[0]
-            input_nodes = inputs.nodes / scales
-            target_nodes = targets.nodes / scales
-
-        target_nodes = np.reshape(target_nodes, [batch_size, -1])
-        if hadronic:
-            target_nodes = target_nodes[..., :4*3]*np.array([1e4]*3+[0.1]+[1.0]*8)
-            input_nodes = input_nodes*np.array([1e4, 1e4, 1e4, 0.1])
-
-        if to_tf_tensor:
-            input_nodes = tf.convert_to_tensor(input_nodes, dtype=tf.float32)
-            target_nodes = tf.convert_to_tensor(target_nodes, dtype=tf.float32)
-        return input_nodes, target_nodes
 
     if warm_up:
         # train discriminator for certain batches
@@ -266,10 +201,9 @@ def train_and_evaluate(
         print("start to warm up discriminator with {} batches".format(disc_batches))
         for _ in range(disc_batches):
             inputs_tr, targets_tr = next(training_data)
-            # if hadronic:
-            #     if np.sum(targets_tr.n_node) // batch_size < 3:
-            #         continue
-            input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
+
+            input_nodes, target_nodes = DataHandler.normalize(
+                inputs_tr, targets_tr, batch_size, hadronic=hadronic)
             disc_step(target_nodes, input_nodes)
 
         print("finished the warm up")
@@ -283,15 +217,8 @@ def train_and_evaluate(
             t0.set_description('Epoch {}/{}'.format(epoch, max_epochs))
             with tqdm.trange(steps_per_epoch, disable=disable_tqdm) as t:
                 for step_num in t:
-                    # epoch = tf.constant(int(step_num / steps_per_epoch), dtype=tf.int32)
-                    inputs_tr, targets_tr = next(training_data)
-                    # if hadronic:
-                    #     if np.sum(targets_tr.n_node)//batch_size < 4:
-                    #         continue
-
                     # --------------------------------------------------------
-                    # scale the inputs and outputs to [-1, 1]
-                    input_nodes, target_nodes = normalize(inputs_tr, targets_tr, hadronic=hadronic)
+                    input_nodes, target_nodes = DataHandler.normalize(* next(training_data), batch_size=batch_size, hadronic=hadronic)
                     # --------------------------------------------------------
 
                     disc_loss, gen_loss, lr_mult = step(target_nodes, epoch, input_nodes)
@@ -318,14 +245,14 @@ def train_and_evaluate(
                         gen_scores = []
                         g4_scores = []
                         for _ in range(val_batches):
-                            inputs_val, targets_val = normalize(* next(validating_data))
-                            gen_evts_val = gan.generate(inputs_val)
+                            inputs_val, targets_val = DataHandler.normalize(* next(validating_data), batch_size=batch_size, hadronic=hadronic)
+                            gen_evts_val = gan.generate(inputs_val, is_training=False)
                             predict_4vec.append(gen_evts_val)
                             truth_4vec.append(targets_val)
   
                             # check the performance of discriminator
-                            gen_scores.append(tf.sigmoid(gan.discriminate(gen_evts_val)))
-                            g4_scores.append(tf.sigmoid(gan.discriminate(targets_val)))
+                            gen_scores.append(tf.sigmoid(gan.discriminate(gen_evts_val, is_training=False)))
+                            g4_scores.append(tf.sigmoid(gan.discriminate(targets_val, is_training=False)))
                 
                         predict_4vec = tf.concat(predict_4vec, axis=0)
                         truth_4vec = tf.concat(truth_4vec, axis=0)
@@ -403,19 +330,20 @@ def train_and_evaluate(
     return min_wdis
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description='Train nx-graph with configurations')
+def add_training_args(parser):
     add_arg = parser.add_argument
     add_arg("input_dir",
             help='input directory that contains subfolder of train, val and test')
     add_arg("output_dir", help="where the model and training info saved")
     add_arg("--input-frac", help="use a fraction of input files", default=1., type=float)
-    add_arg("--use-pt-eta-phi-e", help='use [pT, eta, phi, E]', action='store_true')
+    # add_arg("--use-pt-eta-phi-e", help='use [pT, eta, phi, E]', action='store_true')
     add_arg("--gan-type", help='which gan to use', required=True, choices=gan_types)
+    add_arg("--layer-size", help='MLP layer size', default=512, type=int)
+    add_arg("--num-layers", help='MLP number of layers', default=10, type=int)
+    add_arg("--num-processing-steps", default=None, type=int, help="number of processing steps")
     add_arg("--patterns", help='file patterns', default='*')
-    add_arg('-d', '--distributed', action='store_true',
-            help='data distributed training')
+    # add_arg('-d', '--distributed', action='store_true',
+    #         help='data distributed training')
     add_arg("--disc-lr", help='learning rate for discriminator', default=2e-4, type=float)
     add_arg("--gen-lr", help='learning rate for generator', default=5e-5, type=float)
     add_arg("--max-epochs", help='number of epochs', default=1, type=int)
@@ -445,12 +373,25 @@ if __name__ == "__main__":
     add_arg("--debug", help='in debug mode', action='store_true')
     add_arg("--disable-tqdm", help='do not show progress bar', action='store_true')
     add_arg("--hadronic", help='the inputs are hadronic interactions', action='store_true')
-    # args, _ = parser.parse_known_args()
-    args = parser.parse_args()
-    # print(args)
 
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Train The GAN')
+    add_arg = parser.add_argument
+    add_arg("--config-file", help='use configuration file', default=None)
+    add_training_args(parser)
+
+    args = parser.parse_args()
+
+    config = vars(args)
+    if args.config_file:
+        add_config = GanUtils.load_yaml(args.config_file)
+        config.update(**add_config)
+
+    config['num_epochs'] = config['max_epochs']
+    GanUtils.save_configurations(config)
     # Set python level verbosity
     logging.set_verbosity(args.verbose)
     # Suppress C++ level warnings.
-    # os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    train_and_evaluate(**vars(args))
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+    train_and_evaluate(**config)
