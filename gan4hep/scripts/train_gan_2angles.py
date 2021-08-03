@@ -196,7 +196,7 @@ def run_training(
         predictions = tf.concat(predictions, axis=0).numpy()
         truths = tf.concat(truths, axis=0).numpy()
 
-        fig, axs = plt.subplots(1, 2, figsize=(8, 4))
+        fig, axs = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
         axs = axs.flatten()
 
         config = dict(histtype='step', lw=2)
@@ -205,14 +205,16 @@ def run_training(
         ax = axs[idx]
         ax.hist(truths[:, idx], bins=40, range=[-np.pi, np.pi], label='Truth', **config)
         ax.hist(predictions[:, idx], bins=40, range=[-np.pi, np.pi], label='Generator', **config)
-        ax.set_xlabel(r"$\phi")
+        ax.set_xlabel(r"$\phi$")
+        ax.set_ylim(0, 450)
         
         # theta
         idx=1
         ax = axs[idx]
         ax.hist(truths[:, idx],  bins=40, range=[-2, 2], label='Truth', **config)
         ax.hist(predictions[:, idx], bins=40, range=[-2, 2], label='Generator', **config)
-        ax.set_xlabel(r"$theta")
+        ax.set_xlabel(r"$theta$")
+        ax.set_ylim(0, 450)
         
         # plt.legend()
         plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
@@ -231,6 +233,7 @@ if __name__ == "__main__":
     add_arg("filename", help='input filename', default=None)
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
+    add_arg("--lr", help='learning rate', default=1e-4, type=float)
     args = parser.parse_args()
 
     if args.filename and os.path.exists(args.filename):
