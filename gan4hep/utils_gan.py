@@ -11,6 +11,10 @@ from gan4hep.gan_base import GANOptimizer
 from gan4hep.graph import read_dataset, loop_dataset
 from gan4hep import data_handler as DataHandler
 
+import numpy as np
+from scipy import stats
+
+
 def import_model(gan_name):
     gan_module = importlib.import_module("gan4hep."+gan_name)
     return gan_module
@@ -125,3 +129,49 @@ def save_configurations(config: dict):
 
     with open(outname, 'w') as f:
         yaml.dump(config, f, default_flow_style=False)
+
+
+
+def log_metrics(
+        summary_writer,
+        predict_4vec: np.ndarray,
+        truth_4vec: np.ndarray,
+        step: int,
+        **kwargs):
+    with summary_writer.as_default():
+        tf.summary.experimental.set_step(step)
+        # plot the eight variables and resepctive Wasserstein distance (i.e. Earch Mover Distance)
+        # Use the Kolmogorov-Smirnov test, 
+        # it turns a two-sided test for the null hypothesis that the two distributions
+        # are drawn from the same continuous distribution.
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.combine_pvalues.html#scipy.stats.combine_pvalues
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.ks_2samp.html#scipy.stats.ks_2samp
+        # https://docs.scipy.org/doc/scipy/reference/stats.html#statistical-distances
+        distances = []
+
+        for icol in range(predict_4vec.shape[1]):
+            dis = stats.wasserstein_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+            _, pvalue = stats.ks_2samp(predict_4vec[:, icol], truth_4vec[:, icol])
+            if pvalue < 1e-7: pvalue = 1e-7
+            energy_dis = stats.energy_distance(predict_4vec[:, icol], truth_4vec[:, icol])
+            mse_loss = np.sum((predict_4vec[:, icol] - truth_4vec[:, icol])**2)/predict_4vec.shape[0]
+
+            tf.summary.scalar("wasserstein_distance_var{}".format(icol), dis)
+            tf.summary.scalar("energy_distance_var{}".format(icol), energy_dis)
+            tf.summary.scalar("KS_Test_var{}".format(icol), pvalue)
+            tf.summary.scalar("MSE_distance_var{}".format(icol), mse_loss)
+            distances.append([dis, energy_dis, pvalue, mse_loss])
+        distances = np.array(distances, dtype=np.float32)
+        tot_wdis = sum(distances[:, 0]) / distances.shape[0]
+        tot_edis = sum(distances[:, 1]) / distances.shape[0]
+        tf.summary.scalar("tot_wasserstein_dis", tot_wdis, description="total wasserstein distance")
+        tf.summary.scalar("tot_energy_dis", tot_edis, description="total energy distance")
+        _ , comb_pvals = stats.combine_pvalues(distances[:, 2], method='fisher')
+        tf.summary.scalar("tot_KS", comb_pvals, description="total KS pvalues distance")
+        tot_mse = sum(distances[:, 3]) / distances.shape[0]
+        tf.summary.scalar("tot_mse", tot_mse, description='mean squared loss')
+
+        if kwargs is not None:
+            # other metrics to be recorded.
+            for key,val in kwargs.items():
+                tf.summary.scalar(key, val)
