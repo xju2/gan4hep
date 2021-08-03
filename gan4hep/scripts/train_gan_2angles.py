@@ -52,23 +52,25 @@ def run_training(
     pT = np.sqrt(px**2 + py**2)
     phi = np.arctan(px/py)
     theta = np.arctan(pT/pz)
-
-    # convert them to datasets
-    noise = np.random.normal(loc=0.0, scale=1.0, size=(input_4vec.shape[0], noise_dim))
-    repeated_in = np.concatenate([input_4vec, noise], axis=1).astype(np.float32)
     truth_in = np.stack([phi, theta], axis=1)
 
-    logging.info("Input events: {:,}".format(repeated_in.shape[0]))
+    # convert them to datasets
 
-    seed = repeated_in[:num_test_evts]
-    seed_truth = truth_in[:num_test_evts]
-
-    dataset = tf.data.Dataset.from_tensor_slices( 
-        (repeated_in[num_test_evts:max_evts], truth_in[num_test_evts:max_evts]) )
-
-
+    logging.info("Input events: {:,}".format(input_4vec.shape[0]))
     AUTO = tf.data.experimental.AUTOTUNE
-    dataset = dataset.batch(batch_size, drop_remainder=True).prefetch(AUTO)
+
+    # testing data
+    # the training data will be composed for each epoch
+    test_in = input_4vec[:num_test_evts]
+    noise = np.random.normal(loc=0., scale=1., size=(test_in.shape[0], noise_dim))
+    test_in = np.concatenate([test_in, noise], axis=1).astype(np.float32)
+    test_truth = truth_in[:num_test_evts]
+    testing_data = tf.data.Dataset.from_tensor_slices(
+        (test_in, test_truth)).batch(batch_size, drop_remainder=True).prefetch(AUTO)
+
+
+    train_in = input_4vec[num_test_evts:max_evts]
+    train_truth = truth_in[num_test_evts:max_evts]
 
     # construct the model
     gen_input_dim = noise_dim + 4
@@ -154,10 +156,16 @@ def run_training(
         return disc_loss, gen_loss
 
 
-    def train(dataset, epochs):
+    def train(epochs):
         for epoch in tqdm.trange(epochs):
             start = time.time()
             
+            # compose the training dataset by generating different noises
+            noise = np.random.normal(loc=0., scale=1., size=(train_in.shape[0], noise_dim))
+            train_inputs = np.concatenate([train_in, noise], axis=1).astype(np.float32)
+            dataset = tf.data.Dataset.from_tensor_slices(
+                (train_inputs, train_truth)).batch(batch_size, drop_remainder=True).prefetch(AUTO)
+
             tot_loss = []
             for data_batch in dataset:
                 tot_loss.append(list(train_step(*data_batch)))
@@ -166,20 +174,27 @@ def run_training(
             avg_loss = np.sum(tot_loss, axis=0)/tot_loss.shape[0]
             loss_dict = dict(disc_loss=avg_loss[0], gen_loss=avg_loss[1])
             # display.clear_output(wait=True)
-            generate_and_save_images(generator, epoch+1, seed, seed_truth, **loss_dict)
+            generate_and_save_images(generator, epoch+1, testing_data, **loss_dict)
 
             # Save the model every 15 epochs
             if (epoch + 1) % 15 == 0:
                 ckpt_manager.save()
 
         # display.clear_output(wait=True)
-        generate_and_save_images(generator, epoch+1, seed, seed_truth)
+        generate_and_save_images(generator, epoch+1, testing_data)
 
-    def generate_and_save_images(model, epoch, test_input, test_truth, **kwargs):
+    def generate_and_save_images(model, epoch, datasets, **kwargs):
         # Notice `training` is set to False.
         # This is so all layers run in inference mode (batchnorm).
-        predictions = model(test_input, training=False)
-        predictions = predictions.numpy()
+        predictions = []
+        truths = []
+        for data in datasets:
+            test_input, test_truth = data
+            predictions.append(model(test_input, training=False))
+            truths.append(test_truth)
+
+        predictions = tf.concat(predictions, axis=0).numpy()
+        truths = tf.concat(truths, axis=0).numpy()
 
         fig, axs = plt.subplots(1, 2, figsize=(8, 4))
         axs = axs.flatten()
@@ -188,14 +203,14 @@ def run_training(
         # phi
         idx=0
         ax = axs[idx]
-        ax.hist(test_truth[:, idx], bins=40, range=[-np.pi, np.pi], label='Truth', **config)
+        ax.hist(truths[:, idx], bins=40, range=[-np.pi, np.pi], label='Truth', **config)
         ax.hist(predictions[:, idx], bins=40, range=[-np.pi, np.pi], label='Generator', **config)
         ax.set_xlabel(r"$\phi")
         
         # theta
         idx=1
         ax = axs[idx]
-        ax.hist(test_truth[:, idx],  bins=40, range=[-2, 2], label='Truth', **config)
+        ax.hist(truths[:, idx],  bins=40, range=[-2, 2], label='Truth', **config)
         ax.hist(predictions[:, idx], bins=40, range=[-2, 2], label='Generator', **config)
         ax.set_xlabel(r"$theta")
         
@@ -203,11 +218,11 @@ def run_training(
         plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
         plt.close('all')
 
-        log_metrics(summary_writer, predictions, test_truth, epoch, **kwargs)
+        log_metrics(summary_writer, predictions, truths, epoch, **kwargs)
 
 
     
-    train(dataset, epochs)
+    train(epochs)
 
 if __name__ == "__main__":
     import argparse
