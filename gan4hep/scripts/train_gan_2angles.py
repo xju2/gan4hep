@@ -244,5 +244,6 @@ if __name__ == "__main__":
         choices=['WARN', 'INFO', "ERROR", "FATAL", 'DEBUG'])
     args = parser.parse_args()
 
+    logging.set_verbosity(args.verbose)
     if args.filename and os.path.exists(args.filename):
         run_training(**vars(args))
