@@ -21,10 +21,12 @@ from gan4hep.utils_gan import log_metrics
 
 from tensorflow.compat.v1 import logging #
 
+
 def run_training(
     filename, noise_dim=4, num_test_evts=5000,
     max_evts=None, batch_size=512, gen_output_dim=2,
     epochs=50, lr=1e-4, log_dir='log_training', inference=False,
+    **kwargs
     ):
 
     logging.info("TF Version:{}".format(tf.__version__))
@@ -204,7 +206,7 @@ def run_training(
         ax.hist(truths[:, idx], bins=40, range=[-np.pi, np.pi], label='Truth', **config)
         ax.hist(predictions[:, idx], bins=40, range=[-np.pi, np.pi], label='Generator', **config)
         ax.set_xlabel(r"$\phi$")
-        ax.set_ylim(0, 450)
+        ax.set_ylim(0, 450* num_test_evts/5000)
         
         # theta
         idx=1
@@ -212,7 +214,7 @@ def run_training(
         ax.hist(truths[:, idx],  bins=40, range=[-2, 2], label='Truth', **config)
         ax.hist(predictions[:, idx], bins=40, range=[-2, 2], label='Generator', **config)
         ax.set_xlabel(r"$theta$")
-        ax.set_ylim(0, 450)
+        ax.set_ylim(0, 450*num_test_evts/5000)
         
         # plt.legend()
         plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
@@ -225,6 +227,7 @@ def run_training(
     if not inference:
         train(epochs)
     else:
+        logging.info("Performing inference only")
         generate_and_save_images(generator, 0, testing_data)
 
 if __name__ == "__main__":
@@ -237,6 +240,8 @@ if __name__ == "__main__":
     add_arg("--lr", help='learning rate', default=1e-4, type=float)
     add_arg("--num-test-evts", help='number of testing events', default=5000, type=int)
     add_arg("--inference", help='perform inference only', action='store_true')
+    add_arg("-v", '--verbose', help='tf logging verbosity', default='ERROR',
+        choices=['WARN', 'INFO', "ERROR", "FATAL", 'DEBUG'])
     args = parser.parse_args()
 
     if args.filename and os.path.exists(args.filename):
