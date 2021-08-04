@@ -24,7 +24,7 @@ from tensorflow.compat.v1 import logging #
 def run_training(
     filename, noise_dim=4, num_test_evts=5000,
     max_evts=None, batch_size=512, gen_output_dim=2,
-    epochs=50, lr=1e-4, log_dir='log_training'
+    epochs=50, lr=1e-4, log_dir='log_training', inference=False,
     ):
 
     logging.info("TF Version:{}".format(tf.__version__))
@@ -126,7 +126,7 @@ def run_training(
                                     discriminator=discriminator)
     ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=None)
     logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir))
-    _ = checkpoint.restore(ckpt_manager.latest_checkpoint)
+    _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
 
     summary_dir = os.path.join(log_dir, "logs")
     summary_writer = tf.summary.create_file_writer(summary_dir)
@@ -222,7 +222,10 @@ def run_training(
 
 
     
-    train(epochs)
+    if not inference:
+        train(epochs)
+    else:
+        generate_and_save_images(generator, 0, testing_data)
 
 if __name__ == "__main__":
     import argparse
@@ -233,6 +236,7 @@ if __name__ == "__main__":
     add_arg("--log-dir", help='log directory', default='log_training')
     add_arg("--lr", help='learning rate', default=1e-4, type=float)
     add_arg("--num-test-evts", help='number of testing events', default=5000, type=int)
+    add_arg("--inference", help='perform inference only', action='store_true')
     args = parser.parse_args()
 
     if args.filename and os.path.exists(args.filename):
