@@ -138,6 +138,8 @@ def log_metrics(
         truth_4vec: np.ndarray,
         step: int,
         **kwargs):
+
+    tot_wdis = 900
     with summary_writer.as_default():
         tf.summary.experimental.set_step(step)
         # plot the eight variables and resepctive Wasserstein distance (i.e. Earch Mover Distance)
@@ -175,3 +177,5 @@ def log_metrics(
             # other metrics to be recorded.
             for key,val in kwargs.items():
                 tf.summary.scalar(key, val)
+
+    return tot_wdis

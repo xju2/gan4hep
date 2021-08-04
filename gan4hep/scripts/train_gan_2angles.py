@@ -157,6 +157,7 @@ def run_training(
 
 
     def train(epochs):
+        best_wdis = 900
         for epoch in tqdm.trange(epochs):
             start = time.time()
             
@@ -174,16 +175,13 @@ def run_training(
             avg_loss = np.sum(tot_loss, axis=0)/tot_loss.shape[0]
             loss_dict = dict(disc_loss=avg_loss[0], gen_loss=avg_loss[1])
             # display.clear_output(wait=True)
-            generate_and_save_images(generator, epoch+1, testing_data, **loss_dict)
-
-            # Save the model every 15 epochs
-            if (epoch + 1) % 15 == 0:
+            tot_wdis = generate_and_save_images(generator, epoch+1, testing_data, **loss_dict)
+            if tot_wdis < best_wdis:
                 ckpt_manager.save()
+                generator.save("generator")
+                best_wdis = tot_wdis
 
-        # display.clear_output(wait=True)
-        generate_and_save_images(generator, epoch+1, testing_data)
-
-    def generate_and_save_images(model, epoch, datasets, **kwargs):
+    def generate_and_save_images(model, epoch, datasets, **kwargs) -> float:
         # Notice `training` is set to False.
         # This is so all layers run in inference mode (batchnorm).
         predictions = []
@@ -220,7 +218,7 @@ def run_training(
         plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
         plt.close('all')
 
-        log_metrics(summary_writer, predictions, truths, epoch, **kwargs)
+        return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)
 
 
     
@@ -234,6 +232,7 @@ if __name__ == "__main__":
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
     add_arg("--lr", help='learning rate', default=1e-4, type=float)
+    add_arg("--num-test-evts", help='number of testing events', default=5000, type=int)
     args = parser.parse_args()
 
     if args.filename and os.path.exists(args.filename):
