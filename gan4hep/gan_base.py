@@ -88,6 +88,7 @@ class GANOptimizer(snt.Module):
                 decay_base=0.96,
                 loss_type='logloss',
                 gamma_reg=1e-3,
+                distributed=False,
                 debug=False,
                 name=None, *args, **kwargs):
         super().__init__(name=name)
@@ -123,6 +124,13 @@ class GANOptimizer(snt.Module):
 
         self.loss_fn = tf.nn.sigmoid_cross_entropy_with_logits \
             if loss_type == 'logloss' else tf.compat.v1.losses.mean_squared_error
+
+        self.distributed = distributed
+        if distributed:
+            try:
+                import horovod.tensorflow as hvd
+            except ImportError:
+                self.distributed = False
 
 
     def disc_step(self, truth_inputs, cond_inputs=None, lr_mult=1.0):
@@ -161,6 +169,12 @@ class GANOptimizer(snt.Module):
 
 
             if self.hyparams.with_disc_reg:
+                # if use distributed training
+                if self.distributed:
+                    true_tape = hvd.DistributedGradientTape(true_tape)
+                    fake_tape = hvd.DistributedGradientTape(fake_tape)
+                    
+                
                 grad_logits_true = true_tape.gradient(real_output, truth_inputs)
                 grad_logits_gen = fake_tape.gradient(fake_output, gen_evts)
 
@@ -179,7 +193,9 @@ class GANOptimizer(snt.Module):
                 assert reg_loss.shape == loss.shape
                 self.gamma_reg.assign(self.hyparams.gamma_reg*lr_mult)
                 loss += self.gamma_reg*reg_loss
-
+        if self.distributed:
+            tape = hvd.DistributedGradientTape(tape)
+            
         disc_params = gan.discriminator.trainable_variables
         disc_grads = tape.gradient(loss, disc_params)
 

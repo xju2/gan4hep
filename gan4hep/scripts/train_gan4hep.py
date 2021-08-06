@@ -5,15 +5,9 @@ Training a GAN for modeling hadronic interactions
 # import tensorflow.experimental.numpy as tnp
 
 import os
-import sys
 import argparse
-import importlib
 
-import re
 import time
-import random
-import functools
-import six
 from types import SimpleNamespace
 
 from scipy import stats
@@ -33,18 +27,30 @@ from tensorflow.compat.v1 import logging #
 logging.info("TF Version:{}".format(tf.__version__))
 
 
+can_dis = True
+try:
+    import horovod.tensorflow as hvd
+except ImportError:
+    print("Horovod could not be imported, no distributed training")
+    can_dis = False
+
 gan_types = ['mlp_gan', 'rnn_mlp_gan', 'rnn_rnn_gan', 'gnn_gnn_gan']
 
 def init_workers(distributed=False):
-    return SimpleNamespace(rank=0, size=1, local_rank=0, local_size=1, comm=None)
-
-def get_pt_eta_phi(px, py, pz):
-    p = np.sqrt(px**2 + py**2 + pz**2)
-    pt = np.sqrt(px**2 + py**2)
-    phi = np.arctan2(py, px)
-    theta = np.arccos(pz/p)
-    eta = -np.log(np.tan(0.5*theta))
-    return pt,eta,phi
+    if distributed:
+        hvd.init()
+        comm = None
+        # assert hvd.mpi_threads_supported()
+        # from mpi4py import MPI
+        # assert hvd.size() == MPI.COMM_WORLD.Get_size()
+        # comm = MPI.COMM_WORLD
+        return SimpleNamespace(
+            rank=hvd.rank(), size=hvd.size(),
+            local_rank=hvd.local_rank(),
+            local_size=hvd.local_size(), comm=comm
+        )
+    else:
+        return SimpleNamespace(rank=0, size=1, local_rank=0, local_size=1, comm=None)
 
 def train_and_evaluate(
     batch_size, # batch size [HPO]
@@ -82,6 +88,7 @@ def train_and_evaluate(
     The reason that hyperparameters are given as parameters is that
     one can easily perform HPO.
     """
+    distributed = distributed and can_dis
     dist = init_workers(distributed)
 
     device = 'CPU'
@@ -100,32 +107,31 @@ def train_and_evaluate(
     time_stamp = time.strftime('%Y%m%d-%H%M%S', time.localtime())
     if dist.rank == 0:
         os.makedirs(output_dir, exist_ok=True)
-    logging.info("Checkpoints and models saved at {}".format(output_dir))
 
+    logging.info("Checkpoints and models saved at {}".format(output_dir))
     logging.info("{} epochs with batch size {}".format(
         max_epochs, batch_size))
     logging.info("I am in hvd rank: {} of  total {} ranks".format(
         dist.rank, dist.size))
 
-    if dist.rank == 0:
-        train_input_dir = os.path.join(input_dir, 'train')
-        val_input_dir = os.path.join(input_dir, 'val')
-        train_files = tf.io.gfile.glob(
-            os.path.join(train_input_dir, patterns))
-        eval_files = tf.io.gfile.glob(
-            os.path.join(val_input_dir, patterns))
-        # split the number of files evenly to all ranks
-        train_files = [x.tolist()
-                       for x in np.array_split(train_files, dist.size)]
-        eval_files = [x.tolist()
-                      for x in np.array_split(eval_files, dist.size)]
-    else:
-        train_files = None
-        eval_files = None
+
+    train_input_dir = os.path.join(input_dir, 'train')
+    val_input_dir = os.path.join(input_dir, 'val')
+    train_files = tf.io.gfile.glob(
+        os.path.join(train_input_dir, patterns))
+    eval_files = tf.io.gfile.glob(
+        os.path.join(val_input_dir, patterns))
+
+    # split the number of files evenly to all ranks
+    train_files = [x.tolist()
+                    for x in np.array_split(train_files, dist.size)]
+    eval_files = [x.tolist()
+                    for x in np.array_split(eval_files, dist.size)]
+
 
     if distributed:
-        train_files = dist.comm.scatter(train_files, root=0)
-        eval_files = dist.comm.scatter(eval_files, root=0)
+        train_files = train_files[dist.rank]
+        eval_files = eval_files[dist.rank]
     else:
         train_files = train_files[0]
         eval_files = eval_files[0]
@@ -136,6 +142,7 @@ def train_and_evaluate(
 
     logging.info("rank {} has {} training files and {} evaluation files".format(
         dist.rank, len(train_files), len(eval_files)))
+        
     if input_frac < 1 and input_frac > 0:
         n_tr = int(len(train_files)*input_frac) + 1
         n_ev = int(len(eval_files)* input_frac) + 1
