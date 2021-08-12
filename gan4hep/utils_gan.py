@@ -4,15 +4,16 @@ import os
 import time
 import yaml
 
+import numpy as np
+from scipy import stats
+import matplotlib.pyplot as plt
+
 import tensorflow as tf
 
 from gan4hep import gnn_gnn_gan as toGan
 from gan4hep.gan_base import GANOptimizer
 from gan4hep.graph import read_dataset, loop_dataset
 from gan4hep import data_handler as DataHandler
-
-import numpy as np
-from scipy import stats
 
 
 def import_model(gan_name):
@@ -179,3 +180,43 @@ def log_metrics(
                 tf.summary.scalar(key, val)
 
     return tot_wdis
+
+
+def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, **kwargs) -> float:
+    # Notice `training` is set to False.
+    # This is so all layers run in inference mode (batchnorm).
+    predictions = []
+    truths = []
+    for data in datasets:
+        test_input, test_truth = data
+        predictions.append(model(test_input, training=False))
+        truths.append(test_truth)
+
+    predictions = tf.concat(predictions, axis=0).numpy()
+    truths = tf.concat(truths, axis=0).numpy()
+
+    fig, axs = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
+    axs = axs.flatten()
+
+    config = dict(histtype='step', lw=2)
+    # phi
+    idx=0
+    ax = axs[idx]
+    ax.hist(truths[:, idx], bins=40, range=[-np.pi, np.pi], label='Truth', **config)
+    ax.hist(predictions[:, idx], bins=40, range=[-np.pi, np.pi], label='Generator', **config)
+    ax.set_xlabel(r"$\phi$")
+    ax.set_ylim(0, 450* num_test_evts/5000)
+    
+    # theta
+    idx=1
+    ax = axs[idx]
+    ax.hist(truths[:, idx],  bins=40, range=[-2, 2], label='Truth', **config)
+    ax.hist(predictions[:, idx], bins=40, range=[-2, 2], label='Generator', **config)
+    ax.set_xlabel(r"$theta$")
+    ax.set_ylim(0, 450*num_test_evts/5000)
+    
+    # plt.legend()
+    plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
+    plt.close('all')
+
+    return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)
