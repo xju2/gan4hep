@@ -68,7 +68,7 @@ def load_gan(config_name: str):
     return gan
 
 
-def run_generator(gan, batch_size, filename, hadronic, ngen=1000):
+def run_generator(gan, batch_size, filename, hadronic, ngen=1):
     dataset, n_graphs = read_dataset(filename)
     print("total {} graphs iterated with batch size of {}".format(n_graphs, batch_size))
     print('averaging {} geneveted events for each input'.format(ngen))
@@ -80,7 +80,7 @@ def run_generator(gan, batch_size, filename, hadronic, ngen=1000):
         input_nodes, target_nodes = DataHandler.normalize(inputs, targets, batch_size, hadronic=hadronic)
         
         gen_evts = []
-        for igen in range(ngen):
+        for _ in range(ngen):
             gen_graph = gan.generate(input_nodes, is_training=False)
             gen_evts.append(gen_graph)
         
@@ -139,7 +139,6 @@ def log_metrics(
         step: int,
         **kwargs):
 
-    tot_wdis = 900
     with summary_writer.as_default():
         tf.summary.experimental.set_step(step)
         # plot the eight variables and resepctive Wasserstein distance (i.e. Earch Mover Distance)
@@ -178,4 +177,4 @@ def log_metrics(
             for key,val in kwargs.items():
                 tf.summary.scalar(key, val)
 
-    return tot_wdis
+    return tot_wdis, comb_pvals, tot_edis, tot_mse
