@@ -2,17 +2,28 @@
 MLP predicts N number of output values
 """
 import numpy as np
+import os
+
 
 import tensorflow as tf
+from tensorflow.compat.v1 import logging
+logging.info("TF Version:{}".format(tf.__version__))
+gpus = tf.config.experimental.list_physical_devices("GPU")
+logging.info("found {} GPUs".format(len(gpus)))
+for gpu in gpus:
+    tf.config.experimental.set_memory_growth(gpu, True)
+
+
 from tensorflow import keras
 from tensorflow.keras import layers
+
 
 import tqdm
 
 class WGAN():
     def __init__(self,
-        noise_dim: int, gen_output_dim: int,
-        cond_dim: int = 0, disable_tqdm=False):
+        noise_dim: int = 4, gen_output_dim: int = 2,
+        cond_dim: int = 4, disable_tqdm=False):
         """
         noise_dim: dimension of the noises
         gen_output_dim: output dimension
@@ -36,8 +47,7 @@ class WGAN():
         self.critic = self.build_critic()
         self.critic.compile(
             loss=self.wasserstein_loss,
-            optimizer=optimizer,
-            metrics=['accuracy']
+            optimizer=optimizer
         )
         self.critic.summary()
 
@@ -56,7 +66,6 @@ class WGAN():
         self.combined.compile(
             loss=self.wasserstein_loss,
             optimizer=optimizer,
-            metrics=['accuracy']
         )
         self.combined.summary()
 
@@ -99,16 +108,15 @@ class WGAN():
 
 
     def train(self, train_truth, epochs, batch_size, test_truth, log_dir, evaluate_samples_fn,
-        train_in=None, test_in=None, sample_interval=50):
+        train_in=None, test_in=None):
         # ======================================
         # construct testing data once for all
         # ======================================
         AUTO = tf.data.experimental.AUTOTUNE
-        noise = np.random.normal(loc=0., scale=1., size=(train_truth.shape[0], self.noise_dim))
-        if test_in is not None:
-            test_in = np.concatenate([test_in, noise], axis=1).astype(np.float32)
-        else:
-            test_in = noise
+        noise = np.random.normal(loc=0., scale=1., size=(test_truth.shape[0], self.noise_dim))
+        test_in = np.concatenate(
+            [test_in, noise], axis=1).astype(np.float32) if test_in is not None else noise
+
 
         testing_data = tf.data.Dataset.from_tensor_slices(
             (test_in, test_truth)).batch(batch_size, drop_remainder=True).prefetch(AUTO)
@@ -137,13 +145,12 @@ class WGAN():
 
                 # compose the training dataset by generating different noises
                 noise = np.random.normal(loc=0., scale=1., size=(train_truth.shape[0], self.noise_dim))
-                if train_in is not None:
-                    train_inputs = np.concatenate([train_in, noise], axis=1).astype(np.float32)
-                else:
-                    train_inputs = noise
+                train_inputs = np.concatenate(
+                    [train_in, noise], axis=1).astype(np.float32) if train_in is not None else noise
+
 
                 dataset = tf.data.Dataset.from_tensor_slices(
-                    (train_inputs, train_truth)).shuffle().batch(batch_size, drop_remainder=True).prefetch(AUTO)
+                    (train_inputs, train_truth)).shuffle(2*batch_size).batch(batch_size, drop_remainder=True).prefetch(AUTO)
 
                 valid = -np.ones((batch_size, 1))
                 fake  = np.ones((batch_size, 1))
@@ -179,25 +186,44 @@ class WGAN():
 
                 tot_loss = np.array(tot_loss)
                 avg_loss = np.sum(tot_loss, axis=0)/tot_loss.shape[0]
-                loss_dict = dict(disc_loss=avg_loss[0], gen_loss=avg_loss[1])
+                loss_dict = dict(D_loss=avg_loss[0], G_loss=avg_loss[1])
+                t0.set_postfix(**loss_dict)
 
                 tot_wdis = evaluate_samples_fn(self.generator, epoch, testing_data, summary_writer, img_dir, **loss_dict)
                 if tot_wdis < best_wdis:
                     ckpt_manager.save()
                     self.generator.save("generator")
                     best_wdis = tot_wdis
-                    
-                t0.set_postfix(G_loss=g_loss, D_loss=d_loss)
 
 
 if __name__ == '__main__':
     import argparse
-    # parser = argparse.ArgumentParser(description='Test WGAN')
-    # add_arg = parser.add_argument
-    # add_arg('', help='')
-    
-    # args = parser.parse_args()
+    parser = argparse.ArgumentParser(description='Train The GAN')
+    add_arg = parser.add_argument
+    add_arg("filename", help='input filename', default=None)
+    add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
+    add_arg("--log-dir", help='log directory', default='log_training')
+    add_arg("--num-test-evts", help='number of testing events', default=5000, type=int)
+    add_arg("--inference", help='perform inference only', action='store_true')
+    add_arg("-v", '--verbose', help='tf logging verbosity', default='ERROR',
+        choices=['WARN', 'INFO', "ERROR", "FATAL", 'DEBUG'])
+    add_arg("--max-evts", help='Maximum number of events', type=int, default=None)
+    args = parser.parse_args()
 
-    from 
-    gan = WGAN(8, 2, 4)
+    logging.set_verbosity(args.verbose)
+
+
+    from gan4hep.utils_gan import generate_and_save_images
+    from gan4hep.preprocess import herwig_angles
+
+    train_in, train_truth, test_in, test_truth = herwig_angles(args.filename, args.max_evts)
+
+    batch_size = 512
+    gan = WGAN()
+    gan.train(
+        train_truth, args.epochs, batch_size,
+        test_truth, args.log_dir,
+        generate_and_save_images,
+        train_in, test_in
+    )
     

@@ -194,6 +194,7 @@ def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, **
 
     predictions = tf.concat(predictions, axis=0).numpy()
     truths = tf.concat(truths, axis=0).numpy()
+    num_test_evts = predictions.shape[0]
 
     fig, axs = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
     axs = axs.flatten()
@@ -202,19 +203,22 @@ def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, **
     # phi
     idx=0
     ax = axs[idx]
-    ax.hist(truths[:, idx], bins=40, range=[-np.pi, np.pi], label='Truth', **config)
-    ax.hist(predictions[:, idx], bins=40, range=[-np.pi, np.pi], label='Generator', **config)
+    x_range = [-1, 1]
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range, label='Truth', **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
     ax.set_xlabel(r"$\phi$")
-    ax.set_ylim(0, 450* num_test_evts/5000)
+    ax.set_ylim(0, max_y)
     
     # theta
     idx=1
     ax = axs[idx]
-    ax.hist(truths[:, idx],  bins=40, range=[-2, 2], label='Truth', **config)
-    ax.hist(predictions[:, idx], bins=40, range=[-2, 2], label='Generator', **config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=x_range, label='Truth', **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
     ax.set_xlabel(r"$theta$")
-    ax.set_ylim(0, 450*num_test_evts/5000)
-    
+    ax.set_ylim(0, max_y)
+
     # plt.legend()
     plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
     plt.close('all')
