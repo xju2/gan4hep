@@ -101,7 +101,7 @@ class WGAN():
             layers.Dense(256),
             layers.BatchNormalization(),
             layers.LeakyReLU(),
-            
+
             layers.Dense(1, activation='sigmoid'),
         ], name='Critic')
         return model
@@ -141,7 +141,6 @@ class WGAN():
         best_wdis = 9999
         with tqdm.trange(epochs, disable=self.disable_tqdm) as t0:
             for epoch in t0:
-                t0.set_description('Epoch {}/{}'.format(epoch, epochs))
 
                 # compose the training dataset by generating different noises
                 noise = np.random.normal(loc=0., scale=1., size=(train_truth.shape[0], self.noise_dim))
@@ -218,7 +217,7 @@ if __name__ == '__main__':
 
     train_in, train_truth, test_in, test_truth = herwig_angles(args.filename, args.max_evts)
 
-    batch_size = 512
+    batch_size = 2048
     gan = WGAN()
     gan.train(
         train_truth, args.epochs, batch_size,
@@ -226,4 +225,3 @@ if __name__ == '__main__':
         generate_and_save_images,
         train_in, test_in
     )
-    
