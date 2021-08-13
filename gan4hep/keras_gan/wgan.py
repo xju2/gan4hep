@@ -140,6 +140,7 @@ class WGAN():
         os.makedirs(img_dir, exist_ok=True)
 
         best_wdis = 9999
+        best_epoch = -1
         with tqdm.trange(epochs, disable=self.disable_tqdm) as t0:
             for epoch in t0:
 
@@ -194,6 +195,8 @@ class WGAN():
                     ckpt_manager.save()
                     self.generator.save("generator")
                     best_wdis = tot_wdis
+                    best_epoch = epoch
+        logging.info("Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis))
 
 
 if __name__ == '__main__':
@@ -205,7 +208,7 @@ if __name__ == '__main__':
     add_arg("--log-dir", help='log directory', default='log_training')
     add_arg("--num-test-evts", help='number of testing events', default=5000, type=int)
     add_arg("--inference", help='perform inference only', action='store_true')
-    add_arg("-v", '--verbose', help='tf logging verbosity', default='ERROR',
+    add_arg("-v", '--verbose', help='tf logging verbosity', default='INFO',
         choices=['WARN', 'INFO', "ERROR", "FATAL", 'DEBUG'])
     add_arg("--max-evts", help='Maximum number of events', type=int, default=None)
     add_arg("--batch-size", help='Batch size', type=int, default=512)

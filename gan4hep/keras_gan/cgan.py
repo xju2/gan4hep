@@ -1,6 +1,6 @@
 """
 This is a simple MLP-base conditional GAN.
-Note that the conditional input is not 
+Same as gan.py except that the conditional input is
 given to the discriminator.
 """
 import numpy as np
@@ -33,7 +33,7 @@ def generator_loss(fake_output):
     return tf.reduce_mean(cross_entropy(tf.ones_like(fake_output), fake_output))
 
 
-class GAN():
+class CGAN():
     def __init__(self,
         noise_dim: int = 4, gen_output_dim: int = 2,
         cond_dim: int = 4, disable_tqdm=False, lr=0.0001):
@@ -83,8 +83,7 @@ class GAN():
         return model
 
     def build_critic(self):
-        # <NOTE> conditional input is not given
-        gen_output_dim = self.gen_output_dim
+        gen_output_dim = self.gen_output_dim + self.cond_dim
 
         model = keras.Sequential([
             keras.Input(shape=(gen_output_dim,)),
@@ -137,6 +136,13 @@ class GAN():
             with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
                 gen_out_4vec = self.generator(gen_in_4vec, training=True)
 
+                # =============================================================    
+                # add the conditional inputs to generated and truth information
+                # =============================================================
+                gen_out_4vec = tf.concat([gen_in_4vec, gen_out_4vec], axis=-1)
+                truth_4vec = tf.concat([gen_in_4vec, truth_4vec], axis=-1)
+
+                # apply discriminator
                 real_output = self.discriminator(truth_4vec, training=True)
                 fake_output = self.discriminator(gen_out_4vec, training=True)
 
@@ -182,6 +188,7 @@ class GAN():
                     best_epoch = epoch
         logging.info("Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis))
 
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Train The GAN')
@@ -206,7 +213,7 @@ if __name__ == '__main__':
     train_in, train_truth, test_in, test_truth = herwig_angles(args.filename, args.max_evts)
 
     batch_size = args.batch_size
-    gan = GAN()
+    gan = CGAN()
     gan.train(
         train_truth, args.epochs, batch_size,
         test_truth, args.log_dir,
