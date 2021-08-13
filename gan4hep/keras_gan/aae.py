@@ -83,7 +83,7 @@ class AdversarialAutoencoder():
         return model
 
     def build_critic(self):
-        gen_output_dim = self.gen_output_dim
+        gen_output_dim = self.gen_output_dim + self.cond_dim
 
         model = keras.Sequential([
             keras.Input(shape=(gen_output_dim,)),

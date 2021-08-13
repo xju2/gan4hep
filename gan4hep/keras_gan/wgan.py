@@ -188,7 +188,6 @@ class WGAN():
                 tot_loss = np.array(tot_loss)
                 avg_loss = np.sum(tot_loss, axis=0)/tot_loss.shape[0]
                 loss_dict = dict(D_loss=avg_loss[0], G_loss=avg_loss[1])
-                t0.set_postfix(**loss_dict)
 
                 tot_wdis = evaluate_samples_fn(self.generator, epoch, testing_data, summary_writer, img_dir, **loss_dict)
                 if tot_wdis < best_wdis:
@@ -196,6 +195,7 @@ class WGAN():
                     self.generator.save("generator")
                     best_wdis = tot_wdis
                     best_epoch = epoch
+                t0.set_postfix(**loss_dict, BestD=best_wdis, BestE=best_epoch)
         logging.info("Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis))
 
 

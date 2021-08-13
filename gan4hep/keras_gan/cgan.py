@@ -132,15 +132,15 @@ class CGAN():
         os.makedirs(img_dir, exist_ok=True)
 
         @tf.function
-        def train_step(gen_in_4vec, truth_4vec):
+        def train_step(gen_in_4vec, cond_in, truth_4vec):
             with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
                 gen_out_4vec = self.generator(gen_in_4vec, training=True)
 
                 # =============================================================    
                 # add the conditional inputs to generated and truth information
                 # =============================================================
-                gen_out_4vec = tf.concat([gen_in_4vec, gen_out_4vec], axis=-1)
-                truth_4vec = tf.concat([gen_in_4vec, truth_4vec], axis=-1)
+                gen_out_4vec = tf.concat([cond_in, gen_out_4vec], axis=-1)
+                truth_4vec = tf.concat([cond_in, truth_4vec], axis=-1)
 
                 # apply discriminator
                 real_output = self.discriminator(truth_4vec, training=True)
@@ -169,7 +169,8 @@ class CGAN():
 
 
                 dataset = tf.data.Dataset.from_tensor_slices(
-                    (train_inputs, train_truth)).shuffle(2*batch_size).batch(batch_size, drop_remainder=True).prefetch(AUTO)
+                    (train_inputs, train_in, train_truth)
+                    ).shuffle(2*batch_size).batch(batch_size, drop_remainder=True).prefetch(AUTO)
 
                 tot_loss = []
                 for data_batch in dataset:
@@ -178,7 +179,6 @@ class CGAN():
                 tot_loss = np.array(tot_loss)
                 avg_loss = np.sum(tot_loss, axis=0)/tot_loss.shape[0]
                 loss_dict = dict(D_loss=avg_loss[0], G_loss=avg_loss[1])
-                t0.set_postfix(**loss_dict)
 
                 tot_wdis = evaluate_samples_fn(self.generator, epoch, testing_data, summary_writer, img_dir, **loss_dict)
                 if tot_wdis < best_wdis:
@@ -186,6 +186,7 @@ class CGAN():
                     self.generator.save("generator")
                     best_wdis = tot_wdis
                     best_epoch = epoch
+                t0.set_postfix(**loss_dict, BestD=best_wdis, BestE=best_epoch)
         logging.info("Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis))
 
 
