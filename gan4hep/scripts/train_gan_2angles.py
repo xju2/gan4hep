@@ -220,8 +220,7 @@ def run_training(
         plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
         plt.close('all')
 
-        return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)
-
+        return log_metrics(summary_writer, predictions, truths, epoch, **kwargs) [0]
 
     
     if not inference:
