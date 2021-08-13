@@ -1,5 +1,7 @@
 """
-MLP predicts N number of output values
+This is a simple MLP-base conditional GAN.
+Note that the conditional input is not 
+given to the discriminator.
 """
 import numpy as np
 import os
@@ -81,6 +83,7 @@ class GAN():
         return model
 
     def build_critic(self):
+        # <NOTE> conditional input is not given
         gen_output_dim = self.gen_output_dim
 
         model = keras.Sequential([

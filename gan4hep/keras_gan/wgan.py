@@ -1,5 +1,6 @@
 """
-MLP predicts N number of output values
+Wasserstein GAN
+https://arxiv.org/abs/1701.07875
 """
 import numpy as np
 import os
