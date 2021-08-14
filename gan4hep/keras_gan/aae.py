@@ -68,18 +68,16 @@ class AdversarialAutoencoder():
         self.decoder.summary()
 
     def build_encoder(self):
+        # <NOTE, it's common practice to avoid using batch normalization when training VAE,
+        # I assume it is also the case for AAE?
+        # <https://www.tensorflow.org/tutorials/generative/cvae#network_architecture>
         """
         Input: conditional input + output info
         """
         model = keras.Sequential([
             keras.Input(shape=(self.gen_output_dim,)),
-            layers.Dense(256),
-            layers.BatchNormalization(),
-            layers.LeakyReLU(),
-            
-            layers.Dense(256),
-            layers.BatchNormalization(),
-
+            layers.Dense(256, activation='relu'),            
+            layers.Dense(256, activation='relu'),
             layers.Dense(self.noise_dim + self.noise_dim)
         ], name='Encoder')
 
@@ -96,15 +94,9 @@ class AdversarialAutoencoder():
     def build_decoder(self):
         model = keras.Sequential([
             keras.Input(shape=(self.gen_input_dim,)),
-            layers.Dense(256),
-            layers.BatchNormalization(),
-            layers.LeakyReLU(),
-            
-            layers.Dense(256),
-            layers.BatchNormalization(),
-
-            layers.Dense(self.gen_output_dim),
-            layers.Activation("tanh"),
+            layers.Dense(256, activation='relu'),            
+            layers.Dense(256, activation='relu'),
+            layers.Dense(self.gen_output_dim, activation='tanh'),
         ], name='Decoder')
         return model
 
@@ -164,7 +156,8 @@ class AdversarialAutoencoder():
             with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
                 # encoder
                 latent_real = gen_in_4vec
-                latent_fake = self.reparameterize(* (self.encode(truth_4vec, training=True)))
+                mean, logvar = self.encode(truth_4vec, training=True)
+                latent_fake = self.reparameterize(mean, logvar)
                 latent_fake = tf.concat([cond_in, latent_fake], axis=-1)
 
                 # discriminator
