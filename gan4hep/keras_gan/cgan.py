@@ -132,30 +132,6 @@ class CGAN():
         os.makedirs(img_dir, exist_ok=True)
 
         @tf.function
-        def train_step(gen_in_4vec, cond_in, truth_4vec):
-            with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-                gen_out_4vec = self.generator(gen_in_4vec, training=True)
-
-                # =============================================================    
-                # add the conditional inputs to generated and truth information
-                # =============================================================
-                gen_out_4vec = tf.concat([cond_in, gen_out_4vec], axis=-1)
-                truth_4vec = tf.concat([cond_in, truth_4vec], axis=-1)
-
-                # apply discriminator
-                real_output = self.discriminator(truth_4vec, training=True)
-                fake_output = self.discriminator(gen_out_4vec, training=True)
-
-                gen_loss = generator_loss(fake_output)
-                disc_loss = discriminator_loss(real_output, fake_output)
-
-            gradients_of_generator = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
-            gradients_of_discriminator = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
-
-            self.generator_optimizer.apply_gradients(zip(gradients_of_generator, self.generator.trainable_variables))
-            self.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, self.discriminator.trainable_variables))
-
-            return disc_loss, gen_loss
 
         best_wdis = 9999
         best_epoch = -1
@@ -197,7 +173,7 @@ if __name__ == '__main__':
     add_arg("filename", help='input filename', default=None)
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
-    add_arg("--num-test-evts", help='number of testing events', default=5000, type=int)
+    add_arg("--num-test-evts", help='number of testing events', default=10000, type=int)
     add_arg("--inference", help='perform inference only', action='store_true')
     add_arg("-v", '--verbose', help='tf logging verbosity', default='INFO',
         choices=['WARN', 'INFO', "ERROR", "FATAL", 'DEBUG'])

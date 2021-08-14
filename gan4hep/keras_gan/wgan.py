@@ -206,7 +206,7 @@ if __name__ == '__main__':
     add_arg("filename", help='input filename', default=None)
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
-    add_arg("--num-test-evts", help='number of testing events', default=5000, type=int)
+    add_arg("--num-test-evts", help='number of testing events', default=10000, type=int)
     add_arg("--inference", help='perform inference only', action='store_true')
     add_arg("-v", '--verbose', help='tf logging verbosity', default='INFO',
         choices=['WARN', 'INFO', "ERROR", "FATAL", 'DEBUG'])
