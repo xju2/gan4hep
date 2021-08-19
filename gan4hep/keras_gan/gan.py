@@ -195,6 +195,7 @@ if __name__ == '__main__':
         choices=['WARN', 'INFO', "ERROR", "FATAL", 'DEBUG'])
     add_arg("--max-evts", help='Maximum number of events', type=int, default=None)
     add_arg("--batch-size", help='Batch size', type=int, default=512)
+    add_arg("--lr", help='learning rate', type=float, default=0.0001)
     args = parser.parse_args()
 
     logging.set_verbosity(args.verbose)
