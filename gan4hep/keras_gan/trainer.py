@@ -1,5 +1,8 @@
-#!/user/bin/env python 
+#!/user/bin/env python
 
+import os
+import numpy as np
+import tensorflow as tf
 
 from gan import GAN
 from aae import AdversarialAutoencoder
@@ -7,6 +10,45 @@ from cgan import CGAN
 from wgan import WGAN
 
 all_gans = ['GAN', "AdversarialAutoencoder", 'CGAN', 'WGAN']
+
+from gan4hep.utils_gan import generate_and_save_images
+from gan4hep.preprocess import herwig_angles
+
+def load_ckpt(self, log_dir):
+    checkpoint_dir = os.path.join(log_dir, "checkpoints")
+    checkpoint = tf.train.Checkpoint(
+        generator=self.generator,
+        discriminator=self.discriminator)
+    ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=None)
+    logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir))
+    _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
+    return ckpt_manager
+
+def inference(self, gan, test_in, test_truth, log_dir):
+    checkpoint_dir = os.path.join(log_dir, "checkpoints")
+    checkpoint = tf.train.Checkpoint(
+        generator=gan.generator,
+        discriminator=gan.discriminator)
+    ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=None)
+    logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir))
+    _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
+
+    AUTO = tf.data.experimental.AUTOTUNE
+    noise = np.random.normal(loc=0., scale=1., size=(test_truth.shape[0], self.noise_dim))
+    test_in = np.concatenate(
+        [test_in, noise], axis=1).astype(np.float32) if test_in is not None else noise
+    testing_data = tf.data.Dataset.from_tensor_slices(
+        (test_in, test_truth)).batch(batch_size, drop_remainder=True).prefetch(AUTO)
+
+    summary_dir = os.path.join(log_dir, "logs_inference")
+    summary_writer = tf.summary.create_file_writer(summary_dir)
+
+    img_dir = os.path.join(log_dir, 'img_inference')
+    os.makedirs(img_dir, exist_ok=True)
+    tot_wdis = generate_and_save_images(
+        self.generator, -1, testing_data, summary_writer, img_dir)
+    print(tot_wdis)
+
 
 if __name__ == '__main__':
     import argparse
@@ -28,18 +70,16 @@ if __name__ == '__main__':
     from tensorflow.compat.v1 import logging
     logging.set_verbosity(args.verbose)
 
-
-    from gan4hep.utils_gan import generate_and_save_images
-    from gan4hep.preprocess import herwig_angles
-
     train_in, train_truth, test_in, test_truth = herwig_angles(
         args.filename, max_evts=args.max_evts)
 
     batch_size = args.batch_size
     gan = eval(args.model)()
-    gan.train(
-        train_truth, args.epochs, batch_size,
-        test_truth, args.log_dir,
-        generate_and_save_images,
-        train_in, test_in
-    )
+    if args.inference:
+        inference(gan, test_in, test_truth, args.log_dir)
+    else:
+        gan.train(
+            train_truth, args.epochs, batch_size,
+            test_truth, args.log_dir,
+            generate_and_save_images,
+            train_in, test_in)

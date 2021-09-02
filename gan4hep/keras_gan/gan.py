@@ -110,8 +110,6 @@ class GAN():
         noise = np.random.normal(loc=0., scale=1., size=(test_truth.shape[0], self.noise_dim))
         test_in = np.concatenate(
             [test_in, noise], axis=1).astype(np.float32) if test_in is not None else noise
-
-
         testing_data = tf.data.Dataset.from_tensor_slices(
             (test_in, test_truth)).batch(batch_size, drop_remainder=True).prefetch(AUTO)
 
@@ -173,7 +171,10 @@ class GAN():
                 avg_loss = np.sum(tot_loss, axis=0)/tot_loss.shape[0]
                 loss_dict = dict(D_loss=avg_loss[0], G_loss=avg_loss[1])
 
-                tot_wdis = evaluate_samples_fn(self.generator, epoch, testing_data, summary_writer, img_dir, **loss_dict)
+                tot_wdis = evaluate_samples_fn(
+                    self.generator, epoch, testing_data,
+                    summary_writer, img_dir, **loss_dict)
+
                 if tot_wdis < best_wdis:
                     ckpt_manager.save()
                     self.generator.save("generator")
@@ -181,6 +182,7 @@ class GAN():
                     best_epoch = epoch
                 t0.set_postfix(**loss_dict, BestD=best_wdis, BestE=best_epoch)
         logging.info("Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis))
+
 
 if __name__ == '__main__':
     import argparse
