@@ -132,6 +132,30 @@ class CGAN():
         os.makedirs(img_dir, exist_ok=True)
 
         @tf.function
+        def train_step(gen_in_4vec, truth_4vec):
+            with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+                gen_out_4vec = self.generator(gen_in_4vec, training=True)
+
+                # =============================================================    
+                # add the conditional inputs to generated and truth information
+                # =============================================================
+                gen_out_4vec = tf.concat([gen_in_4vec, gen_out_4vec], axis=-1)
+                truth_4vec = tf.concat([gen_in_4vec, truth_4vec], axis=-1)
+
+                # apply discriminator
+                real_output = self.discriminator(truth_4vec, training=True)
+                fake_output = self.discriminator(gen_out_4vec, training=True)
+
+                gen_loss = generator_loss(fake_output)
+                disc_loss = discriminator_loss(real_output, fake_output)
+
+            gradients_of_generator = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
+            gradients_of_discriminator = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
+
+            self.generator_optimizer.apply_gradients(zip(gradients_of_generator, self.generator.trainable_variables))
+            self.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, self.discriminator.trainable_variables))
+
+            return disc_loss, gen_loss
 
         best_wdis = 9999
         best_epoch = -1

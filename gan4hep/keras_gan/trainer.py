@@ -12,8 +12,8 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Train The GAN')
     add_arg = parser.add_argument
-    add_arg("filename", help='input filename', default=None, nargs='+')
     add_arg("model", choices=all_gans, help='gan model')
+    add_arg("filename", help='input filename', default=None, nargs='+')
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
     add_arg("--num-test-evts", help='number of testing events', default=10000, type=int)
