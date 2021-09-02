@@ -24,7 +24,7 @@ def inference(gan, test_in, test_truth, log_dir):
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
 
     AUTO = tf.data.experimental.AUTOTUNE
-    noise = np.random.normal(loc=0., scale=1., size=(test_truth.shape[0], self.noise_dim))
+    noise = np.random.normal(loc=0., scale=1., size=(test_truth.shape[0], gan.noise_dim))
     test_in = np.concatenate(
         [test_in, noise], axis=1).astype(np.float32) if test_in is not None else noise
     testing_data = tf.data.Dataset.from_tensor_slices(
@@ -36,7 +36,7 @@ def inference(gan, test_in, test_truth, log_dir):
     img_dir = os.path.join(log_dir, 'img_inference')
     os.makedirs(img_dir, exist_ok=True)
     tot_wdis = generate_and_save_images(
-        self.generator, -1, testing_data, summary_writer, img_dir)
+        gan.generator, -1, testing_data, summary_writer, img_dir)
     print(tot_wdis)
 
 
