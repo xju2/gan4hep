@@ -1,6 +1,6 @@
 """
 This is a simple MLP-base conditional GAN.
-Note that the conditional input is not 
+Note that the conditional input is not
 given to the discriminator.
 """
 import numpy as np
@@ -186,7 +186,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Train The GAN')
     add_arg = parser.add_argument
-    add_arg("filename", help='input filename', default=None)
+    add_arg("filename", help='input filename', default=None, nargs='+')
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
     add_arg("--num-test-evts", help='number of testing events', default=10000, type=int)
@@ -204,7 +204,8 @@ if __name__ == '__main__':
     from gan4hep.utils_gan import generate_and_save_images
     from gan4hep.preprocess import herwig_angles
 
-    train_in, train_truth, test_in, test_truth = herwig_angles(args.filename, args.max_evts)
+    train_in, train_truth, test_in, test_truth = herwig_angles(
+        args.filename, max_evts=args.max_evts)
 
     batch_size = args.batch_size
     gan = GAN()
