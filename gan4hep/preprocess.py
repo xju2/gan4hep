@@ -62,8 +62,13 @@ def herwig_angles(filename,
     num_test_evts = int(input_4vec.shape[0]*testing_frac)
     if num_test_evts > 10_000: num_test_evts = 10_000
 
-    np.random.shuffle(input_4vec)
-    np.random.shuffle(truth_in)
+    # <NOTE, https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.html>
+
+    from numpy.random import MT19937
+    from numpy.random import RandomState, SeedSequence
+    np_rs = RandomState(MT19937(SeedSequence(123456789)))
+    np_rs.shuffle(input_4vec)
+    np_rs.shuffle(truth_in)
 
     test_in, train_in = input_4vec[:num_test_evts], input_4vec[num_test_evts:max_evts]
     test_truth, train_truth = truth_in[:num_test_evts], truth_in[num_test_evts:max_evts]

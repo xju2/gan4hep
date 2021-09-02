@@ -14,17 +14,7 @@ all_gans = ['GAN', "AdversarialAutoencoder", 'CGAN', 'WGAN']
 from gan4hep.utils_gan import generate_and_save_images
 from gan4hep.preprocess import herwig_angles
 
-def load_ckpt(self, log_dir):
-    checkpoint_dir = os.path.join(log_dir, "checkpoints")
-    checkpoint = tf.train.Checkpoint(
-        generator=self.generator,
-        discriminator=self.discriminator)
-    ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=None)
-    logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir))
-    _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
-    return ckpt_manager
-
-def inference(self, gan, test_in, test_truth, log_dir):
+def inference(gan, test_in, test_truth, log_dir):
     checkpoint_dir = os.path.join(log_dir, "checkpoints")
     checkpoint = tf.train.Checkpoint(
         generator=gan.generator,
