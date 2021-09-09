@@ -45,12 +45,12 @@ class WGAN():
 
         optimizer = keras.optimizers.RMSprop(lr=self.lr)
         # Build the critic
-        self.critic = self.build_critic()
-        self.critic.compile(
+        self.discriminator = self.build_critic()
+        self.discriminator.compile(
             loss=self.wasserstein_loss,
             optimizer=optimizer
         )
-        self.critic.summary()
+        self.discriminator.summary()
 
         # Build the generator
         self.generator = self.build_generator()
@@ -60,9 +60,9 @@ class WGAN():
         z = keras.Input(shape=(self.gen_input_dim,))
         particles = self.generator(z)
 
-        self.critic.trainable = False
+        self.discriminator.trainable = False
 
-        valid = self.critic(particles)
+        valid = self.discriminator(particles)
         self.combined = keras.Model(z, valid, name='Combined')
         self.combined.compile(
             loss=self.wasserstein_loss,
@@ -128,7 +128,7 @@ class WGAN():
         checkpoint_dir = os.path.join(log_dir, "checkpoints")
         checkpoint = tf.train.Checkpoint(
             generator=self.generator,
-            discriminator=self.critic)
+            discriminator=self.discriminator)
         ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=None)
         logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir))
         _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
@@ -165,12 +165,12 @@ class WGAN():
                     #---------------------
                     gen_in, truth = data_batch
                     gen_out = self.generator.predict(gen_in)
-                    d_loss_real = self.critic.train_on_batch(truth, valid)
-                    d_loss_fake = self.critic.train_on_batch(gen_out, fake)
+                    d_loss_real = self.discriminator.train_on_batch(truth, valid)
+                    d_loss_fake = self.discriminator.train_on_batch(gen_out, fake)
                     d_loss = 0.5 * np.add(d_loss_fake, d_loss_real)
 
                     # clip critic weights
-                    for l in self.critic.layers:
+                    for l in self.discriminator.layers:
                         weights = l.get_weights()
                         weights = [tf.clip_by_value(w, -self.clip_value, self.clip_value) for w in weights]
                         l.set_weights(weights)

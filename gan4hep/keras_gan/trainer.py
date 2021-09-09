@@ -5,11 +5,11 @@ import numpy as np
 import tensorflow as tf
 
 from gan import GAN
-from aae import AdversarialAutoencoder
+from aae import AAE
 from cgan import CGAN
 from wgan import WGAN
 
-all_gans = ['GAN', "AdversarialAutoencoder", 'CGAN', 'WGAN']
+all_gans = ['GAN', "AAE", 'CGAN', 'WGAN']
 
 from gan4hep.utils_gan import generate_and_save_images
 from gan4hep.preprocess import herwig_angles

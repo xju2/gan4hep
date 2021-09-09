@@ -33,7 +33,7 @@ def generator_loss(fake_output, reconstructed_evts, truth_evts):
         + tf.reduce_mean(tf.compat.v1.losses.mean_squared_error(truth_evts, reconstructed_evts))*0.999
 
 
-class AdversarialAutoencoder():
+class AAE():
     def __init__(self,
         noise_dim: int = 4, gen_output_dim: int = 2,
         cond_dim: int = 4, disable_tqdm=False, lr=0.0001):
