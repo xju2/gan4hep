@@ -196,7 +196,11 @@ class WGAN():
                     best_wdis = tot_wdis
                     best_epoch = epoch
                 t0.set_postfix(**loss_dict, BestD=best_wdis, BestE=best_epoch)
-        logging.info("Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis))
+        tmp_res = "Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis)
+        logging.info(tmp_res)
+        summary_logfile = os.path.join(summary_dir, 'results.txt')
+        with open(summary_logfile, 'a') as f:
+            f.write(tmp_res + "\n")
 
 
 if __name__ == '__main__':

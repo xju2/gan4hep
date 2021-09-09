@@ -206,7 +206,11 @@ class AAE():
                     best_wdis = tot_wdis
                     best_epoch = epoch
                 t0.set_postfix(**loss_dict, BestD=best_wdis, BestE=best_epoch, CurrentD=tot_wdis)
-        logging.info("Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis))
+        tmp_res = "Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis)
+        logging.info(tmp_res)
+        summary_logfile = os.path.join(summary_dir, 'results.txt')
+        with open(summary_logfile, 'a') as f:
+            f.write(tmp_res + "\n")
 
 
 if __name__ == '__main__':
@@ -233,7 +237,7 @@ if __name__ == '__main__':
     train_in, train_truth, test_in, test_truth = herwig_angles(args.filename, args.max_evts)
 
     batch_size = args.batch_size
-    gan = AdversarialAutoencoder()
+    gan = AAE()
     gan.train(
         train_truth, args.epochs, batch_size,
         test_truth, args.log_dir,
