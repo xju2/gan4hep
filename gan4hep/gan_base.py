@@ -204,7 +204,7 @@ class GANOptimizer(snt.Module):
 
         self.disc_opt.apply(disc_grads, disc_params)
         if self.hyparams.with_disc_reg:
-            return loss, *regularizers
+            return (loss, *regularizers)
         else:
             return loss,
 
