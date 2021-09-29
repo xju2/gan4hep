@@ -2,16 +2,26 @@ import pandas as pd
 import numpy as np
 
 
-def herwig_angles(filename, max_evts=None, testing_frac=0.1):
+def herwig_angles(filename,
+        max_evts=None, testing_frac=0.1,
+        fixed_num_particles=True, num_particles=3):
     """
     This reads the Herwig dataset where one cluster decays
     into two particles.
     In this case, we ask the GAN to predict the theta and phi
     angle of one of the particles
     """
-
-    df = pd.read_csv(filename, sep=';', 
-                header=None, names=None, engine='python')
+    if type(filename) == list:
+        print(filename)
+        df_list = [
+            pd.read_csv(f, sep=';', header=None, names=None, engine='python')
+                for f in filename
+        ]
+        df = pd.concat(df_list, ignore_index=True)
+        filename = filename[0]
+    else:
+        df = pd.read_csv(filename, sep=';', 
+                    header=None, names=None, engine='python')
 
     event = None
     with open(filename, 'r') as f:
@@ -38,7 +48,7 @@ def herwig_angles(filename, max_evts=None, testing_frac=0.1):
     phi = np.arctan(px/py)
     theta = np.arctan(pT/pz)
 
-    # <NOTE, inputs and outputs are scaled to be [-1, 1]
+    # <NOTE, inputs and outputs are scaled to be [-1, 1]>
     max_phi = np.max(np.abs(phi))
     max_theta = np.max(np.abs(theta))
     scales = np.array([max_phi, max_theta], np.float32)
@@ -52,9 +62,15 @@ def herwig_angles(filename, max_evts=None, testing_frac=0.1):
     num_test_evts = int(input_4vec.shape[0]*testing_frac)
     if num_test_evts > 10_000: num_test_evts = 10_000
 
-    test_in = input_4vec[:num_test_evts]
-    test_truth = truth_in[:num_test_evts]
-    train_in = input_4vec[num_test_evts:max_evts]
-    train_truth = truth_in[num_test_evts:max_evts]
+    # <NOTE, https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.html>
+
+    from numpy.random import MT19937
+    from numpy.random import RandomState, SeedSequence
+    np_rs = RandomState(MT19937(SeedSequence(123456789)))
+    np_rs.shuffle(input_4vec)
+    np_rs.shuffle(truth_in)
+
+    test_in, train_in = input_4vec[:num_test_evts], input_4vec[num_test_evts:max_evts]
+    test_truth, train_truth = truth_in[:num_test_evts], truth_in[num_test_evts:max_evts]
 
     return (train_in, train_truth, test_in, test_truth)

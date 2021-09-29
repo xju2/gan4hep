@@ -25,7 +25,9 @@ from tensorflow.compat.v1 import logging #
 def run_training(
     filename, noise_dim=4, num_test_evts=5000,
     max_evts=None, batch_size=512, gen_output_dim=2,
-    epochs=50, lr=1e-4, log_dir='log_training', inference=False,
+    epochs=50, lr_gen=1e-4, lr_disc=1e-4,
+    log_dir='log_training', inference=False,
+    gen_layersize=256, disc_layersize=256,
     **kwargs
     ):
 
@@ -78,11 +80,11 @@ def run_training(
     gen_input_dim = noise_dim + 4
     generator = keras.Sequential([
         keras.Input(shape=(gen_input_dim,)),
-        layers.Dense(256),
+        layers.Dense(gen_layersize),
         layers.BatchNormalization(),
         layers.LeakyReLU(),
         
-        layers.Dense(256),
+        layers.Dense(gen_layersize),
         layers.BatchNormalization(),
         
         layers.Dense(gen_output_dim),
@@ -90,11 +92,11 @@ def run_training(
 
     discriminator = keras.Sequential([
         keras.Input(shape=(gen_output_dim,)),
-        layers.Dense(256),
+        layers.Dense(disc_layersize),
         layers.BatchNormalization(),
         layers.LeakyReLU(),
         
-        layers.Dense(256),
+        layers.Dense(disc_layersize),
         layers.BatchNormalization(),
         layers.LeakyReLU(),
         
@@ -118,8 +120,8 @@ def run_training(
     # ===========
     # optimizer
     # ===========
-    generator_optimizer = keras.optimizers.Adam(lr)
-    discriminator_optimizer = keras.optimizers.Adam(lr)
+    generator_optimizer = keras.optimizers.Adam(lr_gen)
+    discriminator_optimizer = keras.optimizers.Adam(lr_disc)
 
     checkpoint_dir = os.path.join(log_dir, "checkpoints")
     checkpoint = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
@@ -236,7 +238,8 @@ if __name__ == "__main__":
     add_arg("filename", help='input filename', default=None)
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
-    add_arg("--lr", help='learning rate', default=1e-4, type=float)
+    add_arg("--lr-gen", help='learning rate for generator', default=1e-4, type=float)
+    add_arg("--lr-disc", help='learning rate for discriminator', default=1e-4, type=float)
     add_arg("--num-test-evts", help='number of testing events', default=5000, type=int)
     add_arg("--inference", help='perform inference only', action='store_true')
     add_arg("-v", '--verbose', help='tf logging verbosity', default='ERROR',

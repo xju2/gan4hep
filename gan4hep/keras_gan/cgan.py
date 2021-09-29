@@ -1,6 +1,7 @@
 """
-Wasserstein GAN
-https://arxiv.org/abs/1701.07875
+This is a simple MLP-base conditional GAN.
+Same as gan.py except that the conditional input is
+given to the discriminator.
 """
 import numpy as np
 import os
@@ -18,13 +19,24 @@ for gpu in gpus:
 from tensorflow import keras
 from tensorflow.keras import layers
 
-
 import tqdm
 
-class WGAN():
+
+cross_entropy = keras.losses.BinaryCrossentropy(from_logits=False)
+def discriminator_loss(real_output, fake_output):
+    real_loss = cross_entropy(tf.ones_like(real_output), real_output)
+    fake_loss = cross_entropy(tf.zeros_like(fake_output), fake_output)
+    total_loss = real_loss + fake_loss
+    return tf.reduce_mean(total_loss)
+
+def generator_loss(fake_output):
+    return tf.reduce_mean(cross_entropy(tf.ones_like(fake_output), fake_output))
+
+
+class CGAN():
     def __init__(self,
         noise_dim: int = 4, gen_output_dim: int = 2,
-        cond_dim: int = 4, disable_tqdm=False):
+        cond_dim: int = 4, disable_tqdm=False, lr=0.0001):
         """
         noise_dim: dimension of the noises
         gen_output_dim: output dimension
@@ -36,42 +48,22 @@ class WGAN():
         self.cond_dim = cond_dim
         self.disable_tqdm = disable_tqdm
 
-        # some pre-defined settings
-        self.n_critics = 5
-        self.lr = 0.00005
-        self.clip_value = 0.01
-
         self.gen_input_dim = self.noise_dim + self.cond_dim
 
-        optimizer = keras.optimizers.RMSprop(lr=self.lr)
+        # ============
+        # Optimizers
+        # ============
+        self.generator_optimizer = keras.optimizers.Adam(lr)
+        self.discriminator_optimizer = keras.optimizers.Adam(lr)
+
         # Build the critic
         self.discriminator = self.build_critic()
-        self.discriminator.compile(
-            loss=self.wasserstein_loss,
-            optimizer=optimizer
-        )
         self.discriminator.summary()
 
         # Build the generator
         self.generator = self.build_generator()
         self.generator.summary()
 
-        # Now combine generator and critic
-        z = keras.Input(shape=(self.gen_input_dim,))
-        particles = self.generator(z)
-
-        self.discriminator.trainable = False
-
-        valid = self.discriminator(particles)
-        self.combined = keras.Model(z, valid, name='Combined')
-        self.combined.compile(
-            loss=self.wasserstein_loss,
-            optimizer=optimizer,
-        )
-        self.combined.summary()
-
-    def wasserstein_loss(self, y_true, y_pred):
-        return tf.reduce_mean(y_true * y_pred)
 
     def build_generator(self):
         gen_input_dim = self.gen_input_dim
@@ -91,7 +83,7 @@ class WGAN():
         return model
 
     def build_critic(self):
-        gen_output_dim = self.gen_output_dim
+        gen_output_dim = self.gen_output_dim + self.cond_dim
 
         model = keras.Sequential([
             keras.Input(shape=(gen_output_dim,)),
@@ -104,7 +96,7 @@ class WGAN():
             layers.LeakyReLU(),
 
             layers.Dense(1, activation='sigmoid'),
-        ], name='Critic')
+        ], name='Discriminator')
         return model
 
 
@@ -139,51 +131,50 @@ class WGAN():
         img_dir = os.path.join(log_dir, 'img')
         os.makedirs(img_dir, exist_ok=True)
 
+        @tf.function
+        def train_step(gen_in_4vec, cond_in, truth_4vec):
+            with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+                gen_out_4vec = self.generator(gen_in_4vec, training=True)
+
+                # =============================================================    
+                # add the conditional inputs to generated and truth information
+                # =============================================================
+                gen_out_4vec = tf.concat([cond_in, gen_out_4vec], axis=-1)
+                truth_4vec = tf.concat([cond_in, truth_4vec], axis=-1)
+
+                # apply discriminator
+                real_output = self.discriminator(truth_4vec, training=True)
+                fake_output = self.discriminator(gen_out_4vec, training=True)
+
+                gen_loss = generator_loss(fake_output)
+                disc_loss = discriminator_loss(real_output, fake_output)
+
+            gradients_of_generator = gen_tape.gradient(gen_loss, self.generator.trainable_variables)
+            gradients_of_discriminator = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
+
+            self.generator_optimizer.apply_gradients(zip(gradients_of_generator, self.generator.trainable_variables))
+            self.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, self.discriminator.trainable_variables))
+
+            return disc_loss, gen_loss
+
         best_wdis = 9999
         best_epoch = -1
         with tqdm.trange(epochs, disable=self.disable_tqdm) as t0:
             for epoch in t0:
 
-                # compose the training dataset by generating different noises
+                # compose the training dataset by generating different noises for each epochs
                 noise = np.random.normal(loc=0., scale=1., size=(train_truth.shape[0], self.noise_dim))
                 train_inputs = np.concatenate(
                     [train_in, noise], axis=1).astype(np.float32) if train_in is not None else noise
 
 
                 dataset = tf.data.Dataset.from_tensor_slices(
-                    (train_inputs, train_truth)).shuffle(2*batch_size).batch(batch_size, drop_remainder=True).prefetch(AUTO)
-
-                valid = -np.ones((batch_size, 1))
-                fake  = np.ones((batch_size, 1))
+                    (train_inputs, train_in, train_truth)
+                    ).shuffle(2*batch_size).batch(batch_size, drop_remainder=True).prefetch(AUTO)
 
                 tot_loss = []
-                icritic = 0
                 for data_batch in dataset:
-
-                    #---------------------
-                    # Training Discriminator
-                    #---------------------
-                    gen_in, truth = data_batch
-                    gen_out = self.generator.predict(gen_in)
-                    d_loss_real = self.discriminator.train_on_batch(truth, valid)
-                    d_loss_fake = self.discriminator.train_on_batch(gen_out, fake)
-                    d_loss = 0.5 * np.add(d_loss_fake, d_loss_real)
-
-                    # clip critic weights
-                    for l in self.discriminator.layers:
-                        weights = l.get_weights()
-                        weights = [tf.clip_by_value(w, -self.clip_value, self.clip_value) for w in weights]
-                        l.set_weights(weights)
-                    icritic += 1
-                    if icritic < self.n_critics:
-                        continue
-
-                    #-----------------
-                    # Training Generator
-                    #-----------------
-                    g_loss = self.combined.train_on_batch(gen_in, valid)
-
-                    tot_loss.append([d_loss, g_loss])
+                    tot_loss.append(list(train_step(*data_batch)))
 
                 tot_loss = np.array(tot_loss)
                 avg_loss = np.sum(tot_loss, axis=0)/tot_loss.shape[0]
@@ -227,7 +218,7 @@ if __name__ == '__main__':
     train_in, train_truth, test_in, test_truth = herwig_angles(args.filename, args.max_evts)
 
     batch_size = args.batch_size
-    gan = WGAN()
+    gan = CGAN()
     gan.train(
         train_truth, args.epochs, batch_size,
         test_truth, args.log_dir,

@@ -1,6 +1,6 @@
 """
 This is a simple MLP-base conditional GAN.
-Note that the conditional input is not 
+Note that the conditional input is not
 given to the discriminator.
 """
 import numpy as np
@@ -110,8 +110,6 @@ class GAN():
         noise = np.random.normal(loc=0., scale=1., size=(test_truth.shape[0], self.noise_dim))
         test_in = np.concatenate(
             [test_in, noise], axis=1).astype(np.float32) if test_in is not None else noise
-
-
         testing_data = tf.data.Dataset.from_tensor_slices(
             (test_in, test_truth)).batch(batch_size, drop_remainder=True).prefetch(AUTO)
 
@@ -152,6 +150,7 @@ class GAN():
             return disc_loss, gen_loss
 
         best_wdis = 9999
+        best_epoch = -1
         with tqdm.trange(epochs, disable=self.disable_tqdm) as t0:
             for epoch in t0:
 
@@ -171,28 +170,39 @@ class GAN():
                 tot_loss = np.array(tot_loss)
                 avg_loss = np.sum(tot_loss, axis=0)/tot_loss.shape[0]
                 loss_dict = dict(D_loss=avg_loss[0], G_loss=avg_loss[1])
-                t0.set_postfix(**loss_dict)
 
-                tot_wdis = evaluate_samples_fn(self.generator, epoch, testing_data, summary_writer, img_dir, **loss_dict)
+                tot_wdis = evaluate_samples_fn(
+                    self.generator, epoch, testing_data,
+                    summary_writer, img_dir, **loss_dict)
+
                 if tot_wdis < best_wdis:
                     ckpt_manager.save()
                     self.generator.save("generator")
                     best_wdis = tot_wdis
+                    best_epoch = epoch
+                t0.set_postfix(**loss_dict, BestD=best_wdis, BestE=best_epoch)
+
+        tmp_res = "Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis)
+        logging.info(tmp_res)
+        summary_logfile = os.path.join(summary_dir, 'results.txt')
+        with open(summary_logfile, 'a') as f:
+            f.write(tmp_res + "\n")
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Train The GAN')
     add_arg = parser.add_argument
-    add_arg("filename", help='input filename', default=None)
+    add_arg("filename", help='input filename', default=None, nargs='+')
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
-    add_arg("--num-test-evts", help='number of testing events', default=5000, type=int)
+    add_arg("--num-test-evts", help='number of testing events', default=10000, type=int)
     add_arg("--inference", help='perform inference only', action='store_true')
-    add_arg("-v", '--verbose', help='tf logging verbosity', default='ERROR',
+    add_arg("-v", '--verbose', help='tf logging verbosity', default='INFO',
         choices=['WARN', 'INFO', "ERROR", "FATAL", 'DEBUG'])
     add_arg("--max-evts", help='Maximum number of events', type=int, default=None)
     add_arg("--batch-size", help='Batch size', type=int, default=512)
+    add_arg("--lr", help='learning rate', type=float, default=0.0001)
     args = parser.parse_args()
 
     logging.set_verbosity(args.verbose)
@@ -201,7 +211,8 @@ if __name__ == '__main__':
     from gan4hep.utils_gan import generate_and_save_images
     from gan4hep.preprocess import herwig_angles
 
-    train_in, train_truth, test_in, test_truth = herwig_angles(args.filename, args.max_evts)
+    train_in, train_truth, test_in, test_truth = herwig_angles(
+        args.filename, max_evts=args.max_evts)
 
     batch_size = args.batch_size
     gan = GAN()

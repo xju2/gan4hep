@@ -2,6 +2,7 @@
 import importlib
 import os
 import time
+from tensorboard.summary._tf import summary
 import yaml
 
 import numpy as np
@@ -220,5 +221,8 @@ def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, **
     # plt.legend()
     plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
     plt.close('all')
+    if summary_writer:
+        return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)[0]
+    else:
+        return -9999.
 
-    return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)[0]
