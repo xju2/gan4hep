@@ -96,5 +96,8 @@ def dimuon_inclusive(filename, max_evts=None, testing_frac=0.1):
     num_test_evts = int(truth_data.shape[0]*testing_frac)
     if num_test_evts > 10_000: num_test_evts = 10_000
 
+    scales = np.array([10, 1, 1, 10, 1, 1], np.float32)
+    truth_data = truth_data / scales
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
+    
     return (None, train_truth, None, test_truth)
