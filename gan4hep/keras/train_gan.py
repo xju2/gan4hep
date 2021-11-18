@@ -13,6 +13,7 @@ all_gans = ['GAN', "AAE", 'CGAN', 'WGAN']
 
 from gan4hep.utils_gan import generate_and_save_images
 from gan4hep.preprocess import herwig_angles
+from gan4hep.preprocess import dimuon_inclusive
 
 def inference(gan, test_in, test_truth, log_dir):
     checkpoint_dir = os.path.join(log_dir, "checkpoints")
@@ -55,16 +56,27 @@ if __name__ == '__main__':
     add_arg("--max-evts", help='Maximum number of events', type=int, default=None)
     add_arg("--batch-size", help='Batch size', type=int, default=512)
     add_arg("--lr", help='learning rate', type=float, default=0.0001)
+    add_arg("--data", default='herwig_angles',
+        choices=['herwig_angles', 'dimuon_inclusive'])
+
+    # model parameters
+    add_arg("--noise-dim", type=int, default=4, help="noise dimension")
+    add_arg("--gen-output-dim", type=int, default=2, help='generator output dimension')
+    add_arg("--cond-dim", type=int, default=0, help='dimension of conditional input')
+    add_arg("--disable-tqdm", action="store_true", help='disable tqdm')
+
     args = parser.parse_args()
 
     from tensorflow.compat.v1 import logging
     logging.set_verbosity(args.verbose)
 
-    train_in, train_truth, test_in, test_truth = herwig_angles(
+    # prepare input data by calling those function implemented in 
+    # gan4hep.preprocess.
+    train_in, train_truth, test_in, test_truth = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
     batch_size = args.batch_size
-    gan = eval(args.model)()
+    gan = eval(args.model)(**vars(args))
     if args.inference:
         inference(gan, test_in, test_truth, args.log_dir)
     else:
