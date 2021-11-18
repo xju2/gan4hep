@@ -59,6 +59,12 @@ if __name__ == '__main__':
     add_arg("--data", default='herwig_angles',
         choices=['herwig_angles', 'dimuon_inclusive'])
 
+    # model parameters
+    add_arg("--noise-dim", type=int, default=4, help="noise dimension")
+    add_arg("--gen-output-dim", type=int, default=2, help='generator output dimension')
+    add_arg("--cond-dim", type=int, default=0, help='dimension of conditional input')
+    add_arg("--disable-tqdm", action="store_true", help='disable tqdm')
+
     args = parser.parse_args()
 
     from tensorflow.compat.v1 import logging
@@ -70,7 +76,7 @@ if __name__ == '__main__':
         args.filename, max_evts=args.max_evts)
 
     batch_size = args.batch_size
-    gan = eval(args.model)()
+    gan = eval(args.model)(**vars(args))
     if args.inference:
         inference(gan, test_in, test_truth, args.log_dir)
     else:

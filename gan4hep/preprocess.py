@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 
@@ -9,6 +10,22 @@ def shuffle(array: np.ndarray):
     np_rs.shuffle(array)
 
 
+def read_dataframe(filename, sep=",", engine=None):
+    if type(filename) == list:
+        print(filename)
+        df_list = [
+            pd.read_csv(f, sep=sep, header=None, names=None, engine=engine)
+                for f in filename
+        ]
+        df = pd.concat(df_list, ignore_index=True)
+        filename = filename[0]
+    else:
+        df = pd.read_csv(filename, sep=sep, 
+                    header=None, names=None, engine=engine)
+    return df
+
+
+
 def herwig_angles(filename,
         max_evts=None, testing_frac=0.1):
     """
@@ -17,17 +34,7 @@ def herwig_angles(filename,
     In this case, we ask the GAN to predict the theta and phi
     angle of one of the particles
     """
-    if type(filename) == list:
-        print(filename)
-        df_list = [
-            pd.read_csv(f, sep=';', header=None, names=None, engine='python')
-                for f in filename
-        ]
-        df = pd.concat(df_list, ignore_index=True)
-        filename = filename[0]
-    else:
-        df = pd.read_csv(filename, sep=';', 
-                    header=None, names=None, engine='python')
+    df = read_dataframe(filename, ";", "python")
 
     event = None
     with open(filename, 'r') as f:
@@ -82,12 +89,12 @@ def herwig_angles(filename,
 
 
 def dimuon_inclusive(filename, max_evts=None, testing_frac=0.1):
-    df = pd.read_csv(filename, sep=' ', header=None, names=None)
+    df = read_dataframe(filename, " ", None)
     truth_data = df.to_numpy()
     shuffle(truth_data)
 
     num_test_evts = int(truth_data.shape[0]*testing_frac)
     if num_test_evts > 10_000: num_test_evts = 10_000
-    
+
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
     return (None, train_truth, None, test_truth)

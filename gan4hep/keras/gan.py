@@ -36,7 +36,7 @@ def generator_loss(fake_output):
 class GAN():
     def __init__(self,
         noise_dim: int = 4, gen_output_dim: int = 2,
-        cond_dim: int = 4, disable_tqdm=False, lr=0.0001):
+        cond_dim: int = 4, disable_tqdm=False, lr=0.0001, **kwargs):
         """
         noise_dim: dimension of the noises
         gen_output_dim: output dimension
