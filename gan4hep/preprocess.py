@@ -2,9 +2,15 @@ import pandas as pd
 import numpy as np
 
 
+def shuffle(array: np.ndarray):
+    from numpy.random import MT19937
+    from numpy.random import RandomState, SeedSequence
+    np_rs = RandomState(MT19937(SeedSequence(123456789)))
+    np_rs.shuffle(array)
+
+
 def herwig_angles(filename,
-        max_evts=None, testing_frac=0.1,
-        fixed_num_particles=True, num_particles=3):
+        max_evts=None, testing_frac=0.1):
     """
     This reads the Herwig dataset where one cluster decays
     into two particles.
@@ -55,22 +61,33 @@ def herwig_angles(filename,
 
     truth_in = np.stack([phi, theta], axis=1) / scales
 
+    shuffle(truth_in)
+    shuffle(input_4vec)
+
 
     # Split the data into training and testing
     # <HACK, FIXME, NOTE>
     # <HACK, For now a maximum of 10,000 events are used for testing, xju>
     num_test_evts = int(input_4vec.shape[0]*testing_frac)
-    if num_test_evts > 10_000: num_test_evts = 10_000
+    if num_test_evts < 10_000: num_test_evts = 10_000
 
     # <NOTE, https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.html>
 
-    from numpy.random import MT19937
-    from numpy.random import RandomState, SeedSequence
-    np_rs = RandomState(MT19937(SeedSequence(123456789)))
-    np_rs.shuffle(input_4vec)
-    np_rs.shuffle(truth_in)
+
 
     test_in, train_in = input_4vec[:num_test_evts], input_4vec[num_test_evts:max_evts]
     test_truth, train_truth = truth_in[:num_test_evts], truth_in[num_test_evts:max_evts]
 
     return (train_in, train_truth, test_in, test_truth)
+
+
+def dimuon_inclusive(filename, max_evts=None, testing_frac=0.1):
+    df = pd.read_csv(filename, sep=' ', header=None, names=None)
+    truth_data = df.to_numpy()
+    shuffle(truth_data)
+
+    num_test_evts = int(truth_data.shape[0]*testing_frac)
+    if num_test_evts > 10_000: num_test_evts = 10_000
+    
+    test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
+    return (None, train_truth, None, test_truth)
