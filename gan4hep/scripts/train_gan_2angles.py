@@ -70,7 +70,7 @@ def run_training(
     test_in = np.concatenate([test_in, noise], axis=1).astype(np.float32)
     test_truth = truth_in[:num_test_evts]
     testing_data = tf.data.Dataset.from_tensor_slices(
-        (test_in, test_truth)).batch(batch_size, drop_remainder=True).prefetch(AUTO)
+        (test_in, test_truth)).batch(100, drop_remainder=True).prefetch(AUTO)
 
 
     train_in = input_4vec[num_test_evts:max_evts]
@@ -88,6 +88,7 @@ def run_training(
         layers.BatchNormalization(),
         
         layers.Dense(gen_output_dim),
+        layers.Activation("tanh"),
     ])
 
     discriminator = keras.Sequential([
