@@ -92,8 +92,6 @@ def train(train_truth, testing_truth, flow_model, lr, batch_size, max_epochs, ou
             train_loss = train_density_estimation(flow_model, opt, batch)
 
         wdis, predictions = evaluate(flow_model, testing_truth)
-        min_wdis = min(wdis, min_wdis)
-
         if wdis < min_wdis:
             min_wdis = wdis
             min_iepoch = i
@@ -102,7 +100,7 @@ def train(train_truth, testing_truth, flow_model, lr, batch_size, max_epochs, ou
         elif i - min_iepoch > delta_stop:
             break
 
-        print(f"{i}, {train_loss}, {wdis}, {min_wdis} {min_iepoch}")
+        print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
 
 
 if __name__ == '__main__':
@@ -123,7 +121,7 @@ if __name__ == '__main__':
 
     outdir = args.outdir
     hidden_shape = [128]*2
-    layers = 5
+    layers = 10
     lr = 1e-3
     batch_size = args.batch_size
     max_epochs = 1000
