@@ -1,4 +1,6 @@
 
+
+
 import importlib
 import os
 import time
@@ -15,7 +17,7 @@ from gan4hep import gnn_gnn_gan as toGan
 from gan4hep.gan_base import GANOptimizer
 from gan4hep.graph import read_dataset, loop_dataset
 from gan4hep import data_handler as DataHandler
-
+from gan4hep.keras.gan import GAN
 
 def import_model(gan_name):
     gan_module = importlib.import_module("gan4hep."+gan_name)
@@ -182,47 +184,188 @@ def log_metrics(
     return tot_wdis, comb_pvals, tot_edis, tot_mse
 
 
-def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, **kwargs) -> float:
+
+def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run_folder,loss_all_epochs_0,loss_all_epochs_1,discriminator,gen_accuracy,accuracy_list, **kwargs):
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
     predictions = []
     truths = []
+    
+    #datasets is testing_data a combination of truth and in data split into batches but not shuffled
     for data in datasets:
         test_input, test_truth = data
-        predictions.append(model(test_input, training=False))
+
+        predictions.append(model(test_input, training=False)) # putting the gaussian generated noise through the 
         truths.append(test_truth)
 
+    #predictions contains generated noise from test_input and truths contain data from the original output file
     predictions = tf.concat(predictions, axis=0).numpy()
     truths = tf.concat(truths, axis=0).numpy()
+    
+    #Get probability that each event is true or generated
+    predictions_d=discriminator(predictions)
+    truths_d=discriminator(truths)
+    
+    #Convert probabilities into binaries
+    predictions_binary = [0 if i <=0.5 else 1 for i in predictions_d]
+    truths_binary = [0 if i <=0.5 else 1 for i in truths_d]
 
-    fig, axs = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
+    #Calculate average of each array for an epoch
+    predictions_avg=np.mean(predictions_binary)
+    truths_avg=np.mean(truths_binary)
+
+    print(len(predictions),'Length of Generated Dataset')
+    print(len(truths),'Length of Truth Dataset')
+
+    print(predictions_binary.count(1), 'Generated Data Identified as True Data')
+    print(predictions_binary.count(0), 'Generated Data Identified as Generated Data')
+    print(truths_binary.count(1), 'True Data Identified as True Data')
+    print(truths_binary.count(0), 'True Data Identified as Generated Data')
+    
+    #Calculate accuracy for the discriminator
+    acc=(truths_binary.count(1)+predictions_binary.count(0))/(truths_binary.count(1)+predictions_binary.count(0)+truths_binary.count(0)+predictions_binary.count(1))
+
+        
+    #Calculate accuracy for the generator
+    gen_acc=predictions_binary.count(1)/(predictions_binary.count(1)+predictions_binary.count(0))
+
+    #Append to relevent lists
+    gen_accuracy.append(gen_acc)
+    accuracy_list.append(acc)
+
+    
+    #Creating Plots
+    fig, axs = plt.subplots(1, 6, figsize=(20, 6), constrained_layout=True)
     axs = axs.flatten()
 
     config = dict(histtype='step', lw=2)
-    # phi
+
+    #Muons_PT_Lead:Muons_Eta_Lead:Muons_Phi_Lead:Muons_PT_Sub:Muons_Eta_Sub:Muons_Phi_Sub
+    
+    #Plot 1
     idx=0
     ax = axs[idx]
     x_range = [-1, 1]
-    yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range, label='Truth', **config)
+    
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  label='Truth', **config)
     max_y = np.max(yvals) * 1.1
     ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-    ax.set_xlabel(r"$\phi$")
-    ax.set_ylim(0, max_y)
-    
-    # theta
+    ax.set_xlabel(r"Muons_PT_Lead")
+    #ax.set_ylim(0, max_y)
+    ax.legend(['Truth', 'Generator'])
+    #ax.set_yscale('log')
+
+    # Plot 2
     idx=1
     ax = axs[idx]
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=x_range, label='Truth', **config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, label='Truth', **config)
     max_y = np.max(yvals) * 1.1
     ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-    ax.set_xlabel(r"$theta$")
-    ax.set_ylim(0, max_y)
+    ax.set_xlabel(r"Muons_Eta_Lead")
+    ax.legend(['Truth', 'Generator'])
+    #ax.set_ylim(0, max_y)
+    #ax.set_yscale('log')
 
+    # plot 3
+    idx=2
+    ax = axs[idx]
+    x_range = [-1, 1]
+    
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  label='Truth', **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.set_xlabel(r"Muons_Phi_Lead")
+    ax.legend(['Truth', 'Generator'])
+
+    # plot 4
+    idx=3
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  label='Truth', **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.set_xlabel(r"Muons_PT_Sub")
+    ax.legend(['Truth', 'Generator'])
+ 
+    # plot 5
+    idx=4
+    ax = axs[idx]
+    x_range = [-1, 1]
+    
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  label='Truth', **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.set_xlabel(r"Muons_Eta_Sub")
+    ax.legend(['Truth', 'Generator'])
+
+    # plot 6
+    idx=5
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  label='Truth', **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.set_xlabel(r"Muons_Phi_Sub")
+    ax.legend(['Truth', 'Generator'])
+    
     # plt.legend()
-    plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
+    plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(epoch)))
     plt.close('all')
+
     if summary_writer:
-        return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)[0]
+        return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)[0],accuracy_list,gen_accuracy
     else:
         return -9999.
 
+
+def generate_and_save_images_end_of_run(epoch,img_dir,new_run_folder,loss_all_epochs_0,loss_all_epochs_1,accuracy_list,gen_accuracy,best_was_dist):  
+    
+        
+    # plot loss, accuracy, and best wasserstein distance plots
+
+    plt.plot(loss_all_epochs_0, color='blue')
+    plt.xlabel('Epoch Number')
+    plt.ylabel('Discriminator Loss')
+    plt.savefig(os.path.join(new_run_folder, 'log_loss_curve_0.png'.format(epoch)))
+    plt.close('all')
+
+    plt.plot(loss_all_epochs_1, color='orange')
+    plt.xlabel('Epoch Number')
+    plt.ylabel('Generator Loss')
+    plt.savefig(os.path.join(new_run_folder, 'log_loss_curve_1.png'.format(epoch)))
+    plt.close('all')
+
+    plt.plot(loss_all_epochs_0,  label='Discriminator Loss')
+    plt.plot(loss_all_epochs_1, label='Generator Loss')
+    plt.xlabel('Epoch Number')
+    plt.ylabel('Loss')
+    plt.legend(loc="best")
+    plt.savefig(os.path.join(new_run_folder, 'log_loss_curve_comb.png'.format(epoch)))
+    plt.close('all')
+
+    plt.plot(accuracy_list)
+    plt.xlabel('Epoch Number')
+    plt.ylabel('Discriminator Accuracy')
+    plt.legend(loc="best")
+    plt.savefig(os.path.join(new_run_folder, 'd_accuracy.png'.format(epoch)))
+    plt.close('all')
+
+    plt.plot(gen_accuracy)
+    plt.xlabel('Epoch Number')
+    plt.ylabel('Generator Accuracy')
+    plt.legend(loc="best")
+    plt.savefig(os.path.join(new_run_folder, 'g_accuracy.png'.format(epoch)))
+    plt.close('all')
+
+    plt.plot(accuracy_list,  label='Discriminator Accuracy')
+    plt.plot(gen_accuracy, label='Generator Accuracy')
+    plt.xlabel('Epoch Number')
+    plt.ylabel('Accuracy')
+    plt.legend(loc="best")
+    plt.savefig(os.path.join(new_run_folder, 'total_acc.png'.format(epoch)))
+    plt.close('all')
+
+
+    plt.plot(best_was_dist, color='blue')
+    plt.xlabel('Epoch Number')
+    plt.ylabel('Best Wasserstein Distance')
+    plt.savefig(os.path.join(new_run_folder, 'wasserstein_dist.png'.format(epoch)))
+    plt.close('all')
