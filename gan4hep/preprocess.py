@@ -108,12 +108,41 @@ def dimuon_inclusive(filename, max_evts, testing_frac):
     
     
     #Scaling all data between 1 and -1
-    from sklearn.preprocessing import MinMaxScaler
+    from sklearn.preprocessing import MinMaxScaler, StandardScaler
     
     scaler = MinMaxScaler(feature_range=(-1, 1))
+    scaler_pt = MinMaxScaler(feature_range=(0, 1))
     
-    truth_data = scaler.fit_transform(truth_data)
+    scaler_stan=StandardScaler()
     
+    truth_data=pd.DataFrame(truth_data)
+    print(truth_data)
+    truth_data[[0]] = scaler.fit_transform(truth_data[[0]])
+    truth_data[[1]]= scaler.fit_transform(truth_data[[1]])
+    truth_data[[2]] = scaler.fit_transform(truth_data[[2]])
+    truth_data[[3]] = scaler.fit_transform(truth_data[[3]])
+    truth_data[[4]] = scaler.fit_transform(truth_data[[4]])
+    truth_data[[5]] = scaler.fit_transform(truth_data[[5]])
+    
+    print(truth_data)
+    from sklearn.compose import ColumnTransformer
+    from sklearn.preprocessing import StandardScaler
+
+ #    scaler = StandardScaler()
+#X_subset = scaler.fit_transform(X[:,[0,1]])
+#X_last_column = X[:, 2]
+#X_std = np.concatenate((X_subset, X_last_column[:, np.newaxis]), axis=1)
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
+                             
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
     
     return (None, train_truth, None, test_truth)
