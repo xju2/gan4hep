@@ -19,6 +19,9 @@ from gan4hep.graph import read_dataset, loop_dataset
 from gan4hep import data_handler as DataHandler
 from gan4hep.keras.gan import GAN
 
+from pylorentz import Momentum4
+
+
 def import_model(gan_name):
     gan_module = importlib.import_module("gan4hep."+gan_name)
     return gan_module
@@ -202,6 +205,8 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     predictions = tf.concat(predictions, axis=0).numpy()
     truths = tf.concat(truths, axis=0).numpy()
     
+    mumu_true,mumu_pred=mumu_invariant_mass(truths,predictions)
+    
     #Get probability that each event is true or generated
     predictions_d=discriminator(predictions)
     truths_d=discriminator(truths)
@@ -235,7 +240,7 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
 
     
     #Creating Plots
-    fig, axs = plt.subplots(1, 6, figsize=(20, 6), constrained_layout=True)
+    fig, axs = plt.subplots(1, 7, figsize=(20, 6), constrained_layout=True)
     axs = axs.flatten()
 
     config = dict(histtype='step', lw=2)
@@ -306,9 +311,20 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     ax.set_xlabel(r"Muons_Phi_Sub")
     ax.legend(['Truth', 'Generator'])
     
+    # plot 7
+    
+    ax = axs[6]
+    yvals, _, _ = ax.hist(mumu_true,  bins=80,  label='Truth', **config,range=[0, 3.0])
+    #max_y = np.max(yvals) * 1.1
+    ax.hist(mumu_pred, bins=80, range=[0, 5.0], label='Generator', **config)
+    ax.set_xlabel(r"Mu_Mu_Invariant_Mass")
+    ax.legend(['Truth', 'Generator'])
+    
     # plt.legend()
     plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(epoch)))
     plt.close('all')
+    
+    
 
     if summary_writer:
         return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)[0],accuracy_list,gen_accuracy
@@ -369,3 +385,84 @@ def generate_and_save_images_end_of_run(epoch,img_dir,new_run_folder,loss_all_ep
     plt.ylabel('Best Wasserstein Distance')
     plt.savefig(os.path.join(new_run_folder, 'wasserstein_dist.png'.format(epoch)))
     plt.close('all')
+    
+    
+    
+    
+def mumu_invariant_mass(truths,predictions):
+    
+    
+    
+    
+        #Scaling all data between 1 and -1
+    #from sklearn.preprocessing import MinMaxScaler
+    #from sklearn.preprocessing import StandardScaler
+    #scaler = MinMaxScaler(feature_range=(-1, 1))
+ 
+    
+    #truths=scaler.inverse_transform(truths) 
+    #predictions=scaler.inverse_transform(predictions)
+    
+    
+    m_u=1.883531627e-28
+    masses_lead = np.full((len(truths[:,0]), 1), m_u)
+    masses_sub = np.full((len(truths[:,0]), 1), m_u)
+    
+    pts_lead_true = np.array(truths[:, 0]).flatten()
+    etas_lead_true = np.array(truths[:, 1]).flatten()
+    phis_lead_true = np.array(truths[:, 2]).flatten()
+    pts_sub_true = np.array(truths[:, 3]).flatten()
+    etas_sub_true =np.array(truths[:, 4]).flatten()
+    phis_sub_true = np.array(truths[:, 5]).flatten()
+    
+    pts_lead_gen = np.array(predictions[:, 0]).flatten()
+    etas_lead_gen = np.array(predictions[:, 1]).flatten()
+    phis_lead_gen = np.array(predictions[:, 2]).flatten()
+    pts_sub_gen = np.array(predictions[:, 3]).flatten()
+    etas_sub_gen = np.array(predictions[:, 4]).flatten()
+    phis_sub_gen = np.array(predictions[:, 5]).flatten()
+    
+    muon_lead_true=[]
+    muon_sub_true=[]
+    muon_lead_gen=[]
+    muon_sub_gen=[]
+    parent_true=[]
+    parent_gen=[]
+    mass_true=[]
+    mass_gen=[]
+    
+    
+    #print(etas_lead_true)
+    #print(etas_lead_true.shape)
+    #print(etas_lead_true.size)
+    #print(phis_sub_true)
+    #print(phis_sub_true.shape)
+    #print(phis_sub_true.size)
+    
+    for i in range(len(truths)):
+        muon_lead_true.append(Momentum4.m_eta_phi_pt(masses_lead[i], etas_lead_true[i], phis_lead_true[i], pts_lead_true[i]))
+        muon_sub_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], etas_sub_true[i], phis_sub_true[i], pts_sub_true[i]))
+        muon_lead_gen.append(Momentum4.m_eta_phi_pt(masses_lead[i], etas_lead_gen[i], phis_lead_gen[i], pts_lead_gen[i]))
+        muon_sub_gen.append(Momentum4.m_eta_phi_pt(masses_sub[i], etas_sub_gen[i], phis_sub_gen[i], pts_sub_gen[i]))
+    
+    #print(muon_lead_true)
+    #print(muon_sub_true)
+    #print(muon_lead_gen)
+    #print(muon_sub_gen)
+    parent_true_2= muon_lead_true[i] + muon_sub_true[i]
+    #print(parent_true_2)
+    for i in range(len(truths)):
+        parent_true.append(muon_lead_true[i] + muon_sub_true[i])
+        parent_gen.append(muon_lead_gen[i] + muon_sub_gen[i])
+      
+    
+    for i in range(len(truths)):
+        #print(parent_true[i].m)
+        mass_true.append(parent_true[i].m)
+        mass_gen.append(parent_gen[i].m)
+    mass_true=np.concatenate( mass_true, axis=0 )
+    mass_gen=np.concatenate( mass_gen, axis=0 )
+    #print('test')
+    #print(mass_true)   
+    return mass_true,mass_gen 
+    
