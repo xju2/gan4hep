@@ -1,3 +1,4 @@
+
 import os
 import pandas as pd
 import numpy as np
@@ -88,16 +89,32 @@ def herwig_angles(filename,
     return (train_in, train_truth, test_in, test_truth)
 
 
-def dimuon_inclusive(filename, max_evts=None, testing_frac=0.1):
+def dimuon_inclusive(filename, max_evts, testing_frac):
     df = read_dataframe(filename, " ", None)
     truth_data = df.to_numpy()
     shuffle(truth_data)
 
+    if testing_frac <=0 or testing_frac >=1:
+        testing_frac=0.1
+    #Ensure truth_data doesn't exceed max_evts
+    if truth_data.shape[0] > max_evts:
+        truth_data=truth_data[0:max_evts]
+        
+    #Calculate number of test events
     num_test_evts = int(truth_data.shape[0]*testing_frac)
-    if num_test_evts > 10_000: num_test_evts = 10_000
 
-    scales = np.array([10, 1, 1, 10, 1, 1], np.float32)
-    truth_data = truth_data / scales
+    #scales = np.array([10, 1, 1, 10, 1, 1], np.float32) #Divide each row by this row
+    #truth_data = truth_data / scales
+    
+    
+    #Scaling all data between 1 and -1
+    from sklearn.preprocessing import MinMaxScaler
+    
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    
+    truth_data = scaler.fit_transform(truth_data)
+    
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
     
     return (None, train_truth, None, test_truth)
+
