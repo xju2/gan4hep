@@ -69,7 +69,7 @@ class GAN():
         
         
         #Old version of the NN in case the new one breaks
-        '''
+        
 
         gen_input_dim = self.gen_input_dim
 
@@ -95,23 +95,27 @@ class GAN():
             keras.Input(shape=(gen_input_dim,)),
             ], name='Generator')
         model.add(layers.Dense(num_nodes))
-        #Adding the extra layer if needed
-        for i in range(int(gen_layers)):
-            model.add(layers.Dense(num_nodes))
         model.add(layers.BatchNormalization())
         model.add(layers.LeakyReLU())
-
         model.add(layers.Dense(num_nodes))
         model.add(layers.BatchNormalization())
+   
+        
+                #Adding the extra layer if needed
+        for i in range(int(gen_layers)):
+            model.add(layers.Dense(num_nodes))
+            model.add(layers.BatchNormalization())
+            model.add(layers.LeakyReLU())
 
         model.add(layers.Dense(self.gen_output_dim))
         model.add(layers.Activation("tanh"))
 
         return model
-        
-    def build_critic(self,dis_layers,num_nodes):
-         #Old version of the NN in case the new one breaks
         '''
+    def build_critic(self,dis_layers,num_nodes):
+        
+         #Old version of the NN in case the new one breaks
+        
         # <NOTE> conditional input is not given
         gen_output_dim = self.gen_output_dim
 
@@ -137,20 +141,25 @@ class GAN():
             keras.Input(shape=(gen_output_dim,)),
              ], name='Discriminator')
         model.add(layers.Dense(num_nodes))
-        #Adding the extra layer
-        for i in range(int(dis_layers)):
-            model.add(layers.Dense(num_nodes))
         model.add(layers.BatchNormalization())
         model.add(layers.LeakyReLU())
-
         model.add(layers.Dense(num_nodes))
         model.add(layers.BatchNormalization())
         model.add(layers.LeakyReLU())
+        
+        #Adding the extra layer
+        for i in range(int(dis_layers)):
+            model.add(layers.Dense(num_nodes))
+            model.add(layers.BatchNormalization())
+            model.add(layers.LeakyReLU())
+        
+
+
 
         model.add(layers.Dense(1, activation='sigmoid'))
 
         return model
-        
+        '''
     #Main Train function called at the end of train_gay.py
     def train(self,args, train_truth, epochs, batch_size, test_truth, log_dir, evaluate_samples_fn, generate_and_save_images_end_of_run,lr,noise_type, gen_layers, dis_layers,num_nodes,
             train_in=None, test_in=None):
@@ -164,6 +173,7 @@ class GAN():
             #Selecting noise type based on user input
             if noise_type=='gaussian':
                 noise = np.random.normal(loc=0., scale=1., size=(test_truth.shape[0], self.noise_dim)) 
+                
 
             elif noise_type=='uniform':
                 noise = np.random.uniform(-1, 1, size=(test_truth.shape[0], self.noise_dim)) 
