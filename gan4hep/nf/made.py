@@ -9,7 +9,10 @@ tfk = tf.keras
 
 class Made(tfk.layers.Layer):
     def __init__(self, params,
-        event_shape=None, hidden_units=None, activation=None,
+        event_shape=None,
+        conditional=False,
+        conditional_event_shape=None,
+        hidden_units=None, activation=None,
         use_bias=True, kernel_regularizer=None,
         bias_regularizer=None, name="made") -> None:
         super().__init__(name=name)
@@ -23,7 +26,10 @@ class Made(tfk.layers.Layer):
         self.bias_regularizer = bias_regularizer
 
         self.network = tfb.AutoregressiveNetwork(
-            params=params, event_shape=event_shape,
+            params=params,
+            event_shape=event_shape,
+            conditional=conditional,
+            conditional_event_shape=conditional_event_shape,
             hidden_units=hidden_units,
             activation=activation,
             use_bias=use_bias,
@@ -58,7 +64,45 @@ def create_flow(hidden_shape: list, layers: int, out_dim=2):
     bijector = tfb.Chain(bijectors=list(reversed(bijectors)), name='chain_of_MAF')
 
     maf = tfd.TransformedDistribution(
-        distribution=tfd.Sample(base_dist, sample_shape=[2]),
+        distribution=tfd.Sample(base_dist, sample_shape=[out_dim]),
+        bijector=bijector,
+    )
+
+    return maf
+
+
+def create_conditional_flow(
+        hidden_shape: list, layers: int,
+        conditional_event_shape: tuple,
+        out_dim=2):
+    """Create Conditional Masked Autogressive Flow for density estimation
+
+    Arguments:
+    hidden_shape -- Multilayer Perceptron shape
+    layers -- Number of bijectors
+    conditional_event_shape -- dimentionality of conditions
+    out_dim -- output dimensions
+    """
+
+    base_dist = tfd.Normal(loc=0.0, scale=1.0)
+    bijectors = []
+
+    for i in range(layers):
+        bijectors.append(tfb.MaskedAutoregressiveFlow(
+            shift_and_log_scale_fn=Made(
+                out_dim,
+                conditional=True,
+                conditional_event_shape=conditional_event_shape,
+                hidden_units=hidden_shape, activation='relu'),
+            name=f"b{i}"
+        ))
+        bijectors.append(tfb.Permute(permutation=[1, 0]))
+
+    bijector = tfb.Chain(
+        bijectors=list(reversed(bijectors)), name='chain_of_MAF')
+
+    maf = tfd.TransformedDistribution(
+        distribution=tfd.Sample(base_dist, sample_shape=[out_dim]),
         bijector=bijector,
     )
 
