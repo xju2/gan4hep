@@ -1,8 +1,5 @@
 import tensorflow as tf
 import numpy as np
-import sonnet as snt
-from gan4hep.graph import read_dataset
-
 
 n_node_features = 6
 n_max_nodes = 2 # 
@@ -68,7 +65,8 @@ def normalize(inputs, targets, batch_size, to_tf_tensor=True, hadronic=False, us
 
 
 def read_tfdata(filename, evts_per_record):
-    dataset, n_graphs = read_dataset(filename, evts_per_record)
+    from gan4hep.graph import read_dataset
+    dataset, _ = read_dataset(filename, evts_per_record)
     truth_4vec = []
     input_4vec = []
     for inputs, targets in dataset:

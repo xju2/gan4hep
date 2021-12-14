@@ -2,19 +2,12 @@
 import importlib
 import os
 import time
-from tensorboard.summary._tf import summary
 import yaml
 
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
-
 import tensorflow as tf
-
-from gan4hep import gnn_gnn_gan as toGan
-from gan4hep.gan_base import GANOptimizer
-from gan4hep.graph import read_dataset, loop_dataset
-from gan4hep import data_handler as DataHandler
 
 
 def import_model(gan_name):
@@ -38,6 +31,8 @@ def create_gan(gan_type, noise_dim, batch_size, layer_size, num_layers,
 
 def create_optimizer(gan, num_epochs, disc_lr, gen_lr, with_disc_reg, gamma_reg,
         decay_epochs, decay_base, debug, **kwargs):
+
+    from gan4hep.gan_base import GANOptimizer
     return GANOptimizer(
         gan,
         num_epcohs=num_epochs,
@@ -47,7 +42,7 @@ def create_optimizer(gan, num_epochs, disc_lr, gen_lr, with_disc_reg, gamma_reg,
         gamma_reg=gamma_reg,
         decay_epochs=decay_epochs,
         decay_base=decay_base,
-        debug=debug
+        debug=debug,
     )
 
 def get_ckptdir(output_dir, **kwargs):
@@ -71,6 +66,9 @@ def load_gan(config_name: str):
 
 
 def run_generator(gan, batch_size, filename, hadronic, ngen=1):
+    from gan4hep.graph import read_dataset, loop_dataset
+    from gan4hep import data_handler as DataHandler
+
     dataset, n_graphs = read_dataset(filename)
     print("total {} graphs iterated with batch size of {}".format(n_graphs, batch_size))
     print('averaging {} geneveted events for each input'.format(ngen))
