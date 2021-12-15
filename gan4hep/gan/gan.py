@@ -69,7 +69,7 @@ class GAN():
         
         
         #Old version of the NN in case the new one breaks
-        
+        '''
 
         gen_input_dim = self.gen_input_dim
 
@@ -105,15 +105,15 @@ class GAN():
         for i in range(int(gen_layers)):
             model.add(layers.Dense(num_nodes))
             model.add(layers.BatchNormalization())
-            model.add(layers.LeakyReLU())
+            
 
         model.add(layers.Dense(self.gen_output_dim))
         model.add(layers.Activation("tanh"))
 
         return model
-        '''
-    def build_critic(self,dis_layers,num_nodes):
         
+    def build_critic(self,dis_layers,num_nodes):
+        '''
          #Old version of the NN in case the new one breaks
         
         # <NOTE> conditional input is not given
@@ -159,7 +159,7 @@ class GAN():
         model.add(layers.Dense(1, activation='sigmoid'))
 
         return model
-        '''
+        
     #Main Train function called at the end of train_gay.py
     def train(self,args, train_truth, epochs, batch_size, test_truth, log_dir, evaluate_samples_fn, generate_and_save_images_end_of_run,lr,noise_type, gen_layers, dis_layers,num_nodes,
             train_in=None, test_in=None):
@@ -208,7 +208,7 @@ class GAN():
 
             logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir)) #Logs a message with level INFO on the root             logger. The arguments are interpreted as for debug().
 
-            _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial() # Restore the checkpointed values to the model
+            _ = checkpoint.restore(ckpt_manager.latest_checkpoint)#.expect_partial() # Restore the checkpointed values to the model
 
             summary_dir = os.path.join(log_dir, "logs")
             summary_writer = tf.summary.create_file_writer(summary_dir) #Creates a summary file writer for the given log directory.
