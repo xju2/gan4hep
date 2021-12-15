@@ -117,13 +117,13 @@ def dimuon_inclusive(filename, max_evts, testing_frac):
     
     truth_data=pd.DataFrame(truth_data)
 
-    truth_data[[0]] = scaler.fit_transform(truth_data[[0]])
-    truth_data[[1]]= scaler.fit_transform(truth_data[[1]])
-    truth_data[[2]] = scaler.fit_transform(truth_data[[2]])
-    truth_data[[3]] = scaler.fit_transform(truth_data[[3]])
-    truth_data[[4]] = scaler.fit_transform(truth_data[[4]])
-    truth_data[[5]] = scaler.fit_transform(truth_data[[5]])
-    truth_data[[6]] = scaler.fit_transform(truth_data[[6]])
+    truth_data = scaler.fit_transform(truth_data)
+    #truth_data[[1]]= scaler.fit_transform(truth_data[[1]])
+    #truth_data[[2]] = scaler.fit_transform(truth_data[[2]])
+    #truth_data[[3]] = scaler.fit_transform(truth_data[[3]])
+    #truth_data[[4]] = scaler.fit_transform(truth_data[[4]])
+    #truth_data[[5]] = scaler.fit_transform(truth_data[[5]])
+    #truth_data[[6]] = scaler.fit_transform(truth_data[[6]])
     
     from sklearn.compose import ColumnTransformer
     from sklearn.preprocessing import StandardScaler
