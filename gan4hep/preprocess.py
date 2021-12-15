@@ -83,8 +83,6 @@ def herwig_angles(filename,
 
     # <NOTE, https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.html>
 
-
-
     test_in, train_in = input_4vec[:num_test_evts], input_4vec[num_test_evts:max_evts]
     test_truth, train_truth = truth_in[:num_test_evts], truth_in[num_test_evts:max_evts]
 
@@ -118,22 +116,17 @@ def dimuon_inclusive(filename, max_evts, testing_frac):
     scaler_stan=StandardScaler()
     
     truth_data=pd.DataFrame(truth_data)
-    print(truth_data)
+
     truth_data[[0]] = scaler.fit_transform(truth_data[[0]])
     truth_data[[1]]= scaler.fit_transform(truth_data[[1]])
     truth_data[[2]] = scaler.fit_transform(truth_data[[2]])
     truth_data[[3]] = scaler.fit_transform(truth_data[[3]])
     truth_data[[4]] = scaler.fit_transform(truth_data[[4]])
     truth_data[[5]] = scaler.fit_transform(truth_data[[5]])
+    truth_data[[6]] = scaler.fit_transform(truth_data[[6]])
     
-    print(truth_data)
     from sklearn.compose import ColumnTransformer
     from sklearn.preprocessing import StandardScaler
-
- #    scaler = StandardScaler()
-#X_subset = scaler.fit_transform(X[:,[0,1]])
-#X_last_column = X[:, 2]
-#X_std = np.concatenate((X_subset, X_last_column[:, np.newaxis]), axis=1)
                                   
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
     
