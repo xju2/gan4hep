@@ -1,25 +1,12 @@
-
-
-
 import importlib
 import os
 import time
-from tensorboard.summary._tf import summary
 import yaml
 
 import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
-
 import tensorflow as tf
-
-from gan4hep import gnn_gnn_gan as toGan
-from gan4hep.gan_base import GANOptimizer
-from gan4hep.graph import read_dataset, loop_dataset
-from gan4hep import data_handler as DataHandler
-from gan4hep.gan.gan import GAN
-
-from pylorentz import Momentum4
 
 
 def import_model(gan_name):
@@ -43,6 +30,8 @@ def create_gan(gan_type, noise_dim, batch_size, layer_size, num_layers,
 
 def create_optimizer(gan, num_epochs, disc_lr, gen_lr, with_disc_reg, gamma_reg,
         decay_epochs, decay_base, debug, **kwargs):
+
+    from gan4hep.gan_base import GANOptimizer
     return GANOptimizer(
         gan,
         num_epcohs=num_epochs,
@@ -52,7 +41,7 @@ def create_optimizer(gan, num_epochs, disc_lr, gen_lr, with_disc_reg, gamma_reg,
         gamma_reg=gamma_reg,
         decay_epochs=decay_epochs,
         decay_base=decay_base,
-        debug=debug
+        debug=debug,
     )
 
 def get_ckptdir(output_dir, **kwargs):
@@ -76,6 +65,9 @@ def load_gan(config_name: str):
 
 
 def run_generator(gan, batch_size, filename, hadronic, ngen=1):
+    from gan4hep.graph import read_dataset, loop_dataset
+    from gan4hep import data_handler as DataHandler
+
     dataset, n_graphs = read_dataset(filename)
     print("total {} graphs iterated with batch size of {}".format(n_graphs, batch_size))
     print('averaging {} geneveted events for each input'.format(ngen))
@@ -186,8 +178,6 @@ def log_metrics(
 
     return tot_wdis, comb_pvals, tot_edis, tot_mse
 
-
-
 def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run_folder,loss_all_epochs_0,loss_all_epochs_1,discriminator,gen_accuracy,accuracy_list, **kwargs):
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
@@ -204,10 +194,7 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     #predictions contains generated noise from test_input and truths contain data from the original output file
     predictions = tf.concat(predictions, axis=0).numpy()
     truths = tf.concat(truths, axis=0).numpy()
-    
-    #Calculate invarient di-muon mass for each event
-    mumu_true,mumu_pred=mumu_invariant_mass(truths,predictions)
-    
+
     #Get probability that each event is true or generated
     predictions_d=discriminator(predictions)
     truths_d=discriminator(truths)
@@ -241,7 +228,7 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
 
     
     #Creating Plots
-    fig, axs = plt.subplots(1, 7, figsize=(20, 6), constrained_layout=True)
+    fig, axs = plt.subplots(1, 6, figsize=(20, 6), constrained_layout=True)
     axs = axs.flatten()
 
     config = dict(histtype='step', lw=2)
@@ -312,14 +299,7 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     ax.set_xlabel(r"Muons_Phi_Sub")
     ax.legend(['Truth', 'Generator'])
     
-    # plot 7
-    
-    ax = axs[6]
-    yvals, _, _ = ax.hist(mumu_true,  bins=80,  label='Truth', **config,range=[0, 3.0])
-    #max_y = np.max(yvals) * 1.1
-    ax.hist(mumu_pred, bins=80, range=[0, 5.0], label='Generator', **config)
-    ax.set_xlabel(r"Mu_Mu_Invariant_Mass")
-    ax.legend(['Truth', 'Generator'])
+
     
     # plt.legend()
     plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(epoch)))
@@ -387,61 +367,4 @@ def generate_and_save_images_end_of_run(epoch,img_dir,new_run_folder,loss_all_ep
     plt.savefig(os.path.join(new_run_folder, 'wasserstein_dist.png'.format(epoch)))
     plt.close('all')
     
-    
-    
-    
-def mumu_invariant_mass(truths,predictions):
-    
-    #Define muon mass and create two arrays filled with this value
-    m_u=1.883531627e-28
-    masses_lead = np.full((len(truths[:,0]), 1), m_u)
-    masses_sub = np.full((len(truths[:,0]), 1), m_u)
-    
-    #Take each column from the tru and generated data and rename to their parameter type
-    pts_lead_true = np.array(truths[:, 0]).flatten()
-    etas_lead_true = np.array(truths[:, 1]).flatten()
-    phis_lead_true = np.array(truths[:, 2]).flatten()
-    pts_sub_true = np.array(truths[:, 3]).flatten()
-    etas_sub_true =np.array(truths[:, 4]).flatten()
-    phis_sub_true = np.array(truths[:, 5]).flatten()
-    
-    pts_lead_gen = np.array(predictions[:, 0]).flatten()
-    etas_lead_gen = np.array(predictions[:, 1]).flatten()
-    phis_lead_gen = np.array(predictions[:, 2]).flatten()
-    pts_sub_gen = np.array(predictions[:, 3]).flatten()
-    etas_sub_gen = np.array(predictions[:, 4]).flatten()
-    phis_sub_gen = np.array(predictions[:, 5]).flatten()
-    
-    #Create lists for 4 vector values
-    muon_lead_true=[]
-    muon_sub_true=[]
-    muon_lead_gen=[]
-    muon_sub_gen=[]
-    parent_true=[]
-    parent_gen=[]
-    
-    #Create lists for invarient mass values
-    mass_true=[]
-    mass_gen=[]
-
-    for i in range(len(truths)):
-        #Use pylorentz to define 4 momentum arrays for each event
-        muon_lead_true.append(Momentum4.m_eta_phi_pt(masses_lead[i], etas_lead_true[i], phis_lead_true[i], pts_lead_true[i]))
-        muon_sub_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], etas_sub_true[i], phis_sub_true[i], pts_sub_true[i]))
-        muon_lead_gen.append(Momentum4.m_eta_phi_pt(masses_lead[i], etas_lead_gen[i], phis_lead_gen[i], pts_lead_gen[i]))
-        muon_sub_gen.append(Momentum4.m_eta_phi_pt(masses_sub[i], etas_sub_gen[i], phis_sub_gen[i], pts_sub_gen[i]))
-        
-        #Calculate the Higgs boson 4 vector
-        parent_true.append(muon_lead_true[i] + muon_sub_true[i])
-        parent_gen.append(muon_lead_gen[i] + muon_sub_gen[i])
-        
-        #Retrieve the Higgs Mass
-        mass_true.append(parent_true[i].m)
-        mass_gen.append(parent_gen[i].m)
-
-    #Add mass arrays from each batch?    
-    mass_true=np.concatenate( mass_true, axis=0 )
-    mass_gen=np.concatenate( mass_gen, axis=0 )
-  
-    return mass_true,mass_gen 
     
