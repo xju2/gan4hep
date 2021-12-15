@@ -3,6 +3,8 @@ import os
 import pandas as pd
 import numpy as np
 
+from pylorentz import Momentum4
+
 
 def shuffle(array: np.ndarray):
     from numpy.random import MT19937
@@ -132,18 +134,10 @@ def dimuon_inclusive(filename, max_evts, testing_frac):
 #X_subset = scaler.fit_transform(X[:,[0,1]])
 #X_last_column = X[:, 2]
 #X_std = np.concatenate((X_subset, X_last_column[:, np.newaxis]), axis=1)
-                             
-                             
-                             
-                             
-                             
-                             
-                             
-                             
-                             
-                             
-                             
+                                  
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
     
     return (None, train_truth, None, test_truth)
+
+
 
