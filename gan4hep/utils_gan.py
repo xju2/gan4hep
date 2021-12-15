@@ -228,7 +228,7 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
 
     
     #Creating Plots
-    fig, axs = plt.subplots(1, 6, figsize=(20, 6), constrained_layout=True)
+    fig, axs = plt.subplots(1, 7, figsize=(20, 6), constrained_layout=True)
     axs = axs.flatten()
 
     config = dict(histtype='step', lw=2)
@@ -299,14 +299,20 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     ax.set_xlabel(r"Muons_Phi_Sub")
     ax.legend(['Truth', 'Generator'])
     
-
+    # plot 7
+    idx=6
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  label='Truth', **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.set_xlabel(r"MuMu_Invariant_Mass")
+    ax.legend(['Truth', 'Generator'])
     
     # plt.legend()
     plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(epoch)))
     plt.close('all')
     
     
-
     if summary_writer:
         return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)[0],accuracy_list,gen_accuracy
     else:
@@ -359,7 +365,6 @@ def generate_and_save_images_end_of_run(epoch,img_dir,new_run_folder,loss_all_ep
     plt.legend(loc="best")
     plt.savefig(os.path.join(new_run_folder, 'total_acc.png'.format(epoch)))
     plt.close('all')
-
 
     plt.plot(best_was_dist, color='blue')
     plt.xlabel('Epoch Number')
