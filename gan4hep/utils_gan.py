@@ -178,7 +178,7 @@ def log_metrics(
 
     return tot_wdis, comb_pvals, tot_edis, tot_mse
 
-def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run_folder,loss_all_epochs_0,loss_all_epochs_1,discriminator,gen_accuracy,accuracy_list, **kwargs):
+def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run_folder,loss_all_epochs_0,loss_all_epochs_1,discriminator,gen_accuracy,accuracy_list,gen_output_dim, **kwargs):
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
     predictions = []
@@ -226,8 +226,7 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     gen_accuracy.append(gen_acc)
     accuracy_list.append(acc)
 
- 
-    if args.gen_output_dim== 7:
+    if gen_output_dim== 7:
 
         #Creating Plots
         fig, axs = plt.subplots(1, 7, figsize=(20, 6), constrained_layout=True)
@@ -306,7 +305,7 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     ax.set_xlabel(r"Muons_Phi_Sub")
     ax.legend(['Truth', 'Generator'])
     
-    if args.gen_output_dim== 7:
+    if gen_output_dim== 7:
         # plot 7
         idx=6
         ax = axs[idx]
