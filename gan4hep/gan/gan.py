@@ -106,7 +106,6 @@ class GAN():
             model.add(layers.Dense(num_nodes))
             model.add(layers.BatchNormalization())
             
-
         model.add(layers.Dense(self.gen_output_dim))
         model.add(layers.Activation("tanh"))
 
@@ -153,9 +152,6 @@ class GAN():
             model.add(layers.BatchNormalization())
             model.add(layers.LeakyReLU())
         
-
-
-
         model.add(layers.Dense(1, activation='sigmoid'))
 
         return model
@@ -205,10 +201,10 @@ class GAN():
 
             ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=None) #Where to save checkpoints
 
+'''Next two lines have been commented out because I think they were breaking the code whenever I added extra layers to the GAN '''
+            #logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir)) #Logs a message with level INFO on the root             logger. The arguments are interpreted as for debug().
 
-            logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir)) #Logs a message with level INFO on the root             logger. The arguments are interpreted as for debug().
-
-            _ = checkpoint.restore(ckpt_manager.latest_checkpoint)#.expect_partial() # Restore the checkpointed values to the model
+            #_ = checkpoint.restore(ckpt_manager.latest_checkpoint)#.expect_partial() # Restore the checkpointed values to the model
 
             summary_dir = os.path.join(log_dir, "logs")
             summary_writer = tf.summary.create_file_writer(summary_dir) #Creates a summary file writer for the given log directory.
@@ -255,10 +251,8 @@ class GAN():
 
                 return disc_loss, gen_loss
 
-
             best_wdis = 9999
             best_epoch = -1
-
 
             #Defining lists to store loss and wasserstein data for plots
             loss_all_epochs_0=[] #Disc Loss
