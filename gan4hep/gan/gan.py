@@ -201,7 +201,7 @@ class GAN():
 
             ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=None) #Where to save checkpoints
 
-            #Next two lines have been commented out because I think they were breaking the code whenever I added extra layers to the GAN '''
+            #Next two lines have been commented out because I think they were breaking the code whenever I added extra layers to the GAN 
             #logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir)) #Logs a message with level INFO on the root             logger. The arguments are interpreted as for debug().
 
             #_ = checkpoint.restore(ckpt_manager.latest_checkpoint)#.expect_partial() # Restore the checkpointed values to the model
@@ -297,11 +297,11 @@ class GAN():
                     loss_all_epochs_0.append(avg_loss[0])
                     loss_all_epochs_1.append(avg_loss[1])
 
-
+                    gen_output_dim=args.gen_output_dim
                     #Calculate wasserstein difference and plot distrubutions
                     tot_wdis,accuracy_list,gen_accuracy = evaluate_samples_fn(
                         self.generator, epoch, testing_data,
-                        summary_writer, img_dir,new_run_folder,loss_all_epochs_0,loss_all_epochs_1,self.discriminator,gen_accuracy,accuracy_list, **loss_dict)
+                        summary_writer, img_dir,new_run_folder,loss_all_epochs_0,loss_all_epochs_1,self.discriminator,gen_accuracy,accuracy_list,gen_output_dim, **loss_dict)
 
                     # Check if the current is the best epoch if it has the lowest wasserstein difference
                     if tot_wdis < best_wdis:
