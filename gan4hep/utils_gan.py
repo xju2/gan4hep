@@ -226,10 +226,17 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     gen_accuracy.append(gen_acc)
     accuracy_list.append(acc)
 
-    
-    #Creating Plots
-    fig, axs = plt.subplots(1, 7, figsize=(20, 6), constrained_layout=True)
-    axs = axs.flatten()
+ 
+    if args.gen_output_dim== 7:
+
+        #Creating Plots
+        fig, axs = plt.subplots(1, 7, figsize=(20, 6), constrained_layout=True)
+        axs = axs.flatten()
+        
+    else:
+        #Creating Plots
+        fig, axs = plt.subplots(1, 6, figsize=(20, 6), constrained_layout=True)
+        axs = axs.flatten()
 
     config = dict(histtype='step', lw=2)
 
@@ -299,14 +306,16 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     ax.set_xlabel(r"Muons_Phi_Sub")
     ax.legend(['Truth', 'Generator'])
     
-    # plot 7
-    idx=6
-    ax = axs[idx]
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  label='Truth', **config)
-    max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-    ax.set_xlabel(r"MuMu_Invariant_Mass")
-    ax.legend(['Truth', 'Generator'])
+    if args.gen_output_dim== 7:
+        # plot 7
+        idx=6
+        ax = axs[idx]
+        yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  label='Truth', **config)
+        max_y = np.max(yvals) * 1.1
+        ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+        ax.set_xlabel(r"MuMu_Invariant_Mass")
+        ax.legend(['Truth', 'Generator'])
+        
     
     # plt.legend()
     plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(epoch)))
