@@ -201,7 +201,7 @@ class GAN():
 
             ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_dir, max_to_keep=None) #Where to save checkpoints
 
-'''Next two lines have been commented out because I think they were breaking the code whenever I added extra layers to the GAN '''
+            #Next two lines have been commented out because I think they were breaking the code whenever I added extra layers to the GAN '''
             #logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir)) #Logs a message with level INFO on the root             logger. The arguments are interpreted as for debug().
 
             #_ = checkpoint.restore(ckpt_manager.latest_checkpoint)#.expect_partial() # Restore the checkpointed values to the model
