@@ -3,7 +3,6 @@ import os
 import pandas as pd
 import numpy as np
 
-from pylorentz import Momentum4
 
 
 def shuffle(array: np.ndarray):
