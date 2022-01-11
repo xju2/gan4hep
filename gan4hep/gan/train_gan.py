@@ -68,6 +68,8 @@ if __name__ == '__main__': #Code only runs if its called by the terminal and not
     # model parameters
     add_arg("--gen-layers", type=int, default=0, help='Number of extra layers to add to generator model with 256 nodes')
     add_arg("--dis-layers", type=int, default=0, help='Number of extra layers to add to discriminator model with 256 nodes')
+    add_arg("--gen-train-num", type=int, default=1, help='Number of extra optimizing attemps for each epoch for the generator')
+    add_arg("--dis-train-num", type=int, default=1,help='Number of extra optimizing attemps for each epoch for the discriminator')
     add_arg("--noise-dim", type=int, default=4, help="noise dimension")
     add_arg("--num-nodes", type=int, default=256, help="Number of Nodes in a NN Layer")
     add_arg("--gen-output-dim", type=int, default=2, help='generator output dimension')
@@ -102,7 +104,9 @@ if __name__ == '__main__': #Code only runs if its called by the terminal and not
     dis_layers=args.dis_layers
     noise_type=args.noise_type
     num_nodes=args.num_nodes
-  
+    gen_train_num=args.gen_train_num
+    dis_train_num=args.dis_train_num
+
 
     if args.inference:
         inference(gan, test_in, test_truth, args.log_dir) # Run inference function at the top of the page
@@ -110,5 +114,4 @@ if __name__ == '__main__': #Code only runs if its called by the terminal and not
         gan.train(args,
             train_truth, args.epochs, batch_size,
             test_truth, args.log_dir,
-            generate_and_save_images,generate_and_save_images_end_of_run,lr,noise_type,gen_layers,dis_layers,num_nodes,
-            train_in, test_in)
+       generate_and_save_images,generate_and_save_images_end_of_run,lr,noise_type,gen_layers,dis_layers,num_nodes,gen_train_num,dis_train_num, train_in, test_in)
