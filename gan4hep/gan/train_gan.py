@@ -13,6 +13,7 @@ all_gans = ['GAN', "AAE", 'CGAN', 'WGAN']
 
 from gan4hep.utils_gan import generate_and_save_images
 from gan4hep.preprocess import herwig_angles
+from gan4hep.preprocess import herwig_angles2
 from gan4hep.preprocess import dimuon_inclusive
 
 def inference(gan, test_in, test_truth, log_dir):
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     add_arg("--batch-size", help='Batch size', type=int, default=512)
     add_arg("--lr", help='learning rate', type=float, default=0.0001)
     add_arg("--data", default='herwig_angles',
-        choices=['herwig_angles', 'dimuon_inclusive'])
+        choices=['herwig_angles', 'dimuon_inclusive', 'herwig_angles2'])
 
     # model parameters
     add_arg("--noise-dim", type=int, default=4, help="noise dimension")
