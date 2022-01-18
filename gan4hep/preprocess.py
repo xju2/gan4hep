@@ -134,7 +134,7 @@ def herwig_angles2(filename,
     pT = np.sqrt(px**2 + py**2)
     phi = np.arctan(px/py)
     theta = np.arctan(pT/pz)
-    truth_in = np.stack([energy, phi, theta], axis=1)
+    truth_in = np.stack([phi, theta, energy], axis=1)
     truth_in = scaler.fit_transform(truth_in)
 
     # the input 4vector is the cluster 4vector
