@@ -60,8 +60,10 @@ if __name__ == '__main__': #Code only runs if its called by the terminal and not
         choices=['WARN', 'INFO', "ERROR", "FATAL", 'DEBUG'])
     add_arg("--max-evts", help='Maximum number of events', type=int, default=10000)
     add_arg("--batch-size", help='Batch size', type=int, default=512)
-    add_arg("--lr", help='learning rate', type=float, default=0.0001)
+    add_arg("--lr-dis", help='learning rate discriminator', type=float, default=0.0001)
+    add_arg("--lr-gen", help='learning rate generator', type=float, default=0.0001)
     add_arg("--test-frac", help='Fraction of data used for testing', type=float, default=0.1)
+    add_arg("--single-step-limit", help='Number of epochs before training multiple times per epoch', type=int, default=5)
     add_arg("--data", default='herwig_angles',
         choices=['herwig_angles', 'dimuon_inclusive'])
 
@@ -98,14 +100,16 @@ if __name__ == '__main__': #Code only runs if its called by the terminal and not
     gan = eval(args.model)(**vars(args)) # eval(args.model) FInds what type of NN has been picked in the input and find the           corresponding class
     
     #Define variables from args to be given to gan.train (These lines might be useless)
-    gan.lr=args.lr
-    lr=args.lr
+    gan.lr=args.lr_dis
+    lr_dis=args.lr_dis
+    lr_gen=args.lr_gen
     gen_layers=args.gen_layers
     dis_layers=args.dis_layers
     noise_type=args.noise_type
     num_nodes=args.num_nodes
     gen_train_num=args.gen_train_num
     dis_train_num=args.dis_train_num
+    single_step_limit=args.single_step_limit
 
 
     if args.inference:
@@ -114,4 +118,4 @@ if __name__ == '__main__': #Code only runs if its called by the terminal and not
         gan.train(args,
             train_truth, args.epochs, batch_size,
             test_truth, args.log_dir,
-       generate_and_save_images,generate_and_save_images_end_of_run,lr,noise_type,gen_layers,dis_layers,num_nodes,gen_train_num,dis_train_num, train_in, test_in)
+       generate_and_save_images,generate_and_save_images_end_of_run,lr_dis,lr_gen,noise_type,gen_layers,dis_layers,num_nodes,gen_train_num,dis_train_num,single_step_limit, train_in, test_in)
