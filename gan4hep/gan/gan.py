@@ -37,7 +37,7 @@ def generator_loss(fake_output):
 class GAN():
     def __init__(self,
         noise_dim: int = 4, gen_output_dim: int = 2,
-        cond_dim: int = 4, disable_tqdm=False, lr=0.01,gen_layers=1,dis_layers=1,num_nodes=256,**kwargs):
+        cond_dim: int = 4, disable_tqdm=False, lr_dis=0.01,lr_gen=0.01,gen_layers=1,dis_layers=1,num_nodes=256,**kwargs):
         """
         noise_dim: dimension of the noises
         gen_output_dim: output dimension
@@ -54,8 +54,8 @@ class GAN():
         # ============
         # Optimizers
         # ============
-        self.generator_optimizer = keras.optimizers.Adam(lr)
-        self.discriminator_optimizer = keras.optimizers.Adam(lr)
+        self.generator_optimizer = keras.optimizers.Adam(lr_gen)
+        self.discriminator_optimizer = keras.optimizers.Adam(lr_dis)
 
         # Build the critic
         self.discriminator = self.build_critic(dis_layers,num_nodes)
@@ -157,7 +157,7 @@ class GAN():
         return model
         
     #Main Train function called at the end of train_gay.py
-    def train(self,args, train_truth, epochs, batch_size, test_truth, log_dir, evaluate_samples_fn, generate_and_save_images_end_of_run,lr,noise_type, gen_layers, dis_layers,num_nodes,gen_train_num,dis_train_num,
+    def train(self,args, train_truth, epochs, batch_size, test_truth, log_dir, evaluate_samples_fn, generate_and_save_images_end_of_run,lr_dis,lr_gen,noise_type, gen_layers, dis_layers,num_nodes,gen_train_num,dis_train_num,single_step_limit,
             train_in=None, test_in=None):
 
             # ======================================
@@ -226,7 +226,7 @@ class GAN():
             run_dir = os.path.join(img_dir, 'img')
 
             #Add GAN paramaters to time and date to create file name for current run
-            new_run_folder=run_dir+current_date_and_time_string+' Epoch_num: '+ str(args.epochs)+' Batch_Size: '+str(batch_size) +' Number of Events: '+str(args.num_test_evts) +' GAN Type: '+str(args.model) + ' Max Number of Events: ' +str(args.max_evts) + ' Learning Rate: ' + str(args.lr) + ' Noise Type: ' + str(args.noise_type) + ' Number of Noise Dimensions: ' + str(args.noise_dim) # + ' Number of Extra G Layers: ' + str(args.gen_layers)  + ' Number of Extra D Layers: ' + str(args.dis_layers)  #  + ' Fraction of testing events ' + str(args.test_frac)# + ' Number of Nodes per Layer: ' + str(args.num_nodes)
+            new_run_folder=run_dir+current_date_and_time_string+' Epoch_num: '+ str(args.epochs)+' Batch_Size: '+str(batch_size) +' Number of Events: '+str(args.num_test_evts) +' GAN Type: '+str(args.model) + ' Max Number of Events: ' +str(args.max_evts) + ' Learning Rate: ' + str(args.lr_dis) + ' Noise Type: ' + str(args.noise_type) + ' Number of Noise Dimensions: ' + str(args.noise_dim) # + ' Number of Extra G Layers: ' + str(args.gen_layers)  + ' Number of Extra D Layers: ' + str(args.dis_layers)  #  + ' Fraction of testing events ' + str(args.test_frac)# + ' Number of Nodes per Layer: ' + str(args.num_nodes)
 
             #Make Directory
             os.makedirs(new_run_folder, exist_ok=True)
@@ -242,9 +242,7 @@ class GAN():
                     gen_out_4vec = self.generator(gen_in_4vec, training=True)
                     fake_output = self.discriminator(gen_out_4vec, training=True)
                     gen_loss = generator_loss(fake_output) # Calculate Loss
-                    gradients_of_generator = gen_tape.gradient(gen_loss, self.generator.trainable_variables) 
 
-                    self.generator_optimizer.apply_gradients(zip(gradients_of_generator, self.generator.trainable_variables))
                     return gen_loss
                 
             #Train Discriminator  
@@ -254,24 +252,53 @@ class GAN():
                     real_output = self.discriminator(truth_4vec, training=True)
                     fake_output = self.discriminator(gen_out_4vec, training=True)
                     disc_loss = discriminator_loss(real_output, fake_output) #Calculate Loss
-                    gradients_of_discriminator = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables) #Get Gradient
-                    self.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, self.discriminator.trainable_variables)) #Apply Gradient
+                  
                     return disc_loss
 
             #Train step for trainig generator and discriminator for each batch
-            def train_step(gen_in_4vec, truth_4vec): 
-                #new
-                gen_loss=0
-                disc_loss=0
-                for i in range(gen_train_num): #Train generator a certain number of times and get loss
-                                        
-                    gen_loss=gen_opt(gen_in_4vec, truth_4vec,i)
-                
-                for j in range(dis_train_num):
-                                        
-                    disc_loss=dis_opt(gen_in_4vec, truth_4vec) #Train discriminator a certain number of times and get loss
+            def train_step(gen_in_4vec, truth_4vec,single_step_limit,epoch): 
+                with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+                    #new
+                    gen_loss=0
+                    disc_loss=0
+                  
+                    if epoch <single_step_limit:
+                        #print('single_step',single_step_limit)
+                        gen_out_4vec = self.generator(gen_in_4vec, training=True)
 
-                return disc_loss, gen_loss
+                        real_output = self.discriminator(truth_4vec, training=True)
+                        fake_output = self.discriminator(gen_out_4vec, training=True)
+
+                        gen_loss = generator_loss(fake_output) # Calculate Loss
+
+                        gradients_of_generator = gen_tape.gradient(gen_loss, self.generator.trainable_variables) #Automatic differentiation?????
+
+                        self.generator_optimizer.apply_gradients(zip(gradients_of_generator, self.generator.trainable_variables))
+
+                        disc_loss = discriminator_loss(real_output, fake_output) #Calculate Loss
+                        gradients_of_discriminator = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables)
+
+                        self.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, self.discriminator.trainable_variables)) 
+                        return disc_loss,gen_loss
+                            
+                            
+                    else:
+                        #print('multi_step')    
+                        for i in range(gen_train_num): #Train generator a certain number of times and get loss
+
+                            gen_loss=gen_opt(gen_in_4vec, truth_4vec,i)
+
+                        for j in range(dis_train_num):
+
+                            disc_loss=dis_opt(gen_in_4vec, truth_4vec) #Train discriminator a certain number of times and get loss
+
+
+                        gradients_of_generator = gen_tape.gradient(gen_loss, self.generator.trainable_variables) 
+                        self.generator_optimizer.apply_gradients(zip(gradients_of_generator, self.generator.trainable_variables))
+
+                        gradients_of_discriminator = disc_tape.gradient(disc_loss, self.discriminator.trainable_variables) #Get Gradient
+                        self.discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, self.discriminator.trainable_variables)) #Apply Gradient
+                        return disc_loss, gen_loss
 
                 #Old method if new breaks
                 '''
@@ -331,7 +358,7 @@ class GAN():
                     tot_loss = []
                     for data_batch in dataset:
 
-                        tot_loss.append(list(train_step(*data_batch)))
+                        tot_loss.append(list(train_step(*data_batch,single_step_limit,epoch)))
 
                     tot_loss = np.array(tot_loss)
                     avg_loss = np.sum(tot_loss, axis=0)/tot_loss.shape[0]
@@ -364,7 +391,13 @@ class GAN():
 
             with open(summary_logfile, 'a') as f:
                 f.write(tmp_res + "\n")
-                #f.write(' Epoch_num: '+ str(args.epochs)+' Batch_Size: '+str(batch_size) +' Number of Events: '+str(args.num_test_evts) +' GAN Type: '+str(args.model) + ' Max Number of Events: ' +str(args.max_evts) + ' Learning Rate: ' + str(args.lr) + ' Noise Type: ' + str(args.noise_type) + ' Number of Noise Dimensions: ' + str(args.noise_dim)  + ' Number of Extra G Layers: ' + str(args.gen_layers)  + ' Number of Extra D Layers: ' + str(args.dis_layers)   + ' Fraction of testing events ' + str(args.test_frac)+ ' Number of Nodes per Layer: ' + str(args.num_nodes))
+                f.write(' Epoch_num: '+ str(args.epochs)+' Batch_Size: '+str(batch_size) +' Number of Events: '+str(args.num_test_evts)+ "\n")
+                f.write(' GAN Type: '+str(args.model) + ' Max Number of Events: ' +str(args.max_evts) + ' Learning Rate Discriminator: ' + str(args.lr_dis) + ' Learning Rate Generator: ' + str(args.lr_gen)+ "\n") 
+                f.write(' Noise Type: ' + str(args.noise_type) + ' Number of Noise Dimensions: ' + str(args.noise_dim)) 
+                f.write(' Number of Extra G Layers: ' + str(args.gen_layers)  + ' Number of Extra D Layers: ' + str(args.dis_layers)+ "\n")  
+                f.write(' Fraction of testing events ' + str(args.test_frac)+ ' Number of Nodes per Layer: ' + str(args.num_nodes)+ "\n")    
+                f.write(' Number of times training generator per epoch: ' + str(args.gen_train_num)+ ' Number of times training discriminator per epoch: ' + str(args.dis_train_num)+ "\n")
+                f.write(' Number of epochs including single training steps until multiple training per epoch: ' + str(args.single_step_limit)+ "\n")
                 
                         
             #Print log_loss etc graphs at end of run
