@@ -9,9 +9,14 @@
 
 HerwigClusterDecayer::HerwigClusterDecayer(const Config& config): m_cfg(config){
     std::cout << "Constructing HerwigClusterDcayer" << std::endl;
+
+    // by default, the number of input features are the cluster 4 vectors
     assert(m_cfg.clusterMin.size() == m_cfg.numInputFeatures);
     assert(m_cfg.clusterMax.size() == m_cfg.numInputFeatures);
+
     initTrainedModels();
+
+    m_numEvts = 1; // batch size
 }
 
 void HerwigClusterDecayer::getDecayProducts(
@@ -28,6 +33,7 @@ void HerwigClusterDecayer::getDecayProducts(
     );
 
     // lambda functions to scale inputs and scale back outputs
+    // they may not live here
     float scaledMin = -1, scaledMax = 1;
     auto scalerFrd = [=](float x, float xMin, float xMax){
         // assuming the data is scaled to [-1, 1]
@@ -43,25 +49,17 @@ void HerwigClusterDecayer::getDecayProducts(
         );
     }
 
-    // figure out noise dimensions
-    Ort::TypeInfo inputTypeInfo = m_sess->GetInputTypeInfo(0);
-    auto inputTensorInfo = inputTypeInfo.GetTensorTypeAndShapeInfo();
-    std::vector<int64_t> inputDims = inputTensorInfo.GetShape();
-    int64_t totalFeatures = inputDims[1];
-    int64_t numEvts = 1;
-    int noiseDims = totalFeatures - m_cfg.numInputFeatures;
-
     // generate noises from a norm distribution
     std::random_device rd;
     std::mt19937 gen{rd()};
     std::normal_distribution<> normal_dis{0, 1};
 
     std::vector<float> inputTensorValues = std::move(scaledCluster4Vec);
-    for (int idx = 0; idx < noiseDims; idx++) {
+    for (int idx = 0; idx < m_noiseDims; idx++) {
         inputTensorValues.push_back(normal_dis(gen));
     }
 
-    std::vector<int64_t> inputShape{numEvts, totalFeatures};
+    std::vector<int64_t> inputShape{m_numEvts, m_totalInputFeatures};
     const char* inputName = m_sess->GetInputName(0, allocator);
     std::vector<const char*> inputNames{inputName};
     std::vector<Ort::Value> inputTensor;
@@ -73,16 +71,8 @@ void HerwigClusterDecayer::getDecayProducts(
 
 
     // prepare outputs
-    Ort::TypeInfo outputTypeInfo = m_sess->GetOutputTypeInfo(0);
-    auto outputTensorInfo = outputTypeInfo.GetTensorTypeAndShapeInfo();
-    std::vector<int64_t> outputDims = outputTensorInfo.GetShape();
-
-    int64_t numOfOutFeatures = outputDims[1]; // phi, theta, energy
-    assert(numOfOutFeatures == m_cfg.hadronMax.size());
-    assert(numOfOutFeatures == m_cfg.hadronMin.size());
-
-    std::vector<float> outputData(numEvts * numOfOutFeatures);
-    std::vector<int64_t> outputShape{numEvts, numOfOutFeatures};
+    std::vector<float> outputData(m_numEvts * m_numOfOutFeatures);
+    std::vector<int64_t> outputShape{m_numEvts, m_numOfOutFeatures};
     std::vector<Ort::Value> outputTensor;
     outputTensor.push_back(
         Ort::Value::CreateTensor<float>(
@@ -93,18 +83,18 @@ void HerwigClusterDecayer::getDecayProducts(
     std::vector<const char*> outputNames{outputName};
 
     runSessionWithIoBinding(*m_sess, inputNames, inputTensor, outputNames, outputTensor);
-    std::cout << "original output: ";
-    std::copy(outputData.begin(), outputData.end(), std::ostream_iterator<float>(std::cout, " "));
-    std::cout << std::endl;
+    // std::cout << "original output: ";
+    // std::copy(outputData.begin(), outputData.end(), std::ostream_iterator<float>(std::cout, " "));
+    // std::cout << std::endl;
 
     // convert the three output vectors
     const float pionMass = 0.135;
-    for(unsigned int idx=0; idx < numOfOutFeatures; idx++){
+    for(unsigned int idx=0; idx < m_numOfOutFeatures; idx++){
         scalerInv(outputData[idx], m_cfg.hadronMin[idx], m_cfg.hadronMax[idx]);
     }
-    std::cout << "after scaling: ";
-    std::copy(outputData.begin(), outputData.end(), std::ostream_iterator<float>(std::cout, " "));
-    std::cout << std::endl;
+    // std::cout << "after scaling: ";
+    // std::copy(outputData.begin(), outputData.end(), std::ostream_iterator<float>(std::cout, " "));
+    // std::cout << std::endl;
 
     float phi = outputData[0];
     float theta = outputData[1];
@@ -143,6 +133,21 @@ void HerwigClusterDecayer::initTrainedModels()
     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
 
     m_sess = std::make_unique<Ort::Session>(*m_env, m_cfg.inputMLModelDir.c_str(), session_options);
+
+    // extract some dimensionality information
+    // inputs
+    Ort::TypeInfo inputTypeInfo = m_sess->GetInputTypeInfo(0);
+    auto inputTensorInfo = inputTypeInfo.GetTensorTypeAndShapeInfo();
+    std::vector<int64_t> inputDims = inputTensorInfo.GetShape();
+    m_totalInputFeatures = inputDims[1];
+    m_noiseDims = m_totalInputFeatures - m_cfg.numInputFeatures;
+
+    // outputs
+    Ort::TypeInfo outputTypeInfo = m_sess->GetOutputTypeInfo(0);
+    auto outputTensorInfo = outputTypeInfo.GetTensorTypeAndShapeInfo();
+    std::vector<int64_t> outputDims = outputTensorInfo.GetShape();
+
+    m_numOfOutFeatures = outputDims[1]; // phi, theta, energy
 }
 
 void HerwigClusterDecayer::runSessionWithIoBinding(

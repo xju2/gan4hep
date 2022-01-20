@@ -15,6 +15,8 @@ public:
         std::vector<float> hadronMin;
         std::vector<float> hadronMax;
         int numInputFeatures = 4;
+        float scaledMin = -1;
+        float scaledMax = 1;
     };
     
     HerwigClusterDecayer(const Config& config);
@@ -39,8 +41,13 @@ private:
       std::vector<const char*>& outputNames,
       std::vector<Ort::Value>&  outputData) const;
 
+
 private:
     Config m_cfg;
     std::unique_ptr<Ort::Env> m_env;
     std::unique_ptr<Ort::Session> m_sess;
+    int m_totalInputFeatures;
+    int m_numOfOutFeatures;
+    int m_numEvts;
+    int m_noiseDims;
 };
