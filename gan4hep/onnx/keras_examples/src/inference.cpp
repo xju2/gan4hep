@@ -1,5 +1,5 @@
 // Taken from https://github.com/leimao/ONNX-Runtime-Inference/blob/main/src/inference.cpp
-#include <onnxruntime_cxx_api.h>
+#include <core/session/onnxruntime_cxx_api.h>
 
 #include <chrono>
 #include <cmath>
@@ -10,6 +10,7 @@
 #include <numeric>
 #include <string>
 #include <vector>
+#include <unistd.h> // to parse input args.
 
 #include <random>
 
@@ -115,41 +116,38 @@ std::ostream& operator<<(std::ostream& os,
 
 int main(int argc, char* argv[])
 {
-    bool useCUDA{true};
-    const char* useCUDAFlag = "--use_cuda";
-    const char* useCPUFlag = "--use_cpu";
-    if (argc == 1)
-    {
-        useCUDA = false;
-    }
-    else if ((argc == 2) && (strcmp(argv[1], useCUDAFlag) == 0))
-    {
-        useCUDA = true;
-    }
-    else if ((argc == 2) && (strcmp(argv[1], useCPUFlag) == 0))
-    {
-        useCUDA = false;
-    }
-    else if ((argc == 2) && (strcmp(argv[1], useCUDAFlag) != 0))
-    {
-        useCUDA = false;
-    }
-    else
-    {
-        throw std::runtime_error{"Too many arguments."};
-    }
+    std::string modelFilepath{"../../data/models/mlp_gan.onnx"};
+    std::string instanceName{"GAN4Herwig"};
 
-    if (useCUDA)
-    {
-        std::cout << "Inference Execution Provider: CUDA" << std::endl;
+    int opt;
+    bool help = false;
+    bool useCUDA = false;
+
+    while ((opt = getopt(argc, argv, "hm:c")) != -1){
+        switch (opt) {
+            case 'm':
+                modelFilepath = optarg;
+                break;
+            case 'c':
+                useCUDA = true;
+                break;
+            case 'h':
+                help = true;
+            default:
+                fprintf(stderr, "Usage: %s [-h] [-m onnx model]\n", argv[0]);
+            if (help){
+                printf("   -m MODELFILE: onnx model file name\n");
+            }
+            exit(EXIT_FAILURE);
+        }
     }
-    else
-    {
+    printf("Input onnx model: %s", modelFilepath.c_str());
+    if (useCUDA) {
+        std::cout << "Inference Execution Provider: CUDA" << std::endl;
+    } else {
         std::cout << "Inference Execution Provider: CPU" << std::endl;
     }
 
-    std::string instanceName{"GAN4Herwig"};
-    std::string modelFilepath{"../../data/models/mlp_gan.onnx"};
     
     Ort::Env env(OrtLoggingLevel::ORT_LOGGING_LEVEL_WARNING,
                  instanceName.c_str());
@@ -157,10 +155,7 @@ int main(int argc, char* argv[])
     sessionOptions.SetIntraOpNumThreads(1);
     if (useCUDA)
     {
-        // Using CUDA backend
-        // https://github.com/microsoft/onnxruntime/blob/v1.8.2/include/onnxruntime/core/session/onnxruntime_cxx_api.h#L329
-        OrtCUDAProviderOptions cuda_options{0};
-        sessionOptions.AppendExecutionProvider_CUDA(cuda_options);
+        OrtStatus* status = OrtSessionOptionsAppendExecutionProvider_CUDA(sessionOptions, 0);
     }
 
     // Sets graph optimization level
