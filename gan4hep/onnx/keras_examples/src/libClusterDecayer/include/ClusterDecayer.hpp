@@ -10,14 +10,12 @@ public:
     struct Config
     {
         std::string inputMLModelDir;
-        size_t noiseDims = 4;
+        std::vector<float> clusterMin;
+        std::vector<float> clusterMax;
+        std::vector<float> hadronMin;
+        std::vector<float> hadronMax;
+        int numInputFeatures = 4;
     };
-
-    template <typename T>
-    T vectorProduct(const std::vector<T>& v)
-    {
-        return accumulate(v.begin(), v.end(), 1, std::multiplies<T>());
-    }    
     
     HerwigClusterDecayer(const Config& config);
     virtual ~HerwigClusterDecayer() {}
