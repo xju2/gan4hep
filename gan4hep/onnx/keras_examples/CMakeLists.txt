@@ -9,7 +9,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_BUILD_TYPE RelWithDebInfo)
 
-find_path(ONNX_RUNTIME_SESSION_INCLUDE_DIRS onnxruntime_cxx_api.h HINTS /usr/local/include/onnxruntime/core/session/)
+find_path(
+    ONNX_RUNTIME_SESSION_INCLUDE_DIRS
+    NAMES core/session/onnxruntime_cxx_api.h
+    PATH_SUFFIXES include include/onnxruntime
+    HINTS /usr/local/include/onnxruntime/core/session/ ${onxxruntime_DIR} 
+)
 
 find_library(ONNX_RUNTIME_LIB onnxruntime HINTS /usr/local/lib)
 
