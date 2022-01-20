@@ -1,14 +1,16 @@
-#include <ClusterDecayer.h>
+#include <ClusterDecayer.hpp>
 
 #include <iostream>
 #include <math.h>
+#include <random>
+#include <assert.h>
 
 HerwigClusterDecayer::HerwigClusterDecayer(const Config& config): m_cfg(config){
     std::cout << "Constructing HerwigClusterDcayer" << std::endl;
     initTrainedModels();
 }
 
-void HerwigClusterDecayer:getDecayProducts(
+void HerwigClusterDecayer::getDecayProducts(
     std::vector<float>& cluster4Vec,
     std::vector<float>& hadronOne4Vec,
     std::vector<float>& hadronTwo4Vec)
@@ -21,8 +23,8 @@ void HerwigClusterDecayer:getDecayProducts(
     );
 
     // prepare inputs
-    std::random_device rd{m_cfg.seed};
-    std::mt19937 gen(rd());
+    std::random_device rd;
+    std::mt19937 gen{rd()};
     std::normal_distribution<> normal_dis{0, 1};
 
     std::vector<float> inputTensorValues = cluster4Vec;
@@ -33,27 +35,30 @@ void HerwigClusterDecayer:getDecayProducts(
     int64_t numEvts = 1;
     int64_t totalFeatures = 4 + m_cfg.noiseDims;
     std::vector<int64_t> inputShape{numEvts, totalFeatures};
-    const char* inputName = session.GetInputName(0, allocator);
+    const char* inputName = m_sess->GetInputName(0, allocator);
     std::vector<const char*> inputNames{inputName};
     std::vector<Ort::Value> inputTensor;
     inputTensor.push_back(
         Ort::Value::CreateTensor<float>(
-            memoryInfo, inputTensorValues.data(), inputTensorValues.size()
+            memoryInfo, inputTensorValues.data(), inputTensorValues.size(),
             inputShape.data(), inputShape.size())
     );
 
     // prepare outputs
     int64_t numOfOutFeatures = 3; // phi, theta, energy
     std::vector<float> outputData(numEvts * numOfOutFeatures);
-    std::vector<int64_t> outputShape{numEvets, numOfOutFeatures};
+    std::vector<int64_t> outputShape{numEvts, numOfOutFeatures};
     std::vector<Ort::Value> outputTensor;
     outputTensor.push_back(
         Ort::Value::CreateTensor<float>(
             memoryInfo, outputData.data(), outputData.size(),
             outputShape.data(), outputShape.size())
     );
+    const char* outputName = m_sess->GetOutputName(0, allocator);
+    std::vector<const char*> outputNames{outputName};
 
     runSessionWithIoBinding(*m_sess, inputNames, inputTensor, outputNames, outputTensor);
+    std::cout << "output data size: " << outputData.size() << " " << outputData[0] << std::endl;
 
     // convert the three output vectors
     const float pionMass = 0.135;
@@ -73,10 +78,10 @@ void HerwigClusterDecayer:getDecayProducts(
 
     // now use 4 vector conservation to calculate the other hadron
     hadronTwo4Vec.clear();
-    hadronTwo4Vec.push_back(inputData[0] - energy);
-    hadronTwo4Vec.push_back(inputData[1] - px);
-    hadronTwo4Vec.push_back(inputData[2] - py);
-    hadronTwo4Vec.push_back(inputData[3] - pz);
+    hadronTwo4Vec.push_back(cluster4Vec[0] - energy);
+    hadronTwo4Vec.push_back(cluster4Vec[1] - px);
+    hadronTwo4Vec.push_back(cluster4Vec[2] - py);
+    hadronTwo4Vec.push_back(cluster4Vec[3] - pz);
 }
 
 
@@ -86,7 +91,6 @@ void HerwigClusterDecayer::initTrainedModels()
     std::cout << "Initializing Trained ML Models" << std::endl;
     std::cout << "Model input directory:  " << m_cfg.inputMLModelDir << std::endl;
     std::cout << "Input Noise Dimensions: " << m_cfg.noiseDims << std::endl;
-    std::cout << "Seed                  : " << m_cfg.seed << std::endl;
 
     m_env = std::make_unique<Ort::Env>(ORT_LOGGING_LEVEL_WARNING, "GAN4Herwig");
 

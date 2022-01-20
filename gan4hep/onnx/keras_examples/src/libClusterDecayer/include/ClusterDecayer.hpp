@@ -11,7 +11,6 @@ public:
     {
         std::string inputMLModelDir;
         size_t noiseDims = 4;
-        size_t seed = 0;
     };
 
     template <typename T>
@@ -45,5 +44,5 @@ private:
 private:
     Config m_cfg;
     std::unique_ptr<Ort::Env> m_env;
-    std::unique_ptr<Ort::Env> m_sess;
+    std::unique_ptr<Ort::Session> m_sess;
 };
