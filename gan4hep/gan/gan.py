@@ -346,7 +346,7 @@ class GAN():
                         [train_in, noise], axis=1).astype(np.float32) if train_in is not None else noise
 
                     #Sanity Check
-                    print(train_inputs.shape[0],'train_in dataset size')
+                    print(' ', train_inputs.shape[0],'train_in dataset size')
                     print(train_truth.shape[0],'train_truth dataset size')
 
                     #Create dataset from train inputs and train truth, shuffles it, and splits it into batches according to given                     batch size
@@ -372,13 +372,14 @@ class GAN():
                     tot_wdis,accuracy_list,gen_accuracy = evaluate_samples_fn(
                         self.generator, epoch, testing_data,
                         summary_writer, img_dir,new_run_folder,loss_all_epochs_0,loss_all_epochs_1,self.discriminator,gen_accuracy,accuracy_list,gen_output_dim, **loss_dict)
-
+                    
                     # Check if the current is the best epoch if it has the lowest wasserstein difference
                     if tot_wdis < best_wdis:
                         ckpt_manager.save()
                         self.generator.save("generator")
                         best_wdis = tot_wdis
                         best_epoch = epoch
+                    print('Best Wasserstein Distance: ' ,best_wdis)
                     t0.set_postfix(**loss_dict, BestD=best_wdis, BestE=best_epoch)
                     #Append to list for end of run plots
                     best_was_dist.append(best_wdis)
