@@ -97,7 +97,7 @@ if __name__ == '__main__': #Code only runs if its called by the terminal and not
     add_arg("--lr-dis", help='learning rate discriminator', type=float, default=0.0001)
     add_arg("--lr-gen", help='learning rate generator', type=float, default=0.0001)
     add_arg("--test-frac", help='Fraction of data used for testing', type=float, default=0.1)
-    add_arg("--single-step-limit", help='Number of epochs before training multiple times per epoch', type=int, default=5)
+    add_arg("--single-step-limit", help='Number of epochs before training multiple times per epoch', type=int, default=500)
     add_arg("--data", default='herwig_angles',
         choices=['herwig_angles', 'dimuon_inclusive'])
 
@@ -106,7 +106,7 @@ if __name__ == '__main__': #Code only runs if its called by the terminal and not
     add_arg("--dis-layers", type=int, default=0, help='Number of extra layers to add to discriminator model with 256 nodes')
     add_arg("--gen-train-num", type=int, default=1, help='Number of extra optimizing attemps for each epoch for the generator')
     add_arg("--dis-train-num", type=int, default=1,help='Number of extra optimizing attemps for each epoch for the discriminator')
-    add_arg("--noise-dim", type=int, default=4, help="noise dimension")
+    add_arg("--noise-dim", type=int, default=6, help="noise dimension")
     add_arg("--num-nodes", type=int, default=256, help="Number of Nodes in a NN Layer")
     add_arg("--gen-output-dim", type=int, default=2, help='generator output dimension')
     add_arg("--cond-dim", type=int, default=0, help='dimension of conditional input')
