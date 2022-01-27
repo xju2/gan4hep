@@ -173,8 +173,9 @@ class GAN():
 
             elif noise_type=='uniform':
                 noise = np.random.uniform(-1, 1, size=(test_truth.shape[0], self.noise_dim)) 
+                #noise = np.random.uniform(0, 1, size=(test_truth.shape[0], 1)) 
 
-
+     
             #Sanity Checks
             print(test_truth.shape[0],'test-truth dataset size')
             #print(test_in.shape[0],'test_in size') Currently Empty
