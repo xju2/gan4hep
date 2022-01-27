@@ -115,15 +115,35 @@ def dimuon_inclusive(filename, max_evts, testing_frac):
     scaler_stan=StandardScaler()
     
     truth_data=pd.DataFrame(truth_data)
-
-    truth_data = scaler.fit_transform(truth_data)
-    #truth_data[[1]]= scaler.fit_transform(truth_data[[1]])
-    #truth_data[[2]] = scaler.fit_transform(truth_data[[2]])
-    #truth_data[[3]] = scaler.fit_transform(truth_data[[3]])
-    #truth_data[[4]] = scaler.fit_transform(truth_data[[4]])
-    #truth_data[[5]] = scaler.fit_transform(truth_data[[5]])
-    #truth_data[[6]] = scaler.fit_transform(truth_data[[6]])
+      
+    test0=truth_data[truth_data.columns[0]]
+    test1=truth_data[truth_data.columns[1]]
+    test2=truth_data[truth_data.columns[2]]
+    test3=truth_data[truth_data.columns[3]]
+    test4=truth_data[truth_data.columns[4]]
+    test5=truth_data[truth_data.columns[5]]
+       
+    test0=pd.DataFrame(test0)
+    test1=pd.DataFrame(test1)
+    test2=pd.DataFrame(test2)
+    test3=pd.DataFrame(test3)
+    test4=pd.DataFrame(test4)
+    test5=pd.DataFrame(test5)
+        
+    test0=test0.values.reshape(-1,1)
+    test1=test1.values.reshape(-1,1)
+    test2=test2.values.reshape(-1,1)
+    test3=test3.values.reshape(-1,1)
+    test4=test4.values.reshape(-1,1)
+    test5=test5.values.reshape(-1,1)
     
+    truth_data[truth_data.columns[0]]= scaler_pt.fit_transform(test0)
+    truth_data[truth_data.columns[1]] = scaler.fit_transform(test1)
+    truth_data[truth_data.columns[2]]= scaler.fit_transform(test2)
+    truth_data[truth_data.columns[3]] = scaler_pt.fit_transform(test3)
+    truth_data[truth_data.columns[4]] = scaler.fit_transform(test4)
+    truth_data[truth_data.columns[5]] = scaler.fit_transform(test5)
+
     from sklearn.compose import ColumnTransformer
     from sklearn.preprocessing import StandardScaler
                                   
