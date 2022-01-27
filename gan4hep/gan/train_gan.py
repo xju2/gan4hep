@@ -16,7 +16,7 @@ from gan4hep.utils_gan import generate_and_save_images_end_of_run
 from gan4hep.preprocess import herwig_angles
 from gan4hep.preprocess import dimuon_inclusive
 
-def inference(gan, test_in, test_truth, log_dir): 
+def inference(gan, test_in, test_truth, log_dir,epoch,gen_output_dim): 
     checkpoint_dir = os.path.join(log_dir, "checkpoints")
     checkpoint = tf.train.Checkpoint(
         generator=gan.generator,
@@ -37,8 +37,42 @@ def inference(gan, test_in, test_truth, log_dir):
 
     img_dir = os.path.join(log_dir, 'img_inference')
     os.makedirs(img_dir, exist_ok=True)
-    tot_wdis = generate_and_save_images(
-        gan.generator, -1, testing_data, summary_writer, img_dir)
+    
+    
+    import time
+    import pathlib
+    import datetime
+
+    #Making seperate folders for each run to store plots
+    #Get time and date of current run
+    current_date_and_time = datetime.datetime.now()
+    current_date_and_time_string = str(current_date_and_time)
+
+    #Create directory path
+    run_dir = os.path.join(img_dir, 'img')
+
+    #Add GAN paramaters to time and date to create file name for current run
+    new_run_folder=run_dir+current_date_and_time_string+' Inference Run'
+    print('!')
+    #Make Directory
+    os.makedirs(new_run_folder, exist_ok=True)
+    #@tf.function
+    
+    
+    loss_all_epochs_0=[] #Disc Loss
+    loss_all_epochs_1=[] #Gen Loss
+    accuracy_list=[] #Should be called discriminator accuracy
+    gen_accuracy=[]
+    loss_dict=[]
+ 
+
+
+    #tot_wdis = generate_and_save_images(
+     #   gan.generator, -1, testing_data, summary_writer, img_dir)
+    
+    tot_wdis,accuracy_list,gen_accuracy2 = generate_and_save_images(
+                        gan.generator, epoch, testing_data,
+                        summary_writer, img_dir,new_run_folder,loss_all_epochs_0,loss_all_epochs_1,gan.discriminator,gen_accuracy,accuracy_list,gen_output_dim)
     print(tot_wdis)
 
 
@@ -113,7 +147,7 @@ if __name__ == '__main__': #Code only runs if its called by the terminal and not
 
 
     if args.inference:
-        inference(gan, test_in, test_truth, args.log_dir) # Run inference function at the top of the page
+        inference(gan, test_in, test_truth, args.log_dir,args.epochs,args.gen_output_dim) # Run inference function at the top of the page
     else:
         gan.train(args,
             train_truth, args.epochs, batch_size,
