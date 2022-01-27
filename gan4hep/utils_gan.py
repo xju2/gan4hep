@@ -241,6 +241,32 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
 
     #Muons_PT_Lead:Muons_Eta_Lead:Muons_Phi_Lead:Muons_PT_Sub:Muons_Eta_Sub:Muons_Phi_Sub
     
+    
+    
+    
+    
+    truths[:,0]=truths[:,0]+1
+    truths[:,0]=truths[:,0]/2
+    
+    truths[:,3]=truths[:,3]+1
+    truths[:,3]=truths[:,3]/2
+    
+    predictions[:,0]=predictions[:,0]+1
+    predictions[:,0]=predictions[:,0]/2
+    
+    predictions[:,3]=predictions[:,3]+1
+    predictions[:,3]=predictions[:,3]/2
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     #Plot 1
     idx=0
     ax = axs[idx]
