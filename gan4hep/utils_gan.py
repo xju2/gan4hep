@@ -245,10 +245,11 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     idx=0
     ax = axs[idx]
     x_range = [-1, 1]
+    x_range_pt = [0, 1]
     
-    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  range=x_range,  label='Truth', **config)
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  range=x_range_pt,  label='Truth',density=True, **config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.hist(predictions[:, idx], bins=40, range=x_range_pt, label='Generator',density=True, **config)
     ax.set_xlabel(r"Muons_PT_Lead")
     #ax.set_ylim(0, max_y)
     ax.legend(['Truth', 'Generator'])
@@ -257,9 +258,9 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     # Plot 2
     idx=1
     ax = axs[idx]
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=x_range,  label='Truth', **config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=x_range,  label='Truth',density=True, **config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
     ax.set_xlabel(r"Muons_Eta_Lead")
     ax.legend(['Truth', 'Generator'])
     #ax.set_ylim(0, max_y)
@@ -270,18 +271,18 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     ax = axs[idx]
     x_range = [-1, 1]
     
-    yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range,   label='Truth', **config)
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range,   label='Truth',density=True, **config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
     ax.set_xlabel(r"Muons_Phi_Lead")
     ax.legend(['Truth', 'Generator'])
 
     # plot 4
     idx=3
     ax = axs[idx]
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  range=x_range,  label='Truth', **config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  range=x_range_pt,  label='Truth',density=True, **config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.hist(predictions[:, idx], bins=40, range=x_range_pt, label='Generator',density=True, **config)
     ax.set_xlabel(r"Muons_PT_Sub")
     ax.legend(['Truth', 'Generator'])
  
@@ -290,18 +291,18 @@ def generate_and_save_images(model,epoch,datasets,summary_writer,img_dir,new_run
     ax = axs[idx]
     x_range = [-1, 1]
     
-    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  range=x_range,  label='Truth', **config)
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  range=x_range,  label='Truth',density=True, **config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
     ax.set_xlabel(r"Muons_Eta_Sub")
     ax.legend(['Truth', 'Generator'])
 
     # plot 6
     idx=5
     ax = axs[idx]
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  range=x_range,  label='Truth', **config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  range=x_range,  label='Truth',density=True, **config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
     ax.set_xlabel(r"Muons_Phi_Sub")
     ax.legend(['Truth', 'Generator'])
     
