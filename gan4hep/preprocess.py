@@ -129,6 +129,7 @@ def herwig_angles2(filename,
     # of the first outgoing particle
     # ======================================
     scaler = MinMaxScaler(feature_range=(-1,1))
+
     out_4vec = h1.values
     energy,px,py,pz = [out_4vec[:, idx] for idx in range(1,5)]
     pT = np.sqrt(px**2 + py**2)
@@ -136,10 +137,12 @@ def herwig_angles2(filename,
     theta = np.arctan(pT/pz)
     truth_in = np.stack([phi, theta, energy], axis=1)
     truth_in = scaler.fit_transform(truth_in)
+    print("Min and Max for hadrons: ", scaler.data_min_, scaler.data_max_)
 
     # the input 4vector is the cluster 4vector
     input_4vec = c[[1, 2, 3, 4]][selections].values
     input_4vec = scaler.fit_transform(input_4vec)
+    print("Min and Max for clusters: ", scaler.data_min_, scaler.data_max_)
 
     shuffle(truth_in)
     shuffle(input_4vec)
