@@ -1,5 +1,6 @@
 
 import importlib
+from operator import truth
 import os
 import time
 import yaml
@@ -193,10 +194,15 @@ def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, **
     predictions = tf.concat(predictions, axis=0).numpy()
     truths = tf.concat(truths, axis=0).numpy()
 
-    fig, axs = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
+    if truths.shape[1] == 3:
+        fig, axs = plt.subplots(1, 3, figsize=(12, 4), constrained_layout=True)
+    else:
+        fig, axs = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
     axs = axs.flatten()
 
     config = dict(histtype='step', lw=2)
+
+
     # phi
     idx=0
     ax = axs[idx]
@@ -215,6 +221,18 @@ def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, **
     ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
     ax.set_xlabel(r"$theta$")
     ax.set_ylim(0, max_y)
+
+    if truths.shape[1] == 3:
+        # energy
+        idx=2
+        ax = axs[idx]
+        x_range = [-1, 1]
+        yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range, label='Truth', **config)
+        max_y = np.max(yvals) * 1.1
+        ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
+        ax.set_xlabel(r"$E$")
+        ax.set_ylim(0, max_y)
+
 
     # plt.legend()
     plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
