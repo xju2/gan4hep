@@ -3,17 +3,42 @@
 #include <vector>
 #include <iostream>
 #include <iterator>
+#include <unistd.h> // to parse input args.
 
 int main(int argc, char* argv[])
 {
+    std::string modelFilepath{"../../data/models/cluster_decayer.onnx"};
+    int opt;
+    bool useCUDA = false;
+    bool help = false;
+
+    while ((opt = getopt(argc, argv, "hcm:")) != -1){
+        switch(opt){
+            case 'm':
+                modelFilepath = optarg;
+                break;
+            case 'c':
+                useCUDA = true;
+                break;
+            default:
+                fprintf(stderr, "Usage %s [-c]\n", argv[0]);
+            if (help){
+                printf("   -c useCUDA: use cuda\n");
+                printf("   -m MODELFILE: onnx model file name\n");
+            }
+            exit(EXIT_FAILURE);
+        }
+    }
+
     HerwigClusterDecayer::Config config;
-    config.inputMLModelDir = "../../data/models/cluster_decayer.onnx";
+    config.inputMLModelDir = std::move(modelFilepath);
 
     // these for scaling back the output [phi, eta, energy]
     config.clusterMin = std::move(std::vector<float>{0.652201, -35.2036, -29.6485, -35.7964});
     config.clusterMax = std::move(std::vector<float>{38.8865, 31.0066, 31.8602, 33.0058});
     config.hadronMin = std::move(std::vector<float>{-1.5707537, -1.570766, 0.135401 });
     config.hadronMax = std::move(std::vector<float>{1.5707537, 1.570766, 30.9537});
+    config.useCuda = useCUDA;
 
     HerwigClusterDecayer clusterDecayer{config};
 

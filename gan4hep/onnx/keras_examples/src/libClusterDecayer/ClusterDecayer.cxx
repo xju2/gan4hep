@@ -129,7 +129,10 @@ void HerwigClusterDecayer::initTrainedModels()
 
     Ort::SessionOptions session_options;
     session_options.SetIntraOpNumThreads(1);
-    OrtStatus* status = OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, 0);
+    if (m_cfg.useCuda) {
+        OrtStatus* status = OrtSessionOptionsAppendExecutionProvider_CUDA(session_options, 0);
+    }
+    
     session_options.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_EXTENDED);
 
     m_sess = std::make_unique<Ort::Session>(*m_env, m_cfg.inputMLModelDir.c_str(), session_options);

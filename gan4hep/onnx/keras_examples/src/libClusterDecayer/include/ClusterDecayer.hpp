@@ -17,6 +17,7 @@ public:
         int numInputFeatures = 4;
         float scaledMin = -1;
         float scaledMax = 1;
+        bool useCuda = false;
     };
     
     HerwigClusterDecayer(const Config& config);
