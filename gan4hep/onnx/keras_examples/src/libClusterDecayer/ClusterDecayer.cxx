@@ -82,10 +82,14 @@ void HerwigClusterDecayer::getDecayProducts(
     const char* outputName = m_sess->GetOutputName(0, allocator);
     std::vector<const char*> outputNames{outputName};
 
-    runSessionWithIoBinding(*m_sess, inputNames, inputTensor, outputNames, outputTensor);
-    // std::cout << "original output: ";
-    // std::copy(outputData.begin(), outputData.end(), std::ostream_iterator<float>(std::cout, " "));
-    // std::cout << std::endl;
+    // runSessionWithIoBinding(*m_sess, inputNames, inputTensor, outputNames, outputTensor);
+
+    m_sess->Run(Ort::RunOptions{nullptr}, inputNames.data(),
+        inputTensor.data(), 1, outputNames.data(), outputTensor.data(), 1);
+
+    std::cout << "original outputs from GAN: ";
+    std::copy(outputData.begin(), outputData.end(), std::ostream_iterator<float>(std::cout, " "));
+    std::cout << std::endl;
 
     // convert the three output vectors
     const float pionMass = 0.135;
