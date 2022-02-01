@@ -1,5 +1,7 @@
 """Masked Autoregressive Density Estimation
 """
+import numpy as np
+
 import tensorflow as tf
 import tensorflow_probability as tfp
 
@@ -42,7 +44,7 @@ class Made(tfk.layers.Layer):
         return shift, tf.math.tanh(log_scale)
 
 
-def create_flow(hidden_shape: list, layers: int, out_dim=2):
+def create_flow(hidden_shape: list, layers: int, input_dim: int, out_dim: int=2):
     """Create Masked Autogressive Flow for density estimation
 
     Arguments:
@@ -53,18 +55,19 @@ def create_flow(hidden_shape: list, layers: int, out_dim=2):
 
     base_dist = tfd.Normal(loc=0.0, scale=1.0)
     bijectors = []
-
-    for i in range(layers):
+    permutation = tf.cast(np.concatenate((
+        np.arange(input_dim / 2, input_dim), np.arange(0, input_dim / 2))), tf.int32)
+    for _ in range(layers):
         bijectors.append(tfb.MaskedAutoregressiveFlow(
             shift_and_log_scale_fn=Made(
                 out_dim, hidden_units=hidden_shape, activation='relu')
         ))
-        bijectors.append(tfb.Permute(permutation=[1, 0]))
+        bijectors.append(tfb.Permute(permutation=permutation))
 
     bijector = tfb.Chain(bijectors=list(reversed(bijectors)), name='chain_of_MAF')
 
     maf = tfd.TransformedDistribution(
-        distribution=tfd.Sample(base_dist, sample_shape=[out_dim]),
+        distribution=tfd.Sample(base_dist, sample_shape=[input_dim]),
         bijector=bijector,
     )
 
