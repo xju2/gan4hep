@@ -87,7 +87,9 @@ def herwig_angles(filename,
     test_in, train_in = input_4vec[:num_test_evts], input_4vec[num_test_evts:max_evts]
     test_truth, train_truth = truth_in[:num_test_evts], truth_in[num_test_evts:max_evts]
 
-    return (train_in, train_truth, test_in, test_truth)
+    xlabels = ['phi', 'theta']
+
+    return (train_in, train_truth, test_in, test_truth, xlabels)
 
 def herwig_angles2(filename,
         max_evts=None, testing_frac=0.1, mode=2):
@@ -158,19 +160,30 @@ def herwig_angles2(filename,
     test_in, train_in = input_4vec[:num_test_evts], input_4vec[num_test_evts:max_evts]
     test_truth, train_truth = truth_in[:num_test_evts], truth_in[num_test_evts:max_evts]
 
-    return (train_in, train_truth, test_in, test_truth)
+    xlabels = ['phi', 'theta', 'energy']
+
+    return (train_in, train_truth, test_in, test_truth, xlabels)
 
 
 def dimuon_inclusive(filename, max_evts=None, testing_frac=0.1):
+    print(f"reading dimuon file {filename}\n")
     df = read_dataframe(filename, " ", None)
-    truth_data = df.to_numpy()
+    truth_data = df.to_numpy().astype(np.float32)
+
+    scaler = MinMaxScaler(feature_range=(-1,1))
+    truth_data = scaler.fit_transform(truth_data)
+    # scales = np.array([10, 1, 1, 10, 1, 1], np.float32)
+    # truth_data = truth_data / scales
+
     shuffle(truth_data)
 
     num_test_evts = int(truth_data.shape[0]*testing_frac)
     if num_test_evts > 10_000: num_test_evts = 10_000
 
-    scales = np.array([10, 1, 1, 10, 1, 1], np.float32)
-    truth_data = truth_data / scales
+
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
+
+    xlabels = ['leading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']] +\
+              ['subleading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']]
     
-    return (None, train_truth, None, test_truth)
+    return (None, train_truth, None, test_truth, xlabels)
