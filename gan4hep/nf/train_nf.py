@@ -44,7 +44,7 @@ def compare(predictions, truths, outname, xlabels,
         nrows = 1
 
     _, axs = plt.subplots(nrows, ncols,
-        figsize=(4*ncols, nrows), constrained_layout=True)
+        figsize=(4*ncols, 4*nrows), constrained_layout=True)
     axs = axs.flatten()
 
     config = dict(histtype='step', lw=2, density=True)

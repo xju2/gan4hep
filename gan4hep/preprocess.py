@@ -166,9 +166,10 @@ def herwig_angles2(filename,
 
 
 def dimuon_inclusive(filename, max_evts=None, testing_frac=0.1):
-    print(f"reading dimuon file {filename}\n")
+    
     df = read_dataframe(filename, " ", None)
     truth_data = df.to_numpy().astype(np.float32)
+    print(f"reading dimuon {df.shape[0]} events from file {filename}")
 
     scaler = MinMaxScaler(feature_range=(-1,1))
     truth_data = scaler.fit_transform(truth_data)
