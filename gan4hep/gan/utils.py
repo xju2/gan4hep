@@ -183,6 +183,21 @@ def log_metrics(
     return tot_wdis, comb_pvals, tot_edis, tot_mse
 
 
+def evaluate(model, datasets):
+    # Notice `training` is set to False.
+    # This is so all layers run in inference mode (batchnorm).
+    predictions = []
+    truths = []
+    for data in datasets:
+        test_input, test_truth = data
+        predictions.append(model(test_input, training=False))
+        truths.append(test_truth)
+
+    predictions = tf.concat(predictions, axis=0).numpy()
+    truths = tf.concat(truths, axis=0).numpy()
+    return predictions, truths
+
+
 def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, xlabels, **kwargs) -> float:
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
