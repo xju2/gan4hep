@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     # prepare input data by calling those function implemented in 
     # gan4hep.preprocess.
-    train_in, train_truth, test_in, test_truth = eval(args.data)(
+    train_in, train_truth, test_in, test_truth, _ = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
     batch_size = args.batch_size
