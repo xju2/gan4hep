@@ -36,7 +36,9 @@ def generator_loss(fake_output):
 class GAN():
     def __init__(self,
         noise_dim: int = 4, gen_output_dim: int = 2,
-        cond_dim: int = 4, disable_tqdm=False, lr=0.0001, **kwargs):
+        cond_dim: int = 4, disable_tqdm=False,
+        gen_lr: float = 0.0001,
+        disc_lr: float = 0.001, **kwargs):
         """
         noise_dim: dimension of the noises
         gen_output_dim: output dimension
@@ -53,8 +55,8 @@ class GAN():
         # ============
         # Optimizers
         # ============
-        self.generator_optimizer = keras.optimizers.Adam(lr)
-        self.discriminator_optimizer = keras.optimizers.Adam(lr)
+        self.gen_lr = gen_lr
+        self.disc_lr = disc_lr
 
         # Build the critic
         self.discriminator = self.build_critic()
@@ -101,8 +103,9 @@ class GAN():
         return model
 
 
-    def train(self, train_truth, epochs, batch_size, test_truth, log_dir, evaluate_samples_fn,
-        train_in=None, test_in=None):
+    def train(self, train_truth, epochs, batch_size,
+        test_truth, log_dir, evaluate_samples_fn, xlabels,
+        train_in=None, test_in=None,):
         # ======================================
         # construct testing data once for all
         # ======================================
@@ -130,6 +133,15 @@ class GAN():
         img_dir = os.path.join(log_dir, 'img')
         os.makedirs(img_dir, exist_ok=True)
 
+        # ======================
+        # Create optimizers
+        # ======================
+        end_lr = 1e-6
+        gen_lr = keras.optimizers.schedules.PolynomialDecay(self.gen_lr, epochs, end_lr, power=4)
+        disc_lr = keras.optimizers.schedules.PolynomialDecay(self.disc_lr, epochs, end_lr, power=1.0)
+        self.generator_optimizer = keras.optimizers.Adam(gen_lr)
+        self.discriminator_optimizer = keras.optimizers.Adam(disc_lr)
+
         @tf.function
         def train_step(gen_in_4vec, truth_4vec):
             with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
@@ -153,7 +165,6 @@ class GAN():
         best_epoch = -1
         with tqdm.trange(epochs, disable=self.disable_tqdm) as t0:
             for epoch in t0:
-
                 # compose the training dataset by generating different noises for each epochs
                 noise = np.random.normal(loc=0., scale=1., size=(train_truth.shape[0], self.noise_dim))
                 train_inputs = np.concatenate(
@@ -161,7 +172,8 @@ class GAN():
 
 
                 dataset = tf.data.Dataset.from_tensor_slices(
-                    (train_inputs, train_truth)).shuffle(2*batch_size).batch(batch_size, drop_remainder=True).prefetch(AUTO)
+                    (train_inputs, train_truth)).shuffle(2*batch_size).batch(
+                        batch_size, drop_remainder=False).prefetch(AUTO)
 
                 tot_loss = []
                 for data_batch in dataset:
@@ -173,7 +185,7 @@ class GAN():
 
                 tot_wdis = evaluate_samples_fn(
                     self.generator, epoch, testing_data,
-                    summary_writer, img_dir, **loss_dict)
+                    summary_writer, img_dir, xlabels, **loss_dict)
 
                 if tot_wdis < best_wdis:
                     ckpt_manager.save()

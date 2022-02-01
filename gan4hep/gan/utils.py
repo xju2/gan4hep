@@ -10,6 +10,8 @@ from scipy import stats
 import matplotlib.pyplot as plt
 import tensorflow as tf
 
+from gan4hep.utils_plot import compare
+
 
 def import_model(gan_name):
     gan_module = importlib.import_module("gan4hep."+gan_name)
@@ -181,7 +183,7 @@ def log_metrics(
     return tot_wdis, comb_pvals, tot_edis, tot_mse
 
 
-def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, **kwargs) -> float:
+def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, xlabels, **kwargs) -> float:
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
     predictions = []
@@ -194,51 +196,10 @@ def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, **
     predictions = tf.concat(predictions, axis=0).numpy()
     truths = tf.concat(truths, axis=0).numpy()
 
-    if truths.shape[1] == 3:
-        fig, axs = plt.subplots(1, 3, figsize=(12, 4), constrained_layout=True)
-    else:
-        fig, axs = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
-    axs = axs.flatten()
+    outname = os.path.join(img_dir, str(epoch))
+    compare(predictions, truths, outname, xlabels)
 
-    config = dict(histtype='step', lw=2)
-
-
-    # phi
-    idx=0
-    ax = axs[idx]
-    x_range = [-1, 1]
-    yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range, label='Truth', **config)
-    max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-    ax.set_xlabel(r"$\phi$")
-    ax.set_ylim(0, max_y)
-    
-    # theta
-    idx=1
-    ax = axs[idx]
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=x_range, label='Truth', **config)
-    max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-    ax.set_xlabel(r"$theta$")
-    ax.set_ylim(0, max_y)
-
-    if truths.shape[1] == 3:
-        # energy
-        idx=2
-        ax = axs[idx]
-        x_range = [-1, 1]
-        yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range, label='Truth', **config)
-        max_y = np.max(yvals) * 1.1
-        ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-        ax.set_xlabel(r"$E$")
-        ax.set_ylim(0, max_y)
-
-
-    # plt.legend()
-    plt.savefig(os.path.join(img_dir, 'image_at_epoch_{:04d}.png'.format(epoch)))
-    plt.close('all')
     if summary_writer:
         return log_metrics(summary_writer, predictions, truths, epoch, **kwargs)[0]
     else:
         return -9999.
-

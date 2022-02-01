@@ -11,12 +11,14 @@ from wgan import WGAN
 
 all_gans = ['GAN', "AAE", 'CGAN', 'WGAN']
 
-from gan4hep.utils_gan import generate_and_save_images
 from gan4hep.preprocess import herwig_angles
 from gan4hep.preprocess import herwig_angles2
 from gan4hep.preprocess import dimuon_inclusive
 
-def inference(gan, test_in, test_truth, log_dir):
+
+from utils import generate_and_save_images
+
+def inference(gan, test_in, test_truth, log_dir, xlabels):
     checkpoint_dir = os.path.join(log_dir, "checkpoints")
     checkpoint = tf.train.Checkpoint(
         generator=gan.generator,
@@ -38,7 +40,7 @@ def inference(gan, test_in, test_truth, log_dir):
     img_dir = os.path.join(log_dir, 'img_inference')
     os.makedirs(img_dir, exist_ok=True)
     tot_wdis = generate_and_save_images(
-        gan.generator, -1, testing_data, summary_writer, img_dir)
+        gan.generator, -1, testing_data, summary_writer, img_dir, xlabels)
     print(tot_wdis)
 
 
@@ -73,16 +75,16 @@ if __name__ == '__main__':
 
     # prepare input data by calling those function implemented in 
     # gan4hep.preprocess.
-    train_in, train_truth, test_in, test_truth, _ = eval(args.data)(
+    train_in, train_truth, test_in, test_truth, xlabels = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
     batch_size = args.batch_size
     gan = eval(args.model)(**vars(args))
     if args.inference:
-        inference(gan, test_in, test_truth, args.log_dir)
+        inference(gan, test_in, test_truth, args.log_dir, xlabels)
     else:
         gan.train(
             train_truth, args.epochs, batch_size,
             test_truth, args.log_dir,
-            generate_and_save_images,
-            train_in, test_in)
+            generate_and_save_images, xlabels,
+            train_in, test_in, )
