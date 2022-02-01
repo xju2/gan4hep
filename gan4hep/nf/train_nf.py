@@ -34,8 +34,8 @@ def compare(predictions, truths, outname, xlabels,
             "# of x-axis bins must equal to # of variables"
 
     nrows, ncols = 1, 2
-    if num_variables > 4:
-        ncols = 4
+    if num_variables > 2:
+        ncols = 2
         nrows = num_variables // ncols
         if num_variables % ncols != 0:
             nrows += 1 
