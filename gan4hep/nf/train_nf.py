@@ -17,33 +17,50 @@ from utils import train_density_estimation
 from utils import nll
 
 # %%
-def compare(predictions, truths, img_dir, idx=0):
-    fig, axs = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
+def compare(predictions, truths, outname, xlabels,
+    xranges=None, xbins=None):
+    """
+    default xranges: [-1, 1]
+    default xbins: 40
+    # """
+
+    num_variables = predictions.shape[1]
+    if xranges is not None:
+        assert len(xranges) == num_variables,\
+            "# of x-axis ranges must equal to # of variables"
+
+    if xbins is not None:
+        assert len(xbins) == num_variables,\
+            "# of x-axis bins must equal to # of variables"
+
+    nrows, ncols = 1, 2
+    if num_variables > 2:
+        ncols = 2
+        nrows = num_variables // ncols
+        if num_variables % ncols != 0:
+            nrows += 1 
+    else:
+        ncols = num_variables
+        nrows = 1
+
+    _, axs = plt.subplots(nrows, ncols,
+        figsize=(4*ncols, 4*nrows), constrained_layout=True)
     axs = axs.flatten()
 
     config = dict(histtype='step', lw=2, density=True)
-    # phi
-    idx=0
-    ax = axs[idx]
-    x_range = [-1, 1]
-    yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range, label='Truth', **config)
-    max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-    ax.set_xlabel(r"$\phi$")
-    ax.set_ylim(0, max_y)
-    ax.legend()
-    
-    # theta
-    idx=1
-    ax = axs[idx]
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=x_range, label='Truth', **config)
-    max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-    ax.set_xlabel(r"$theta$")
-    ax.set_ylim(0, max_y)
-    ax.legend()
+    for idx in range(num_variables):
+        xrange = xranges[idx] if xranges else (-1, 1)
+        xbin = xbins[idx] if xbins else 40
 
-    plt.savefig(os.path.join(img_dir, f'image_at_epoch_{idx}.png'))
+        ax = axs[idx]
+        yvals, _, _ = ax.hist(truths[:, idx], bins=xbin, range=xrange, label='Truth', **config)
+        max_y = np.max(yvals) * 1.1
+        ax.hist(predictions[:, idx], bins=xbin, range=xrange, label='Generator', **config)
+        ax.set_xlabel(r"{}".format(xlabels[idx]))
+        ax.set_ylim(0, max_y)
+        ax.legend()
+
+    plt.savefig(outname)
     plt.close('all')
 
 
@@ -58,7 +75,12 @@ def evaluate(flow_model, testing_data):
     return sum(distances), samples
 
 
-def train(train_truth, testing_truth, flow_model, lr, batch_size, max_epochs, outdir):
+def train(
+    train_truth, testing_truth, flow_model,
+    lr, batch_size, max_epochs, outdir, xlabels):
+    """
+    The primary training loop
+    """
     base_lr = lr
     end_lr = 1e-5
     learning_rate_fn = tfk.optimizers.schedules.PolynomialDecay(
@@ -87,6 +109,7 @@ def train(train_truth, testing_truth, flow_model, lr, batch_size, max_epochs, ou
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
+
     for i in range(max_epochs):
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
@@ -95,7 +118,8 @@ def train(train_truth, testing_truth, flow_model, lr, batch_size, max_epochs, ou
         if wdis < min_wdis:
             min_wdis = wdis
             min_iepoch = i
-            compare(predictions, testing_truth, img_dir, i)
+            outname = os.path.join(img_dir, str(i))
+            compare(predictions, testing_truth, outname, xlabels)
             ckpt_manager.save()
         elif i - min_iepoch > delta_stop:
             break
@@ -111,12 +135,15 @@ if __name__ == '__main__':
     add_arg("outdir", help='output directory')
     add_arg("--max-evts", default=-1, type=int, help="maximum number of events")
     add_arg("--batch-size", type=int, default=512, help="batch size")
+    add_arg("--data", default='herwig_angles',
+        choices=['herwig_angles', 'dimuon_inclusive', 'herwig_angles2'])
     
     args = parser.parse_args()
 
     from gan4hep.preprocess import herwig_angles
+    from gan4hep.preprocess import dimuon_inclusive
     from made import create_flow
-    train_in, train_truth, test_in, test_truth = herwig_angles(
+    train_in, train_truth, test_in, test_truth, xlabels = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
     outdir = args.outdir
@@ -125,7 +152,8 @@ if __name__ == '__main__':
     lr = 1e-3
     batch_size = args.batch_size
     max_epochs = 1000
+    out_dim = train_truth.shape[1]
 
-    maf =  create_flow(hidden_shape, layers, out_dim=2)
-
-    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir)
+    maf =  create_flow(hidden_shape, layers, input_dim=out_dim, out_dim=2)
+    print(maf)
+    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels)
