@@ -1,8 +1,7 @@
-
 import os
 import pandas as pd
 import numpy as np
-
+from sklearn.preprocessing import MinMaxScaler
 
 
 def shuffle(array: np.ndarray):
@@ -28,6 +27,7 @@ def read_dataframe(filename, sep=",", engine=None):
 
 
 
+   
 def herwig_angles(filename,
         max_evts=None, testing_frac=0.1):
     """
@@ -36,7 +36,7 @@ def herwig_angles(filename,
     In this case, we ask the GAN to predict the theta and phi
     angle of one of the particles
     """
-    df = read_dataframe(filename, ";", "python")
+    df = read_dataframe(filename, engine='python')
 
     event = None
     with open(filename, 'r') as f:
@@ -82,74 +82,182 @@ def herwig_angles(filename,
 
     # <NOTE, https://numpy.org/doc/stable/reference/random/generated/numpy.random.seed.html>
 
+
+
+    test_in, train_in = input_4vec[:num_test_evts], input_4vec[num_test_evts:max_evts]
+    test_truth, train_truth = truth_in[:num_test_evts], truth_in[num_test_evts:max_evts]
+
+    xlabels = ['phi', 'theta']
+
+    return (train_in, train_truth, test_in, test_truth, xlabels)
+
+def herwig_angles2(filename,
+        max_evts=None, testing_frac=0.1, mode=2):
+    """
+    This Herwig dataset is for the "ClusterDecayer" study.
+    Each event has q1, q1, cluster, h1, h2.
+    I define 3 modes:
+    0) both q1, q2 are with Pert=1
+    1) either q1 or q2 is with Pert=1
+    2) neither q1 nor q2 are with Pert=1
+    """
+    print(f'reading from {filename}')
+    df = read_dataframe(filename, ";", 'python')
+
+    def split_to_float(df, sep=','):
+        out = df
+        if type(df.iloc[0]) == str:
+            out = df.str.split(sep, expand=True).astype(np.float32)
+        return out
+
+    q1,q2,c,h1,h2 = [split_to_float(df[idx]) for idx in range(5)]
+    if mode not in [0, 1, 2]:
+        mode = 2
+        print(f"mode {mode} is not known! use mode 2")
+
+    if mode == 0:
+        selections = (q1[5] == 1) & (q2[5] == 1)
+    elif mode == 1:
+        selections = ((q1[5] == 1) & (q2[5] == 0)) | ((q1[5] == 0) & (q2[5] == 1))
+    else:
+        selections = (q1[5] == 0) & (q2[5] == 0)
+        
+    # selection hadrons in one of the modes    
+    h1 = h1[selections]
+    h2 = h2[selections]
+
+    # ======================================
+    # Calculate the theta and phi angle, and the energy
+    # of the first outgoing particle
+    # ======================================
+    scaler = MinMaxScaler(feature_range=(-1,1))
+
+    out_4vec = h1.values
+    energy,px,py,pz = [out_4vec[:, idx] for idx in range(1,5)]
+    pT = np.sqrt(px**2 + py**2)
+    phi = np.arctan(px/py)
+    theta = np.arctan(pT/pz)
+    truth_in = np.stack([phi, theta, energy], axis=1)
+    truth_in = scaler.fit_transform(truth_in)
+    print("Min and Max for hadrons: ", scaler.data_min_, scaler.data_max_)
+
+    # the input 4vector is the cluster 4vector
+    input_4vec = c[[1, 2, 3, 4]][selections].values
+    input_4vec = scaler.fit_transform(input_4vec)
+    print("Min and Max for clusters: ", scaler.data_min_, scaler.data_max_)
+
+    shuffle(truth_in)
+    shuffle(input_4vec)
+    print(truth_in.shape, input_4vec.shape)
+
+
+    # Split the data into training and testing
+    # <HACK, FIXME, NOTE>
+    # <HACK, For now a maximum of 10,000 events are used for testing, xju>
+    num_test_evts = int(input_4vec.shape[0]*testing_frac)
+    if num_test_evts < 10_000: num_test_evts = 10_000
+
+    test_in, train_in = input_4vec[:num_test_evts], input_4vec[num_test_evts:max_evts]
+    test_truth, train_truth = truth_in[:num_test_evts], truth_in[num_test_evts:max_evts]
+
+    xlabels = ['phi', 'theta', 'energy']
+
+    return (train_in, train_truth, test_in, test_truth, xlabels)
+
+def herwig_angles2(filename,
+        max_evts=None, testing_frac=0.1, mode=2):
+    """
+    This Herwig dataset is for the "ClusterDecayer" study.
+    Each event has q1, q1, cluster, h1, h2.
+    I define 3 modes:
+    0) both q1, q2 are with Pert=1
+    1) either q1 or q2 is with Pert=1
+    2) neither q1 nor q2 are with Pert=1
+    """
+    print(f'reading from {filename}')
+    df = read_dataframe(filename, ";", 'python')
+
+    def split_to_float(df, sep=','):
+        out = df
+        if type(df.iloc[0]) == str:
+            out = df.str.split(sep, expand=True).astype(np.float32)
+        return out
+
+    q1,q2,c,h1,h2 = [split_to_float(df[idx]) for idx in range(5)]
+    if mode not in [0, 1, 2]:
+        mode = 2
+        print(f"mode {mode} is not known! use mode 2")
+
+    if mode == 0:
+        selections = (q1[5] == 1) & (q2[5] == 1)
+    elif mode == 1:
+        selections = ((q1[5] == 1) & (q2[5] == 0)) | ((q1[5] == 0) & (q2[5] == 1))
+    else:
+        selections = (q1[5] == 0) & (q2[5] == 0)
+        
+    # selection hadrons in one of the modes    
+    h1 = h1[selections]
+    h2 = h2[selections]
+
+    # ======================================
+    # Calculate the theta and phi angle, and the energy
+    # of the first outgoing particle
+    # ======================================
+    scaler = MinMaxScaler(feature_range=(-1,1))
+
+    out_4vec = h1.values
+    energy,px,py,pz = [out_4vec[:, idx] for idx in range(1,5)]
+    pT = np.sqrt(px**2 + py**2)
+    phi = np.arctan(px/py)
+    theta = np.arctan(pT/pz)
+    truth_in = np.stack([phi, theta, energy], axis=1)
+    truth_in = scaler.fit_transform(truth_in)
+    print("Min and Max for hadrons: ", scaler.data_min_, scaler.data_max_)
+
+    # the input 4vector is the cluster 4vector
+    input_4vec = c[[1, 2, 3, 4]][selections].values
+    input_4vec = scaler.fit_transform(input_4vec)
+    print("Min and Max for clusters: ", scaler.data_min_, scaler.data_max_)
+
+    shuffle(truth_in)
+    shuffle(input_4vec)
+    print(truth_in.shape, input_4vec.shape)
+
+
+    # Split the data into training and testing
+    # <HACK, FIXME, NOTE>
+    # <HACK, For now a maximum of 10,000 events are used for testing, xju>
+    num_test_evts = int(input_4vec.shape[0]*testing_frac)
+    if num_test_evts < 10_000: num_test_evts = 10_000
+
     test_in, train_in = input_4vec[:num_test_evts], input_4vec[num_test_evts:max_evts]
     test_truth, train_truth = truth_in[:num_test_evts], truth_in[num_test_evts:max_evts]
 
     return (train_in, train_truth, test_in, test_truth)
 
 
-def dimuon_inclusive(filename, max_evts, testing_frac):
+def dimuon_inclusive(filename, max_evts=None, testing_frac=0.1):
+    
     df = read_dataframe(filename, " ", None)
-    truth_data = df.to_numpy()
+    truth_data_1 = df.to_numpy().astype(np.float32)
+    print(f"reading dimuon {df.shape[0]} events from file {filename}")
+
+    scaler = MinMaxScaler(feature_range=(-1,1))
+    truth_data = scaler.fit_transform(truth_data_1)
+    # scales = np.array([10, 1, 1, 10, 1, 1], np.float32)
+    # truth_data = truth_data / scales
+
     shuffle(truth_data)
+    shuffle(truth_data_1)
 
-    if testing_frac <=0 or testing_frac >=1:
-        testing_frac=0.1
-    #Ensure truth_data doesn't exceed max_evts
-    if truth_data.shape[0] > max_evts:
-        truth_data=truth_data[0:max_evts]
-        
-    #Calculate number of test events
     num_test_evts = int(truth_data.shape[0]*testing_frac)
+    if num_test_evts > 10_000: num_test_evts = 10_000
 
-    #scales = np.array([10, 1, 1, 10, 1, 1], np.float32) #Divide each row by this row
-    #truth_data = truth_data / scales
-    
-    
-    #Scaling all data between 1 and -1
-    from sklearn.preprocessing import MinMaxScaler, StandardScaler
-    
-    scaler = MinMaxScaler(feature_range=(-1, 1))
-    scaler_pt = MinMaxScaler(feature_range=(0, 1))
-    
-    scaler_stan=StandardScaler()
-    
-    truth_data=pd.DataFrame(truth_data)
-      
-    test0=truth_data[truth_data.columns[0]]
-    test1=truth_data[truth_data.columns[1]]
-    test2=truth_data[truth_data.columns[2]]
-    test3=truth_data[truth_data.columns[3]]
-    test4=truth_data[truth_data.columns[4]]
-    test5=truth_data[truth_data.columns[5]]
-       
-    test0=pd.DataFrame(test0)
-    test1=pd.DataFrame(test1)
-    test2=pd.DataFrame(test2)
-    test3=pd.DataFrame(test3)
-    test4=pd.DataFrame(test4)
-    test5=pd.DataFrame(test5)
-        
-    test0=test0.values.reshape(-1,1)
-    test1=test1.values.reshape(-1,1)
-    test2=test2.values.reshape(-1,1)
-    test3=test3.values.reshape(-1,1)
-    test4=test4.values.reshape(-1,1)
-    test5=test5.values.reshape(-1,1)
-    
-    truth_data[truth_data.columns[0]]= scaler.fit_transform(test0)
-    truth_data[truth_data.columns[1]] = scaler.fit_transform(test1)
-    truth_data[truth_data.columns[2]]= scaler.fit_transform(test2)
-    truth_data[truth_data.columns[3]] = scaler.fit_transform(test3)
-    truth_data[truth_data.columns[4]] = scaler.fit_transform(test4)
-    truth_data[truth_data.columns[5]] = scaler.fit_transform(test5)
 
-    from sklearn.compose import ColumnTransformer
-    from sklearn.preprocessing import StandardScaler
-                                  
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
+    test_truth_1, train_truth_1 = truth_data_1[:num_test_evts], truth_data_1[num_test_evts:max_evts]
+
+    xlabels = ['leading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']] +\
+              ['subleading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']]
     
-    return (None, train_truth, None, test_truth)
-
-
-
+    return (None, train_truth, None, test_truth, xlabels,test_truth_1,train_truth_1)
