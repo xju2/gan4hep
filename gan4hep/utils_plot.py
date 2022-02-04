@@ -58,3 +58,222 @@ def compare_4vec(predicts, truths, labels=None, nbins=35, min_x=-0.5, max_x=3, *
         labels=labels, bins=nbins, range=(min_x, max_x), **hist_config, **kwargs)
     view_particle_4vec(truths, axs=axs, label='truth',
         labels=labels, bins=nbins, range=(min_x, max_x), **hist_config, **kwargs)
+
+
+def compare(predictions, truths, outname, xlabels,truth_data,
+    xranges=None, xbins=None):
+    
+    #Original Code
+    '''
+    default xranges: [-1, 1]
+    default xbins: 40
+     
+
+    num_variables = predictions.shape[1]
+    if xranges is not None:
+        assert len(xranges) == num_variables,\
+            "# of x-axis ranges must equal to # of variables"
+
+    if xbins is not None:
+        assert len(xbins) == num_variables,\
+            "# of x-axis bins must equal to # of variables"
+
+    nrows, ncols = 1, 2
+    if num_variables > 2:
+        ncols = 2
+        nrows = num_variables // ncols
+        if num_variables % ncols != 0:
+            nrows += 1 
+    else:
+        ncols = num_variables
+        nrows = 1
+
+    _, axs = plt.subplots(nrows, ncols,
+        figsize=(4*ncols, 4*nrows), constrained_layout=True)
+    axs = axs.flatten()
+
+    config = dict(histtype='step', lw=2, density=True)
+    for idx in range(num_variables):
+        xrange = xranges[idx] if xranges else (-1, 1)
+        xbin = xbins[idx] if xbins else 40
+    
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx], bins=xbin, range=xrange, label='Truth', **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=xbin, range=xrange, label='Generator', **config)
+    ax.set_xlabel(r"{}".format(xlabels[idx]))
+    ax.set_ylim(0, max_y)
+    ax.legend()
+    '''
+    
+    #New Code
+    #Creating Plots
+    fig, axs = plt.subplots(1, 6, figsize=(20, 6), constrained_layout=True)
+    axs = axs.flatten()
+    config = dict(histtype='step', lw=2)
+    #Plot 1
+    idx=0
+    ax = axs[idx]
+    x_range = [-1, 1]
+    x_range_pt = [0, 1]
+
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  range=x_range,  label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_PT_Lead")
+    #ax.set_ylim(0, max_y)
+    ax.legend(['Truth', 'Generator'])
+    #ax.set_yscale('log')
+
+    # Plot 2
+    idx=1
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=x_range,  label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_Eta_Lead")
+    ax.legend(['Truth', 'Generator'])
+    #ax.set_ylim(0, max_y)
+    #ax.set_yscale('log')
+
+    # plot 3
+    idx=2
+    ax = axs[idx]
+    x_range = [-1, 1]
+
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range,   label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_Phi_Lead")
+    ax.legend(['Truth', 'Generator'])
+
+    # plot 4
+    idx=3
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  range=x_range,  label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_PT_Sub")
+    ax.legend(['Truth', 'Generator'])
+
+    # plot 5
+    idx=4
+    ax = axs[idx]
+    x_range = [-1, 1]
+
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  range=x_range,  label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_Eta_Sub")
+    ax.legend(['Truth', 'Generator'])
+
+    # plot 6
+    idx=5
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  range=x_range,  label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_Phi_Sub")
+    ax.legend(['Truth', 'Generator'])
+    plt.savefig(outname)
+    plt.close('all')
+    
+    
+    
+    #Inverse Scaler
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler(feature_range=(-1,1))
+    truth_data = scaler.fit_transform(truth_data)
+    truths=scaler.inverse_transform(truths)
+    predictions=scaler.inverse_transform(predictions)
+    
+    
+    #Creating  Original Valued Plots
+    fig, axs = plt.subplots(1, 6, figsize=(20, 6), constrained_layout=True)
+    axs = axs.flatten()
+    config = dict(histtype='step', lw=2)
+    #Plot 1
+    idx=0
+    ax = axs[idx]
+    x_range = [-np.pi, np.pi]
+    x_range_pt = [0, 1]
+
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40,   label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40,  label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_PT_Lead")
+    #ax.set_ylim(0, max_y)
+    ax.legend(['Truth', 'Generator'])
+    #ax.set_yscale('log')
+
+    # Plot 2
+    idx=1
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=[-np.pi, np.pi],  label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=[-np.pi, np.pi], label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_Eta_Lead")
+    ax.legend(['Truth', 'Generator'])
+    #ax.set_ylim(0, max_y)
+    #ax.set_yscale('log')
+
+    # plot 3
+    idx=2
+    ax = axs[idx]
+  
+
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=[-2*np.pi, 2*np.pi],   label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=[-2*np.pi, 2*np.pi], label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_Phi_Lead")
+    ax.legend(['Truth', 'Generator'])
+
+    # plot 4
+    idx=3
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_PT_Sub")
+    ax.legend(['Truth', 'Generator'])
+
+    # plot 5
+    idx=4
+    ax = axs[idx]
+    
+
+    yvals, _, _ = ax.hist(truths[:, idx], bins=40,  range=[-np.pi, np.pi],  label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=[-np.pi, np.pi], label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_Eta_Sub")
+    ax.legend(['Truth', 'Generator'])
+
+    # plot 6
+    idx=5
+    ax = axs[idx]
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  range=[-2*np.pi, 2*np.pi],  label='Truth',density=True, **config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions[:, idx], bins=40, range=[-2*np.pi, 2*np.pi], label='Generator',density=True, **config)
+    ax.set_xlabel(r"Muons_Phi_Sub")
+    ax.legend(['Truth', 'Generator'])
+    plt.savefig(outname+ ' Original Values')
+    plt.close('all')
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
