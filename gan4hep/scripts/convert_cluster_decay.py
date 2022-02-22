@@ -113,41 +113,35 @@ def read(filename, outname, mode=2):
     # print("boosted", new_inputs.shape, new_inputs)
 
 
-    scaler = MinMaxScaler(feature_range=(-1,1))
-    # the input 4vector is the cluster 4vector
-    scaled_inputs = scaler.fit_transform(new_inputs)
-
-
-    out_4vec = scaled_inputs[:, -4:]
+    out_4vec = new_inputs[:, -4:]
     _,px,py,pz = [out_4vec[:, idx] for idx in range(4)]
     pT = np.sqrt(px**2 + py**2)
     phi = np.arctan(px/py)
     theta = np.arctan(pT/pz)
     out_truth = np.stack([phi, theta], axis=1)
 
-    input_4vec = scaled_inputs[:, :4]
+    input_4vec = new_inputs[:, :4]
 
-    pickle.dump(scaler, open(outname+"_scalar.pkl", "wb"))
+    scaler = MinMaxScaler(feature_range=(-1,1))
+    # the input 4vector is the cluster 4vector
+    input_4vec = scaler.fit_transform(input_4vec)
+    pickle.dump(scaler, open(outname+"_scalar_input4vec.pkl", "wb"))
+
+    out_truth = scaler.fit_transform(out_truth)
+    pickle.dump(scaler, open(outname+"_scalar_outtruth.pkl", "wb"))
+
     np.savez(outname, input_4vec=input_4vec, out_truth=out_truth)
 
 
 def check(outname):
+    import matplotlib.pyplot as plt
     outname = outname+".npz"
-    pass
+    # outname = "/media/DataOcean/projects/ml/herwig/ClusterDecayer/data/cluster_ML_2PI0_converted_mode2.npz"
+    arrays = np.load(outname)
+    truth_in = arrays['out_truth']
+    plt.hist(truth_in[:, 0], bins=100, histtype='step', label='phi')
+    plt.hist(truth_in[:, 1], bins=100, histtype='step', label='theta')
 
-# %%
-outname = "/media/DataOcean/projects/ml/herwig/ClusterDecayer/data/cluster_ML_2PI0_converted_mode2.npz"
-arrays = np.load(outname)
-truth_in = arrays['out_truth']
-input_4vec = arrays['input_4vec']
-# %% 
-import matplotlib.pyplot as plt
-plt.hist(truth_in[:, 0], histtype='step', label='phi')
-plt.hist(truth_in[:, 1], histtype='step', label='theta')
-
-# %% 
-plt.hist(input_4vec[:, 0])
-# %% 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='convert herwig decayer')
