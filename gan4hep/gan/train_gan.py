@@ -1,5 +1,5 @@
 #!/user/bin/env python
-
+import time
 import os
 import tqdm
 import numpy as np
@@ -69,18 +69,19 @@ def train(train_truth, test_truth, model, gen_lr, disc_lr, batch_size,
     logging.info("Loading latest checkpoint from: {}".format(checkpoint_dir))
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
 
-    summary_dir = os.path.join(log_dir, "logs")
+    time_stamp = time.strftime('%Y%m%d-%H%M%S', time.localtime())
+    summary_dir = os.path.join(log_dir, "logs", f"{time_stamp}")
     summary_writer = tf.summary.create_file_writer(summary_dir)
 
-    img_dir = os.path.join(log_dir, 'img')
+    img_dir = os.path.join(log_dir, 'img', f'{time_stamp}')
     os.makedirs(img_dir, exist_ok=True)
 
     # ======================
     # Create optimizers
     # ======================
     end_lr = 1e-6
-    gen_lr = keras.optimizers.schedules.PolynomialDecay(gen_lr, max_epochs, end_lr, power=4)
-    disc_lr = keras.optimizers.schedules.PolynomialDecay(disc_lr, max_epochs, end_lr, power=1.0)
+    # gen_lr = keras.optimizers.schedules.PolynomialDecay(gen_lr, max_epochs, end_lr, power=4)
+    # disc_lr = keras.optimizers.schedules.PolynomialDecay(disc_lr, max_epochs, end_lr, power=1.0)
     generator_optimizer = keras.optimizers.Adam(gen_lr)
     discriminator_optimizer = keras.optimizers.Adam(disc_lr)
 
@@ -106,23 +107,28 @@ def train(train_truth, test_truth, model, gen_lr, disc_lr, batch_size,
     @tf.function
     def train_disc_only(gen_in_4vec, truth_4vec):
         with tf.GradientTape() as disc_tape:
-            gen_out_4vec = generator(gen_in_4vec, training=True)
+            gen_out_4vec = generator(gen_in_4vec, training=False)
 
             real_output = discriminator(truth_4vec, training=True)
             fake_output = discriminator(gen_out_4vec, training=True)
 
             disc_loss = discriminator_loss(real_output, fake_output)
+            gen_loss = generator_loss(fake_output)
 
         gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
 
         discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
-        return disc_loss, tf.constant(0, dtype=tf.float32)
+        return disc_loss, gen_loss
 
     best_wdis = 9999
     best_epoch = -1
-    plaeto_threashold = 20
+    plaeto_threashold = 100000
     num_no_improve = 0
     do_disc_only = False
+    num_disc_only_epochs = 0
+    i_disc_only = 0
+    summary_logfile = os.path.join(summary_dir, f'results_{time_stamp}.txt')
+    
     with tqdm.trange(max_epochs, disable=disable_tqdm) as t0:
         for epoch in t0:
             # compose the training dataset by generating different noises for each epochs
@@ -136,7 +142,11 @@ def train(train_truth, test_truth, model, gen_lr, disc_lr, batch_size,
                     batch_size, drop_remainder=False).prefetch(AUTO)
 
             tot_loss = []
-            train_fn = train_disc_only if do_disc_only else train_step
+            
+                
+            # train_fn = train_disc_only if do_disc_only else train_step
+            train_fn = train_step
+            i_disc_only += do_disc_only
 
             for data_batch in dataset:
                 tot_loss.append(list(train_fn(*data_batch)))
@@ -159,28 +169,34 @@ def train(train_truth, test_truth, model, gen_lr, disc_lr, batch_size,
 
             if tot_wdis < best_wdis:
                 ckpt_manager.save()
-                generator.save("generator")
+                generator.save(os.path.join(log_dir, "generator"))
                 best_wdis = tot_wdis
                 best_epoch = epoch
                 outname = os.path.join(img_dir, f"{epoch}.png")
                 compare(predictions, truths, outname, xlabels)
+                with open(summary_logfile, 'a') as f:
+                    f.write(", ".join(["{:.4f}".format(x) 
+                        for x in [best_wdis, best_epoch]]) + '\n')
             else:
                 num_no_improve += 1
             
             # so long since last improvement
             # train discriminator only
             if num_no_improve > plaeto_threashold:
-                num_no_improve -= 1
+                num_no_improve = 0
+                num_disc_only_epochs += 1
                 do_disc_only = True
             else:
-                do_disc_only = False
+                if i_disc_only == num_disc_only_epochs:
+                    do_disc_only = False
+                    i_disc_only = 0
 
 
             t0.set_postfix(**loss_dict, doOnlyDisc=do_disc_only, BestD=best_wdis, BestE=best_epoch)
 
     tmp_res = "Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis)
     logging.info(tmp_res)
-    summary_logfile = os.path.join(summary_dir, 'results.txt')
+    
     with open(summary_logfile, 'a') as f:
         f.write(tmp_res + "\n")
 
