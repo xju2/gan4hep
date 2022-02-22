@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# %% 
 """This script reads the original cluster decay files 
 and boost two hadron decay prodcuts to the cluster frame in which
 they are back-to-back.
@@ -98,38 +99,66 @@ def read(filename, outname, mode=2):
         selections = ~(q1[5] == 0) & (q2[5] == 0)
     else: pass
 
-    outname = outname+f"mode{mode}"
+    outname = outname+f"_mode{mode}"
         
     cluster = c[[1, 2, 3, 4]][selections].values
-    h1 = h1[selections]
-    h2 = h2[selections]
+    h1 = h1[[1, 2, 3, 4]][selections]
+    h2 = h2[[1, 2, 3, 4]][selections]
+
     org_inputs = np.concatenate([cluster, h1, h2], axis=1)
+    # org_inputs = org_inputs[:3]
+
+    # print("origin", org_inputs.shape, org_inputs)
     new_inputs = np.array([boost(row) for row in org_inputs])
+    # print("boosted", new_inputs.shape, new_inputs)
+
 
     scaler = MinMaxScaler(feature_range=(-1,1))
     # the input 4vector is the cluster 4vector
     scaled_inputs = scaler.fit_transform(new_inputs)
 
 
-    out_4vec = scaled_inputs[-4:]
-    _,px,py,pz = [out_4vec[:, idx] for idx in range(1,5)]
+    out_4vec = scaled_inputs[:, -4:]
+    _,px,py,pz = [out_4vec[:, idx] for idx in range(4)]
     pT = np.sqrt(px**2 + py**2)
     phi = np.arctan(px/py)
     theta = np.arctan(pT/pz)
     out_truth = np.stack([phi, theta], axis=1)
 
-    input_4vec = scaled_inputs[:4]
+    input_4vec = scaled_inputs[:, :4]
 
     pickle.dump(scaler, open(outname+"_scalar.pkl", "wb"))
     np.savez(outname, input_4vec=input_4vec, out_truth=out_truth)
 
 
+def check(outname):
+    outname = outname+".npz"
+    pass
+
+# %%
+outname = "/media/DataOcean/projects/ml/herwig/ClusterDecayer/data/cluster_ML_2PI0_converted_mode2.npz"
+arrays = np.load(outname)
+truth_in = arrays['out_truth']
+input_4vec = arrays['input_4vec']
+# %% 
+import matplotlib.pyplot as plt
+plt.hist(truth_in[:, 0], histtype='step', label='phi')
+plt.hist(truth_in[:, 1], histtype='step', label='theta')
+
+# %% 
+plt.hist(input_4vec[:, 0])
+# %% 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='convert herwig decayer')
     add_arg = parser.add_argument
     add_arg('inname', help='input filename')
     add_arg('outname', help='output filename')
+    add_arg('-m', '--mode', help='mode', type=int, default=2)
+    add_arg("-c", '--check', action='store_true', help="check outputs")
     args = parser.parse_args()
     
-    read(args.inname, args.outname)
+    if args.check:
+        check(args.outname)
+    else:
+        read(args.inname, args.outname, args.mode)
