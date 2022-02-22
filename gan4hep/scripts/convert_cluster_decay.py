@@ -120,7 +120,7 @@ def read(filename, outname, mode=2):
     theta = np.arctan(pT/pz)
     out_truth = np.stack([phi, theta], axis=1)
 
-    input_4vec = new_inputs[:, :4]
+    input_4vec = cluster
 
     scaler = MinMaxScaler(feature_range=(-1,1))
     # the input 4vector is the cluster 4vector
@@ -133,14 +133,22 @@ def read(filename, outname, mode=2):
     np.savez(outname, input_4vec=input_4vec, out_truth=out_truth)
 
 
-def check(outname):
+def check(outname, mode):
     import matplotlib.pyplot as plt
-    outname = outname+".npz"
+    outname = outname+f"_mode{mode}"
+
     # outname = "/media/DataOcean/projects/ml/herwig/ClusterDecayer/data/cluster_ML_2PI0_converted_mode2.npz"
-    arrays = np.load(outname)
+    arrays = np.load(outname+".npz")
     truth_in = arrays['out_truth']
     plt.hist(truth_in[:, 0], bins=100, histtype='step', label='phi')
     plt.hist(truth_in[:, 1], bins=100, histtype='step', label='theta')
+    plt.savefig("angles.png")
+
+    scaler_input = pickle.load(open(outname+"_scalar_input4vec.pkl", 'rb'))
+    print("Min and Max for inputs: ", scaler_input.data_min_, scaler_input.data_max_)
+
+    scaler_output = pickle.load(open(outname+"_scalar_outtruth.pkl", 'rb'))
+    print("Min and Max for outputs: ", scaler_output.data_min_, scaler_output.data_max_)
 
 if __name__ == '__main__':
     import argparse
@@ -153,6 +161,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     if args.check:
-        check(args.outname)
+        check(args.outname, args.mode)
     else:
         read(args.inname, args.outname, args.mode)

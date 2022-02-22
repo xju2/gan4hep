@@ -33,11 +33,11 @@ int main(int argc, char* argv[])
     HerwigClusterDecayer::Config config;
     config.inputMLModelDir = std::move(modelFilepath);
 
-    // these for scaling back the output [phi, eta, energy]
+    // these for scaling back the output [phi, eta]
     config.clusterMin = std::move(std::vector<float>{0.652201, -35.2036, -29.6485, -35.7964});
     config.clusterMax = std::move(std::vector<float>{38.8865, 31.0066, 31.8602, 33.0058});
-    config.hadronMin = std::move(std::vector<float>{-1.5707537, -1.570766, 0.135401 });
-    config.hadronMax = std::move(std::vector<float>{1.5707537, 1.570766, 30.9537});
+    config.hadronMin = std::move(std::vector<float>{-1.5707537, -1.570766});
+    config.hadronMax = std::move(std::vector<float>{1.5707537, 1.570766});
     config.useCuda = useCUDA;
 
     HerwigClusterDecayer clusterDecayer{config};
@@ -55,11 +55,11 @@ int main(int argc, char* argv[])
     std::cout <<" produced two hadrons [pions] with 4 vector:\n\n[GAN]    ";
     std::copy(hadron4vec1.begin(), hadron4vec1.end(),
         std::ostream_iterator<float>(std::cout, " "));
-    std::cout << std::endl << "[Herwig] 1.56275,-1.5339,0.248784,-0.0960216\n\n[GAN]    ";
+    std::cout << std::endl << "[Herwig] 2.27988,-1.74475,1.12067,0.937869\n\n[GAN]    ";
 
     std::copy(hadron4vec2.begin(), hadron4vec2.end(),
         std::ostream_iterator<float>(std::cout, " "));
-    std::cout << std::endl << "[Herwig] 2.27988,-1.74475,1.12067,0.937869\n";
+    std::cout << std::endl << "[Herwig] 1.56275,-1.5339,0.248784,-0.0960216\n";
 
     return 0;
 }
