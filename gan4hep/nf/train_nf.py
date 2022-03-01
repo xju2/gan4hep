@@ -18,8 +18,11 @@ from utils import nll
 from gan4hep.utils_plot import compare
 
 
-def evaluate(flow_model, testing_data):
+def evaluate(flow_model, testing_data,multiplier):
     num_samples, num_dims = testing_data.shape
+    
+    num_samples=multiplier*num_samples
+
     samples = flow_model.sample(num_samples).numpy()
     distances = [
         stats.wasserstein_distance(samples[:, idx], testing_data[:, idx]) \
@@ -31,7 +34,7 @@ def evaluate(flow_model, testing_data):
 
 def train(
     train_truth, testing_truth, flow_model,
-    lr, batch_size, max_epochs, outdir, xlabels,test_truth_1):
+    lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts):
     """
     The primary training loop
     """
@@ -56,24 +59,55 @@ def train(
         train_truth).batch(batch_size).prefetch(AUTO)
 
     img_dir = os.path.join(outdir, "imgs")
-    os.makedirs(img_dir, exist_ok=True)
+    
+    #summary_dir = os.path.join(log_dir, "logs")
+    #summary_writer = tf.summary.create_file_writer(summary_dir) #Creates a summary file writer for the given log directory.
 
+    #img_dir = os.path.join(log_dir, 'img')
+    #os.makedirs(img_dir, exist_ok=True)
+
+    import time
+    import pathlib
+    import datetime
+
+    #Making seperate folders for each run to store plots
+    #Get time and date of current run
+    current_date_and_time = datetime.datetime.now()
+    current_date_and_time_string = str(current_date_and_time)
+
+    os.makedirs(img_dir, exist_ok=True)
+    #Create directory path
+    run_dir = os.path.join(img_dir, 'img')
+    
+    #Add GAN paramaters to time and date to create file name for current run
+    new_run_folder=run_dir+current_date_and_time_string+' Epoch_num: '+ str(max_epochs)
+    os.makedirs(new_run_folder, exist_ok=True)
+           
+    
+   
     # start training
     print("idx, train loss, distance, minimum distance, minimum epoch")
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
-
     for i in range(max_epochs):
+         
+        from datetime import datetime
+        start_time = datetime.now()
+            
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
-
-        wdis, predictions = evaluate(flow_model, testing_truth)
+            
+        wdis, predictions = evaluate(flow_model, testing_truth,gen_evts)
+        end_time = datetime.now()
+        print('Generation Duration: {}'.format(end_time - start_time))
+        
+        
         if wdis < min_wdis:
             min_wdis = wdis
             min_iepoch = i
             outname = os.path.join(img_dir, str(i))
-            compare(predictions, testing_truth, outname, xlabels,test_truth_1)
+            compare(predictions, testing_truth, outname, xlabels,test_truth_1,new_run_folder,i)
             ckpt_manager.save()
         elif i - min_iepoch > delta_stop:
             break
@@ -89,7 +123,8 @@ if __name__ == '__main__':
     add_arg("outdir", help='output directory')
     add_arg("--max-evts", default=-1, type=int, help="maximum number of events")
     add_arg("--batch-size", type=int, default=512, help="batch size")
-    add_arg("--data", default='herwig_angles',
+    add_arg("--multi", type=int, default=1, help="Number times more of generated events")
+    add_arg("--data", default='dimuon_inclusive',
         choices=['herwig_angles', 'dimuon_inclusive', 'herwig_angles2'])
     
     args = parser.parse_args()
@@ -97,9 +132,10 @@ if __name__ == '__main__':
     from gan4hep.preprocess import herwig_angles
     from gan4hep.preprocess import dimuon_inclusive
     from made import create_flow
-    train_in, train_truth, test_in, test_truth, xlabels,test_truth_1,train_truth_1 = eval(args.data)(
-        args.filename, max_evts=args.max_evts)
 
+    #
+    train_in, train_truth, test_in, test_truth,  xlabels,test_truth_1,train_truth_1= eval(args.data)(
+        args.filename, max_evts=args.max_evts)
     outdir = args.outdir
     hidden_shape = [128]*2
     layers = 10
@@ -107,7 +143,7 @@ if __name__ == '__main__':
     batch_size = args.batch_size
     max_epochs = 1000
     out_dim = train_truth.shape[1]
-
+    gen_evts=args.multi
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim, out_dim=2)
     print(maf)
-    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels,test_truth_1)
+    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts)
