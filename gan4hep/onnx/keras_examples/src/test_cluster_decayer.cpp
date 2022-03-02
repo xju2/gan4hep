@@ -48,18 +48,55 @@ int main(int argc, char* argv[])
 
     clusterDecayer.getDecayProducts(cluster4vec, hadron4vec1, hadron4vec2);
 
-    std::cout << "incoming cluster with 4 vector: ";
-    std::copy(cluster4vec.begin(), cluster4vec.end(),
-        std::ostream_iterator<float>(std::cout, " "));
-    std::cout << std::endl;
-    std::cout <<" produced two hadrons [pions] with 4 vector:\n\n[GAN]    ";
-    std::copy(hadron4vec1.begin(), hadron4vec1.end(),
-        std::ostream_iterator<float>(std::cout, " "));
-    std::cout << std::endl << "[Herwig] 2.27988,-1.74475,1.12067,0.937869\n\n[GAN]    ";
+    auto print_checks = [](const std::vector<float>& cluster,
+        const std::vector<float>& h1, const std::vector<float>& h1_herwig,
+        const std::vector<float>& h2, const std::vector<float>& h2_herwig){
+        std::cout << "incoming cluster with 4 vector: ";
+        std::copy(cluster.begin(), cluster.end(),
+            std::ostream_iterator<float>(std::cout, " "));
+        std::cout << std::endl;
+        std::cout <<" produced two hadrons [pions] with 4 vector:\n\n[GAN]    ";
+        std::copy(h1.begin(), h1.end(),
+            std::ostream_iterator<float>(std::cout, " "));
+        std::cout << "\n[Herwig] ";
+        std::copy(h1_herwig.begin(), h1_herwig.end(),
+            std::ostream_iterator<float>(std::cout, " "));
 
-    std::copy(hadron4vec2.begin(), hadron4vec2.end(),
-        std::ostream_iterator<float>(std::cout, " "));
-    std::cout << std::endl << "[Herwig] 1.56275,-1.5339,0.248784,-0.0960216\n";
+        std::cout << "\n\n[GAN]    ";
+        std::copy(h2.begin(), h2.end(),
+            std::ostream_iterator<float>(std::cout, " "));
+        std::cout << "\n[Herwig] ";
+        std::copy(h2_herwig.begin(), h2_herwig.end(),
+            std::ostream_iterator<float>(std::cout, " "));
+
+        std::cout << std::endl;
+    };
+    std::vector<float> h1Herwig{1.56275,-1.5339,0.248784,-0.0960216};
+    std::vector<float> h2Herwig{2.27988,-1.74475,1.12067,0.937869};
+    print_checks(cluster4vec, hadron4vec1, h1Herwig, hadron4vec2, h2Herwig);
+
+
+    // Config the decayer for cases in which there are at least one quark with Pert=1
+    HerwigClusterDecayer::Config config_pert;
+    config_pert.inputMLModelDir = "../../data/models/cluster_decayer_pert.onnx";
+
+    // these for scaling back the output [phi, eta]
+    config_pert.clusterMin = std::move(std::vector<float>{0.692856, -44.578400, -44.212502, -44.866402});
+    config_pert.clusterMax = std::move(std::vector<float>{45.605202, 44.833000, 45.033901, 44.893398});
+    config_pert.hadronMin = std::move(std::vector<float>{-1.570768, -1.570728});
+    config_pert.hadronMax = std::move(std::vector<float>{1.570796, 1.570796});
+    config_pert.useCuda = useCUDA;
+
+    HerwigClusterDecayer clusterDecayerPert{config_pert};
+
+    std::vector<float> cluster4vecPert{25.5166,17.3116,0.866833,18.6806};
+    std::vector<float> hadron4vec1Pert; // from Herwig: 19.0023,12.8332,1.19091,13.9629
+    std::vector<float> hadron4vec2Pert; // from Herwig: 6.5143,4.4784,-0.324079,4.71771
+    clusterDecayer.getDecayProducts(cluster4vecPert, hadron4vec1Pert, hadron4vec2Pert);
+
+    std::vector<float> h1PertHerwig{19.0023,12.8332,1.19091,13.9629};
+    std::vector<float> h2PertHerwig{6.5143,4.4784,-0.324079,4.71771};
+    print_checks(cluster4vecPert, hadron4vec1Pert, h1PertHerwig,hadron4vec2Pert, h2PertHerwig);
 
     return 0;
 }

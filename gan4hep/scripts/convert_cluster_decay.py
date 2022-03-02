@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # %% 
 """This script reads the original cluster decay files 
-and boost two hadron decay prodcuts to the cluster frame in which
+and boost the two hadron decay prodcuts to the cluster frame in which
 they are back-to-back.
-Save the output to a new file for training the model
+Save the output to a new file for training the model.
 """
 import pickle
 import pandas as pd
@@ -65,7 +65,7 @@ def boost(a_row: np.ndarray):
     b_cluster, b_h1, b_h2 = [boost_fn(a_row[4*x: 4*(x+1)]) for x in range(3)]
     return b_cluster.tolist() + b_h1.tolist() + b_h2.tolist()
 
-def read(filename, outname, mode=2):
+def read(filename, outname, mode=2, example=False):
     """
     This Herwig dataset is for the "ClusterDecayer" study.
     Each event has q1, q1, cluster, h1, h2.
@@ -85,9 +85,9 @@ def read(filename, outname, mode=2):
         return out
 
     q1,q2,c,h1,h2 = [split_to_float(df[idx]) for idx in range(5)]
-    if mode not in [0, 1, 2]:
-        mode = 2
+    if mode not in [0, 1, 2, 3]:
         print(f"mode {mode} is not known! use mode 2")
+        mode = 2
 
     if mode == 0:
         selections = (q1[5] == 1) & (q2[5] == 1)
@@ -95,8 +95,10 @@ def read(filename, outname, mode=2):
         selections = ((q1[5] == 1) & (q2[5] == 0)) | ((q1[5] == 0) & (q2[5] == 1))
     elif mode == 2:
         selections = (q1[5] == 0) & (q2[5] == 0)
+        print("both quarks with Pert=0")
     elif mode == 3:
         selections = ~(q1[5] == 0) & (q2[5] == 0)
+        print("at least one quark with Pert=1")
     else: pass
 
     outname = outname+f"_mode{mode}"
@@ -106,6 +108,10 @@ def read(filename, outname, mode=2):
     h2 = h2[[1, 2, 3, 4]][selections]
 
     org_inputs = np.concatenate([cluster, h1, h2], axis=1)
+
+    if example:
+        print(org_inputs[0])
+        return 
     # org_inputs = org_inputs[:3]
 
     # print("origin", org_inputs.shape, org_inputs)
@@ -137,7 +143,6 @@ def check(outname, mode):
     import matplotlib.pyplot as plt
     outname = outname+f"_mode{mode}"
 
-    # outname = "/media/DataOcean/projects/ml/herwig/ClusterDecayer/data/cluster_ML_2PI0_converted_mode2.npz"
     arrays = np.load(outname+".npz")
     truth_in = arrays['out_truth']
     plt.hist(truth_in[:, 0], bins=100, histtype='step', label='phi')
@@ -145,10 +150,18 @@ def check(outname, mode):
     plt.savefig("angles.png")
 
     scaler_input = pickle.load(open(outname+"_scalar_input4vec.pkl", 'rb'))
-    print("Min and Max for inputs: ", scaler_input.data_min_, scaler_input.data_max_)
-
     scaler_output = pickle.load(open(outname+"_scalar_outtruth.pkl", 'rb'))
-    print("Min and Max for outputs: ", scaler_output.data_min_, scaler_output.data_max_)
+
+    def dump_scaler(scaler):
+        print("Min and Max for inputs: {",\
+            ", ".join(["{:.6f}".format(x) for x in scaler.data_min_]),\
+            ", ".join(["{:.6f}".format(x) for x in scaler.data_max_]), "}")
+
+    print("//---- inputs ----")
+    dump_scaler(scaler_input)
+    print("//---- output ----")
+    dump_scaler(scaler_output)
+    print("Total entries:", truth_in.shape[0])
 
 if __name__ == '__main__':
     import argparse
@@ -158,9 +171,10 @@ if __name__ == '__main__':
     add_arg('outname', help='output filename')
     add_arg('-m', '--mode', help='mode', type=int, default=2)
     add_arg("-c", '--check', action='store_true', help="check outputs")
+    add_arg("-e", '--example', action='store_true', help='print an example event')
     args = parser.parse_args()
     
     if args.check:
         check(args.outname, args.mode)
     else:
-        read(args.inname, args.outname, args.mode)
+        read(args.inname, args.outname, args.mode, args.example)
