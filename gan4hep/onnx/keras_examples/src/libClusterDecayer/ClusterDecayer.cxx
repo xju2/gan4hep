@@ -92,7 +92,6 @@ void HerwigClusterDecayer::getDecayProducts(
     std::cout << std::endl;
 
     // convert the three output vectors
-    const float pionMass = 0.134978;
     for(unsigned int idx=0; idx < m_numOfOutFeatures; idx++){
         scalerInv(outputData[idx], m_cfg.hadronMin[idx], m_cfg.hadronMax[idx]);
     }
@@ -119,8 +118,8 @@ void HerwigClusterDecayer::getDecayProducts(
 
     // Calculate the 4vector of the two outgoing pions in the cluster's frame, in which
     // they are back-to-back. 
-    float energy = 0.5 * mass;
-    float momentum = sqrt(energy*energy - pionMass*pionMass);
+    float energy = m_cfg.massDecayer1/(m_cfg.massDecayer2+m_cfg.massDecayer1) * mass;
+    float momentum = sqrt(energy*energy - m_cfg.massDecayer1*m_cfg.massDecayer1);
     float px = momentum * sin(theta) * sin(phi);
     float py = momentum * sin(theta) * cos(phi);
     float pz = momentum * cos(theta);
@@ -144,7 +143,7 @@ void HerwigClusterDecayer::getDecayProducts(
     hadronOne4Vec.push_back(h1_pz);
 
     // now use 4 vector conservation to calculate the other hadron
-    float h2_e=energy, h2_px=-px, h2_py=-py, h2_pz=-pz;
+    float h2_e = mass-energy, h2_px=-px, h2_py=-py, h2_pz=-pz;
     invBoost(h2_e, h2_px, h2_py, h2_pz);
     hadronTwo4Vec.clear();
     hadronTwo4Vec.push_back(h2_e);

@@ -39,6 +39,8 @@ int main(int argc, char* argv[])
     config.hadronMin = std::move(std::vector<float>{-1.5707537, -1.570766});
     config.hadronMax = std::move(std::vector<float>{1.5707537, 1.570766});
     config.useCuda = useCUDA;
+    config.massDecayer1 = 0.134978;
+    config.massDecayer2 = 0.134978;
 
     HerwigClusterDecayer clusterDecayer{config};
 
@@ -86,6 +88,8 @@ int main(int argc, char* argv[])
     config_pert.hadronMin = std::move(std::vector<float>{-1.570768, -1.570728});
     config_pert.hadronMax = std::move(std::vector<float>{1.570796, 1.570796});
     config_pert.useCuda = useCUDA;
+    config_pert.massDecayer1 = 0.134978;
+    config_pert.massDecayer2 = 0.134978;
 
     HerwigClusterDecayer clusterDecayerPert{config_pert};
 

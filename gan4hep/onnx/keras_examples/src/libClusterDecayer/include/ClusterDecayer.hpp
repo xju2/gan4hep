@@ -18,6 +18,8 @@ public:
         float scaledMin = -1;
         float scaledMax = 1;
         bool useCuda = false;
+        float massDecayer1 = 0.134978;
+        float massDecayer2 = 0.134978;
     };
     
     HerwigClusterDecayer(const Config& config);
