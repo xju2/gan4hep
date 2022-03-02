@@ -386,49 +386,61 @@ def selection_cuts(predictions,truths):
     return predictions_cut,truths,predictions,truths_cut
 
 def var_corr(predictions,truths,new_run_folder,i):
-    import seaborn as sns; sns.set_theme()
-    #Creating Correlation Plot (Truth)
-    predictions=np.array(predictions)
-    truths=np.array(truths)
-    #fig, axs = plt.subplots(7, 7, figsize=(40, 7), constrained_layout=True)
-    #axes = axs.flatten()
-    count=i
-    #i=0
-    #j=0
-    #print('test',len(axs))
-    var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
-
-    
-       
-        
-        
-        
-        
-        
-        
     import pandas as pd
     import seaborn as sns
-    from numpy.random import randint
-    import matplotlib.pyplot as plt
-
-
-    #ax = sns.heatmap(predictions[:,1],prediction[:,2])
-    #plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_truths_{:04d}.png'.format(count)))
         
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-        
-    fig, axes = plt.subplots(nrows=7, ncols=7, figsize=(40,40), sharex=True, sharey=True)
+    count=i
+    var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
+    predictions=np.array(predictions)
+    truths=np.array(truths)
+    
+    df_truths = pd.DataFrame(truths[:,0:7], columns = var_name_list)
+    df_predictions = pd.DataFrame(predictions[:,0:7], columns = var_name_list)
+    
+    plt.rcParams['figure.figsize'] = (20.0, 15.0)
+    sns.heatmap(df_truths.corr(),annot=True)
+    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_truths_{:04d}.png'.format(count)))
+    plt.close('all')
+    plt.rcParams['figure.figsize'] = (20.0, 15.0)
+    sns.heatmap(df_predictions.corr(),annot=True)
+    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_generated_{:04d}.png'.format(count)))
+    plt.close('all')
+    plt.rcParams['figure.figsize'] = (10.0, 10.0)
+    #Creating Alot of plots
     j=0
+    i=0
+    for i in range(6):
+        j=0
+        for j in range(6):
+            if i <7:
+                plt.scatter(predictions[:,i],predictions[:,j])
+                plt.xlabel(var_name_list[i])
+                plt.ylabel(var_name_list[j])
+                plt.savefig(os.path.join(new_run_folder, 'Variables: '+var_name_list[i]+' and '+var_name_list[j]+' Scatterplot_at_epoch_generated_{:04d}.png'.format(count)))
+                plt.close('all')
+                
+                
+    #Creating Alot more plots
+    j=0
+    i=0
+    for i in range(6):
+        j=0
+        for j in range(6):
+            if i <7:
+                plt.scatter(truths[:,i],truths[:,j])
+                plt.xlabel(var_name_list[i])
+                plt.ylabel(var_name_list[j])
+                plt.savefig(os.path.join(new_run_folder, 'Variables: '+var_name_list[i]+' and '+var_name_list[j]+' Scatterplot_at_epoch_truth_{:04d}.png'.format(count)))
+                plt.close('all')
+                
+    #Creating Correlation Plot (Truth)
+
+
+    
+    var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
+    fig, axes = plt.subplots(nrows=7, ncols=7, figsize=(40,40))
+    j=0
+    i=0
     for i, ax in enumerate(axes.flatten()):
         j=0
         for j in range(7):
@@ -442,26 +454,12 @@ def var_corr(predictions,truths,new_run_folder,i):
             j=j+1
 
             
-    #plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_truths_{:04d}.png'.format(count)))
+    plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_truths_{:04d}.png'.format(count)))
     #plt.close('all')
-    
-    
-    
-    
+ 
     #Creating Correlation Plot (Truth)
-    predictions=np.array(predictions)
-    truths=np.array(truths)
-    #fig, axs = plt.subplots(7, 7, figsize=(40, 7), constrained_layout=True)
-    #axes = axs.flatten()
-    count=i
-    #i=0
-    #j=0
-    #print('test',len(axs))
-    var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
-
-    
-            
-    fig, axes = plt.subplots(nrows=7, ncols=7, figsize=(40,40), sharex=True, sharey=True)
+    var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']        
+    fig, axes = plt.subplots(nrows=7, ncols=7, figsize=(40,40))
     j=0
     for i, ax in enumerate(axes.flatten()):
         j=0
@@ -473,17 +471,10 @@ def var_corr(predictions,truths,new_run_folder,i):
                 axes[i][j].set_xlabel(var_name_list[j])
 
             j=j+1
-
-            
-            
-    plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_predictions_{:04d}.png'.format(count)))
-    
-    
-    
-    
-    
+                     
+    plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_generated_{:04d}.png'.format(count)))
     #plt.close('all')
-  
+
     '''
     residual=truths/predictions
     fig, axs = plt.subplots(1, 7, figsize=(40, 7), constrained_layout=True)
@@ -500,11 +491,7 @@ def var_corr(predictions,truths,new_run_folder,i):
 
             
     plt.savefig(os.path.join(new_run_folder, 'residual_at_epoch_{:04d}.png'.format(count)))
-    #plt.close('all')'''
-            
-          
-
-            
+    #plt.close('all')
 
     fig, axs = plt.subplots(1, 7, figsize=(40, 7), constrained_layout=True)
     axs = axs.flatten()
@@ -522,14 +509,8 @@ def var_corr(predictions,truths,new_run_folder,i):
 
             
     plt.savefig(os.path.join(new_run_folder, 'listed_correlation_at_epoch_{:04d}.png'.format(count)))
-    plt.close('all')
+    plt.close('all')'''
             
-           
-            
-           
-
-    
-    
 def dimuon_calc(predictions,truths):
         
     #print(truths)
