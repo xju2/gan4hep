@@ -21,6 +21,7 @@ HerwigClusterDecayer::HerwigClusterDecayer(const Config& config): m_cfg(config){
 
 void HerwigClusterDecayer::getDecayProducts(
     std::vector<float>& cluster4Vec,
+    float hadronMassOne, float hadronMassTwo,
     std::vector<float>& hadronOne4Vec,
     std::vector<float>& hadronTwo4Vec)
 {
@@ -117,9 +118,9 @@ void HerwigClusterDecayer::getDecayProducts(
         };
 
     // Calculate the 4vector of the two outgoing pions in the cluster's frame, in which
-    // they are back-to-back. 
-    float energy = m_cfg.massDecayer1/(m_cfg.massDecayer2+m_cfg.massDecayer1) * mass;
-    float momentum = sqrt(energy*energy - m_cfg.massDecayer1*m_cfg.massDecayer1);
+    // they are back-to-back.
+    float energy = (mass*mass + hadronMassOne*hadronMassOne - hadronMassTwo*hadronMassTwo) / (2*mass);
+    float momentum = sqrt(energy*energy - hadronMassOne*hadronMassOne);
     float px = momentum * sin(theta) * sin(phi);
     float py = momentum * sin(theta) * cos(phi);
     float pz = momentum * cos(theta);

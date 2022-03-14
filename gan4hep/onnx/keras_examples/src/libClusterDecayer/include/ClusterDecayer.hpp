@@ -18,8 +18,6 @@ public:
         float scaledMin = -1;
         float scaledMax = 1;
         bool useCuda = false;
-        float massDecayer1 = 0.134978;
-        float massDecayer2 = 0.134978;
     };
     
     HerwigClusterDecayer(const Config& config);
@@ -28,9 +26,10 @@ public:
     // It takes the cluster 4 vector as input
     // and produces two hadrons' 4vectors as output.
     // 4 vectors are in the order of [energy, px, py, pz]
-    // hadrons are assumed to be pions of mass 0.135 GeV
+    // two hadron masses are needed.
     void getDecayProducts(
         std::vector<float>& cluster4Vec,
+        float hadronMassOne, float hadronMassTwo,
         std::vector<float>& hadronOne4Vec,
         std::vector<float>& hadronTwo4Vec
     );

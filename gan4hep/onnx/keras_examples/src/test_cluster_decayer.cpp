@@ -39,8 +39,7 @@ int main(int argc, char* argv[])
     config.hadronMin = std::move(std::vector<float>{-1.5707537, -1.570766});
     config.hadronMax = std::move(std::vector<float>{1.5707537, 1.570766});
     config.useCuda = useCUDA;
-    config.massDecayer1 = 0.134978;
-    config.massDecayer2 = 0.134978;
+    const float pionMass = 0.134978;
 
     HerwigClusterDecayer clusterDecayer{config};
 
@@ -48,7 +47,7 @@ int main(int argc, char* argv[])
     std::vector<float> hadron4vec1; // from Herwig: 1.56275,-1.5339,0.248784,-0.0960216
     std::vector<float> hadron4vec2; // from Herwig: 2.27988,-1.74475,1.12067,0.937869
 
-    clusterDecayer.getDecayProducts(cluster4vec, hadron4vec1, hadron4vec2);
+    clusterDecayer.getDecayProducts(cluster4vec, pionMass, pionMass, hadron4vec1, hadron4vec2);
 
     auto print_checks = [](const std::vector<float>& cluster,
         const std::vector<float>& h1, const std::vector<float>& h1_herwig,
@@ -88,15 +87,13 @@ int main(int argc, char* argv[])
     config_pert.hadronMin = std::move(std::vector<float>{-1.570768, -1.570728});
     config_pert.hadronMax = std::move(std::vector<float>{1.570796, 1.570796});
     config_pert.useCuda = useCUDA;
-    config_pert.massDecayer1 = 0.134978;
-    config_pert.massDecayer2 = 0.134978;
 
     HerwigClusterDecayer clusterDecayerPert{config_pert};
 
     std::vector<float> cluster4vecPert{25.5166,17.3116,0.866833,18.6806};
     std::vector<float> hadron4vec1Pert; // from Herwig: 19.0023,12.8332,1.19091,13.9629
     std::vector<float> hadron4vec2Pert; // from Herwig: 6.5143,4.4784,-0.324079,4.71771
-    clusterDecayer.getDecayProducts(cluster4vecPert, hadron4vec1Pert, hadron4vec2Pert);
+    clusterDecayer.getDecayProducts(cluster4vecPert, pionMass, pionMass, hadron4vec1Pert, hadron4vec2Pert);
 
     std::vector<float> h1PertHerwig{19.0023,12.8332,1.19091,13.9629};
     std::vector<float> h2PertHerwig{6.5143,4.4784,-0.324079,4.71771};
