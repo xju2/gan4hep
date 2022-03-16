@@ -156,21 +156,21 @@ def train(train_truth, test_truth, model, gen_lr, disc_lr, batch_size,
             loss_dict = dict(D_loss=avg_loss[0], G_loss=avg_loss[1])
 
             predictions, truths = evaluate(generator, testing_data)
-            tot_wdis = sum([stats.wasserstein_distance(predictions[:, idx], truths[:, idx])\
-                    for idx in range(truths.shape[1])])
+            avg_wdis = sum([stats.wasserstein_distance(predictions[:, idx], truths[:, idx])\
+                    for idx in range(truths.shape[1])]) / truths.shape[1]
 
 
             with summary_writer.as_default():
                 tf.summary.experimental.set_step(epoch)
-                tf.summary.scalar("tot_wasserstein_dis",
-                    tot_wdis, description="total wasserstein distance")
+                tf.summary.scalar("avg_wasserstein_dis",
+                    avg_wdis, description="average wasserstein distance")
                 for key,val in loss_dict.items():
                     tf.summary.scalar(key, val)
 
-            if tot_wdis < best_wdis:
+            if avg_wdis < best_wdis:
                 ckpt_manager.save()
                 generator.save(os.path.join(log_dir, "generator"))
-                best_wdis = tot_wdis
+                best_wdis = avg_wdis
                 best_epoch = epoch
                 outname = os.path.join(img_dir, f"{epoch}.png")
                 compare(predictions, truths, outname, xlabels)
