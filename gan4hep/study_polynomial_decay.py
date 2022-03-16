@@ -17,4 +17,5 @@ plt.legend()
 plt.xlabel("epoch", fontsize=14)
 plt.ylabel("learning rate", fontsize=14)
 plt.title("Polynomial Scheduler")
+plt.savefig("learning.png")
 # %%
