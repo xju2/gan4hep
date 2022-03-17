@@ -110,7 +110,7 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     ax.axvline(predictions_cut[:, idx].mean()+predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
     ax.axvline(predictions_cut[:, idx].mean()-predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
     #plt.yscale('log')
-    ax.legend(['Truth', 'Generator','Truth Mean','Truth SD','Generated Mean','Generated SD'])
+    ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
     plt.savefig(os.path.join(new_run_folder, 'dimuon_image_at_epoch_{:04d}.png'.format(i)))
     plt.close('all')
     
