@@ -16,6 +16,7 @@ from scipy import stats
 from utils import train_density_estimation
 from utils import nll
 from gan4hep.utils_plot import compare
+from gan4hep.Hmumu_plots import hmumu_plot
 
 
 def evaluate(flow_model, testing_data,multiplier):
@@ -81,6 +82,7 @@ def train(
     
     #Add GAN paramaters to time and date to create file name for current run
     new_run_folder=run_dir+current_date_and_time_string+' Epoch_num: '+ str(max_epochs)
+    print('new_run_folder',new_run_folder)
     os.makedirs(new_run_folder, exist_ok=True)
            
     
@@ -107,12 +109,30 @@ def train(
             min_wdis = wdis
             min_iepoch = i
             outname = os.path.join(img_dir, str(i))
-            compare(predictions, testing_truth, outname, xlabels,test_truth_1,new_run_folder,i)
+            hmumu_plot(predictions, testing_truth, outname, xlabels,test_truth_1,new_run_folder,i)
             ckpt_manager.save()
+            #save_NF(flow_model,new_run_folder)
         elif i - min_iepoch > delta_stop:
             break
 
         print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
+    
+#def save_NF(flow_model,new_run_folder):
+ #   print('flow_model',flow_model)
+  #  print('!')
+   # print('!')
+    #print('!')
+    #print('!')
+    #flow_model_saved=flow_model
+    #print(type(flow_model))
+    #tmp_res = "Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis)
+    #logging.info(tmp_res)
+    
+    #summary_logfile = os.path.join(new_run_folder, 'results.txt')
+
+    #with open(summary_logfile, 'a') as f:
+     #   f.write(flow_model_saved)
+
 
 
 if __name__ == '__main__':
@@ -142,6 +162,7 @@ if __name__ == '__main__':
     lr = 1e-3
     batch_size = args.batch_size
     max_epochs = 1000
+    print('max_epochs',max_epochs)
     out_dim = train_truth.shape[1]
     gen_evts=args.multi
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim, out_dim=2)
