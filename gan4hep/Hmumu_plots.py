@@ -45,9 +45,7 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     
     #Function to calculate invarient dimuon mass
     truths,predictions=dimuon_calc(predictions,truths)
-    
-    
-    
+
     #Applying Selection Cuts
     
     print('Length of predicted data set pre-cuts: ',len(predictions))
@@ -135,6 +133,118 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     plt.yscale('log')
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
     plt.savefig(os.path.join(new_run_folder, 'dimuon_log_image_at_epoch_{:04d}.png'.format(i)))
+    plt.close('all')
+    
+    
+    
+    
+    
+    
+    mpl.rcParams.update(mpl.rcParamsDefault)
+
+    
+    
+    
+    
+     #Plot 
+    fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
+    #axs = axs.flatten()
+    config = dict(histtype='step', lw=2)
+    
+    idx=len(xlabels_extra)-2
+    ax = axs
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=[0,200],  label='Truth',density=True,**config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions_cut[:, idx], bins=40, range=[0,200],  label='Generator',density=True,**config)
+    ax.set_xlabel(r"DiMuon Pt")
+    ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
+    ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
+    ax.axvline(truths[:, idx].mean()-truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean(), color='g', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean()+predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean()-predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
+    #plt.yscale('log')
+    ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_pt_image_at_epoch_{:04d}.png'.format(i)))
+    plt.close('all')
+    
+    
+    #Plot Log Dimuon
+    fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
+    #axs = axs.flatten()
+    config = dict(histtype='step', lw=2)
+    
+    idx=len(xlabels_extra)-2
+    ax = axs
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=[0,200],  label='Truth',density=True,**config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions_cut[:, idx], bins=40, range=[0,200],  label='Generator',density=True,**config)
+    ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
+    ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
+    ax.axvline(truths[:, idx].mean()-truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean(), color='g', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean()+predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean()-predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
+    ax.set_xlabel(r"DiMuon Pt")
+    plt.yscale('log')
+    ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_pt_log_image_at_epoch_{:04d}.png'.format(i)))
+    plt.close('all')
+    
+    mpl.rcParams.update(mpl.rcParamsDefault)
+
+     #Plot Just Dimuon But Big with mean and SD   
+    fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
+    #axs = axs.flatten()
+    config = dict(histtype='step', lw=2)
+    
+    idx=len(xlabels_extra)-1
+    ax = axs
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=[0,200],  label='Truth',density=True,**config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions_cut[:, idx], bins=40, range=[0,200],  label='Generator',density=True,**config)
+    ax.set_xlabel(r"DiMuon Pseudorapidity Mass")
+    ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
+    ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
+    ax.axvline(truths[:, idx].mean()-truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean(), color='g', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean()+predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean()-predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
+    #plt.yscale('log')
+    ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_pseudo_image_at_epoch_{:04d}.png'.format(i)))
+    plt.close('all')
+    
+    print('')
+    print('')
+    print('')
+    print('')
+    print('')
+    print('')
+    print('')
+    print('')
+    print('')
+    print('')
+    #Plot Log Dimuon
+    fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
+    #axs = axs.flatten()
+    config = dict(histtype='step', lw=2)
+    
+    idx=len(xlabels_extra)-1
+    ax = axs
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, label='Truth',density=True,**config)
+    max_y = np.max(yvals) * 1.1
+    ax.hist(predictions_cut[:, idx], bins=40,  label='Generator',density=True,**config)
+    ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
+    ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
+    ax.axvline(truths[:, idx].mean()-truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean(), color='g', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean()+predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
+    ax.axvline(predictions_cut[:, idx].mean()-predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
+    ax.set_xlabel(r"DiMuon Pseudorapidity Mass")
+    plt.yscale('log')
+    ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_pseudo_log_image_at_epoch_{:04d}.png'.format(i)))
     plt.close('all')
     
     
