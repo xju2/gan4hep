@@ -180,9 +180,12 @@ def dimuon_inclusive(filename, max_evts=1000000, testing_frac=0.1):
 
     shuffle(truth_data)
     shuffle(truth_data_1)
+    
+    truth_data=truth_data[:max_evts]
+    truth_data_1=truth_data_1[:max_evts]
 
     num_test_evts = int(truth_data.shape[0]*testing_frac)
-    if num_test_evts > max_evts: num_test_evts = max_evts
+    #if num_test_evts > max_evts: num_test_evts = max_evts
 
 
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
