@@ -146,7 +146,7 @@ if __name__ == '__main__':
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 10
+    max_epochs = 1000
     print('max_epochs',max_epochs)
     out_dim = train_truth.shape[1]
     gen_evts=args.multi
