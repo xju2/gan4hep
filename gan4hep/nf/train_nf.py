@@ -119,40 +119,6 @@ def train(
         print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
         loss_list.append(train_loss)
         w_list.append(wdis)
-    
-    
-    #Plot Log loss
-    #fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
-    #axs = axs.flatten()
-    #config = dict(histtype='step', lw=2)
-    
-    #ax=axs
-    #ax.plt(loss_list,   label='Truth',density=True,**config)
-    
-    
-    
-    #ax.set_xlabel(r"DiMuon Invarient Mass")
-    #plt.yscale('log')
-    #ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
-    #plt.savefig(os.path.join(new_run_folder, 'logloss.png'.format(county)))
-    #plt.close('all')
-#def save_NF(flow_model,new_run_folder):
- #   print('flow_model',flow_model)
-  #  print('!')
-   # print('!')
-    #print('!')
-    #print('!')
-    #flow_model_saved=flow_model
-    #print(type(flow_model))
-    #tmp_res = "Best Model in {} Epoch with a Wasserstein distance {:.4f}".format(best_epoch, best_wdis)
-    #logging.info(tmp_res)
-    
-    #summary_logfile = os.path.join(new_run_folder, 'results.txt')
-
-    #with open(summary_logfile, 'a') as f:
-     #   f.write(flow_model_saved)
-
-
 
 if __name__ == '__main__':
     import argparse
