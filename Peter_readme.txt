@@ -9,15 +9,16 @@ cd AnyName
 git clone --branch Peter https://github.com/xju2/gan4hep.git
 cd gan4hep
 pip install -e .
+pip3 install pylorentz
 cd ..
 mkdir nf_work
 cd nf_work
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/train_nf.py
 
-#Add the relevent .output file to the nf_work folder then in nf_work run:
+#Add the relevent .output file (mc16d_364100_dimuon_0Jets.output) to the nf_work folder then in nf_work run:
 
 python train_nf.py \
---data dimuon_inclusive mc16d_364100_100Kentries_dimuon.output TestNP
+--data dimuon_inclusive mc16d_364100_dimuon_0Jets.output TestNP --max-evts 100000
 
 ---------------
 ***************
