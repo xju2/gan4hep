@@ -44,7 +44,6 @@ def train(
     learning_rate_fn = tfk.optimizers.schedules.PolynomialDecay(
         base_lr, max_epochs, end_lr, power=0.5)
 
-
     # initialize checkpoints
     checkpoint_directory = "{}/checkpoints".format(outdir)
     os.makedirs(checkpoint_directory, exist_ok=True)
@@ -92,6 +91,8 @@ def train(
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
+    loss_list=[]
+    w_list=[]
     for i in range(max_epochs):
          
         from datetime import datetime
@@ -99,7 +100,7 @@ def train(
             
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
-            
+            #print('train_loss',train_loss)
         wdis, predictions = evaluate(flow_model, testing_truth,gen_evts)
         end_time = datetime.now()
         print('Generation Duration: {}'.format(end_time - start_time))
@@ -116,7 +117,25 @@ def train(
             break
 
         print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
+        loss_list.append(train_loss)
+        w_list.append(wdis)
     
+    
+    #Plot Log loss
+    #fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
+    #axs = axs.flatten()
+    #config = dict(histtype='step', lw=2)
+    
+    #ax=axs
+    #ax.plt(loss_list,   label='Truth',density=True,**config)
+    
+    
+    
+    #ax.set_xlabel(r"DiMuon Invarient Mass")
+    #plt.yscale('log')
+    #ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
+    #plt.savefig(os.path.join(new_run_folder, 'logloss.png'.format(county)))
+    #plt.close('all')
 #def save_NF(flow_model,new_run_folder):
  #   print('flow_model',flow_model)
   #  print('!')
@@ -161,10 +180,11 @@ if __name__ == '__main__':
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 1000
+    max_epochs = 10
     print('max_epochs',max_epochs)
     out_dim = train_truth.shape[1]
     gen_evts=args.multi
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim, out_dim=2)
     print(maf)
+    print('test_truth size',test_truth.shape)
     train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts)
