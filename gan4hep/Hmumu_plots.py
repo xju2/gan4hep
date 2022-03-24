@@ -11,11 +11,11 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     #Creating Plots with range between -1 and 1
     num_of_variables=len(xlabelstemp)
 
-    fig, axs = plt.subplots(1, num_of_variables, figsize=(20, 0.5*num_of_variables), constrained_layout=True)
+    fig, axs = plt.subplots(1, num_of_variables, figsize=(70, 10), constrained_layout=True)
     axs = axs.flatten()
     config = dict(histtype='step', lw=2)
     #Plot 1
-    
+    county=i
     for i in range(num_of_variables):
         idx=i
         ax = axs[idx]
@@ -30,9 +30,9 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
         ax.axvline(predictions[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
         ax.set_xlabel(xlabels[i])
         #ax.set_ylim(0, max_y)
-        ax.legend(['Truth', 'Generator'])
+        ax.legend(['Truth', 'Generator'],loc=3)
         #ax.set_yscale('log')
-    plt.savefig(os.path.join(new_run_folder, 'normalized_image_at_epoch_{:04d}.png'.format(i)))
+    plt.savefig(os.path.join(new_run_folder, 'normalized_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
 
     #Apply Inverse Scaler to get original values back
@@ -59,7 +59,7 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     xlabels_extra.append('DiMuon Pseudorapidity (Eta)')
 
     num_of_variables=len(xlabels_extra)
-    fig, axs = plt.subplots(1, num_of_variables, figsize=(50, 1.5*num_of_variables+1), constrained_layout=True)
+    fig, axs = plt.subplots(1, num_of_variables, figsize=(70, 10), constrained_layout=True)
     axs = axs.flatten()
     config = dict(histtype='step', lw=2)
     i=0
@@ -71,19 +71,19 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
         yvals, _, _ = ax.hist(truths[:, idx], bins=40,   label='Truth',density=True, **config)
         max_y = np.max(yvals) * 1.1
         ax.hist(predictions_cut[:, idx], bins=40,  label='Generator',density=True, **config)
-        ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
-        ax.axvline(predictions_cut[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
-        ax.set_xlabel(xlabels_extra[i])
+        #ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
+        #ax.axvline(predictions_cut[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
+        ax.set_xlabel(xlabels_extra[i], fontsize=16)
         #ax.set_ylim(0, max_y)
-        ax.legend(['Truth', 'Generator','Truth Mean='+str(truths[:, idx].mean()),'Generated Mean='+str(predictions[:, idx].mean())])
+        ax.legend(['Truth', 'Generator'],loc=3)
         #ax.set_yscale('log')
         
         #Save Figures
-    plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(i)))
+    plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
     
     #Plot correlation plot   
-    var_corr(predictions_cut,truths_cut,new_run_folder,i,xlabels_extra)
+    var_corr(predictions_cut,truths_cut,new_run_folder,i,xlabels_extra,county)
     #Reset Style
     plt.close('all')
     import matplotlib as mpl
@@ -97,9 +97,9 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     
     idx=len(xlabels_extra)-3
     ax = axs
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=[0,200],  label='Truth',density=True,**config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,   label='Truth',density=True,**config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions_cut[:, idx], bins=40, range=[0,200],  label='Generator',density=True,**config)
+    ax.hist(predictions_cut[:, idx], bins=40,   label='Generator',density=True,**config)
     ax.set_xlabel(r"DiMuon Invarient Mass")
     ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
     ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
@@ -109,7 +109,7 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     ax.axvline(predictions_cut[:, idx].mean()-predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
     #plt.yscale('log')
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
-    plt.savefig(os.path.join(new_run_folder, 'dimuon_image_at_epoch_{:04d}.png'.format(i)))
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
     
     
@@ -120,9 +120,9 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     
     idx=len(xlabels_extra)-3
     ax = axs
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=[0,200],  label='Truth',density=True,**config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=40,  label='Truth',density=True,**config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions_cut[:, idx], bins=40, range=[0,200],  label='Generator',density=True,**config)
+    ax.hist(predictions_cut[:, idx], bins=40,   label='Generator',density=True,**config)
     ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
     ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
     ax.axvline(truths[:, idx].mean()-truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
@@ -132,7 +132,7 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     ax.set_xlabel(r"DiMuon Invarient Mass")
     plt.yscale('log')
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
-    plt.savefig(os.path.join(new_run_folder, 'dimuon_log_image_at_epoch_{:04d}.png'.format(i)))
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_log_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
     
     
@@ -146,16 +146,16 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     
     
     
-     #Plot 
+     #Plot Dimuon Pt
     fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
     #axs = axs.flatten()
     config = dict(histtype='step', lw=2)
     
     idx=len(xlabels_extra)-2
     ax = axs
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=[0,200],  label='Truth',density=True,**config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=80,   label='Truth',density=True,**config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions_cut[:, idx], bins=40, range=[0,200],  label='Generator',density=True,**config)
+    ax.hist(predictions_cut[:, idx], bins=80,   label='Generator',density=True,**config)
     ax.set_xlabel(r"DiMuon Pt")
     ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
     ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
@@ -165,20 +165,20 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     ax.axvline(predictions_cut[:, idx].mean()-predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
     #plt.yscale('log')
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
-    plt.savefig(os.path.join(new_run_folder, 'dimuon_pt_image_at_epoch_{:04d}.png'.format(i)))
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_pt_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
     
     
-    #Plot Log Dimuon
+    #Plot Dimuon Pt Log
     fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
     #axs = axs.flatten()
     config = dict(histtype='step', lw=2)
     
     idx=len(xlabels_extra)-2
     ax = axs
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=[0,200],  label='Truth',density=True,**config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=80,   label='Truth',density=True,**config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions_cut[:, idx], bins=40, range=[0,200],  label='Generator',density=True,**config)
+    ax.hist(predictions_cut[:, idx], bins=80,  label='Generator',density=True,**config)
     ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
     ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
     ax.axvline(truths[:, idx].mean()-truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
@@ -188,21 +188,21 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     ax.set_xlabel(r"DiMuon Pt")
     plt.yscale('log')
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
-    plt.savefig(os.path.join(new_run_folder, 'dimuon_pt_log_image_at_epoch_{:04d}.png'.format(i)))
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_pt_log_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
     
     mpl.rcParams.update(mpl.rcParamsDefault)
 
-     #Plot Just Dimuon But Big with mean and SD   
+     #Plot Dimuon Pseudorapidity
     fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
     #axs = axs.flatten()
     config = dict(histtype='step', lw=2)
     
     idx=len(xlabels_extra)-1
     ax = axs
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=[0,200],  label='Truth',density=True,**config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=80,  label='Truth',density=True,**config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions_cut[:, idx], bins=40, range=[0,200],  label='Generator',density=True,**config)
+    ax.hist(predictions_cut[:, idx], bins=80,  label='Generator',density=True,**config)
     ax.set_xlabel(r"DiMuon Pseudorapidity Mass")
     ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
     ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
@@ -212,29 +212,19 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     ax.axvline(predictions_cut[:, idx].mean()-predictions_cut[:, idx].std(), color='y', linestyle='dashed', linewidth=1)
     #plt.yscale('log')
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
-    plt.savefig(os.path.join(new_run_folder, 'dimuon_pseudo_image_at_epoch_{:04d}.png'.format(i)))
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_pseudo_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
     
-    print('')
-    print('')
-    print('')
-    print('')
-    print('')
-    print('')
-    print('')
-    print('')
-    print('')
-    print('')
-    #Plot Log Dimuon
+    #Plot Log pseudorapidity
     fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
     #axs = axs.flatten()
     config = dict(histtype='step', lw=2)
     
     idx=len(xlabels_extra)-1
     ax = axs
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, label='Truth',density=True,**config)
+    yvals, _, _ = ax.hist(truths[:, idx],  bins=80, label='Truth',density=True,**config)
     max_y = np.max(yvals) * 1.1
-    ax.hist(predictions_cut[:, idx], bins=40,  label='Generator',density=True,**config)
+    ax.hist(predictions_cut[:, idx], bins=80,  label='Generator',density=True,**config)
     ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
     ax.axvline(truths[:, idx].mean()+truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
     ax.axvline(truths[:, idx].mean()-truths[:, idx].std(), color='r', linestyle='dashed', linewidth=1)
@@ -244,7 +234,7 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     ax.set_xlabel(r"DiMuon Pseudorapidity Mass")
     plt.yscale('log')
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
-    plt.savefig(os.path.join(new_run_folder, 'dimuon_pseudo_log_image_at_epoch_{:04d}.png'.format(i)))
+    plt.savefig(os.path.join(new_run_folder, 'dimuon_pseudo_log_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
     
     
@@ -278,11 +268,11 @@ def selection_cuts(predictions,truths):
     
     return predictions_cut,truths,predictions,truths,select_cut_val
 
-def var_corr(predictions,truths,new_run_folder,i,xlabels_extra):
+def var_corr(predictions,truths,new_run_folder,i,xlabels_extra,county):
     import pandas as pd
     import seaborn as sns
         
-    count=i
+   
     var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
     #Converting to numpy array
     predictions=np.array(predictions)
@@ -295,15 +285,15 @@ def var_corr(predictions,truths,new_run_folder,i,xlabels_extra):
     
     #Correlation Plot for True Data
     sns.set(font_scale=2.0)
-    plt.rcParams['figure.figsize'] = (20.0, 15.0)
+    plt.rcParams['figure.figsize'] = (4.0, 30.0)
     sns.heatmap(df_truths.corr(),annot=True)
-    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_truths_{:04d}.png'.format(count)))
+    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_truths_{:04d}.png'.format(county)))
     plt.close('all')
     
     #Correlation Plot for Generated Data
-    plt.rcParams['figure.figsize'] = (20.0, 15.0)
+    plt.rcParams['figure.figsize'] = (40.0, 30.0)
     sns.heatmap(df_predictions.corr(),annot=True)
-    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_generated_{:04d}.png'.format(count)))
+    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_generated_{:04d}.png'.format(county)))
     plt.close('all')
     
     plt.rcParams['figure.figsize'] = (10.0, 10.0)
@@ -319,7 +309,7 @@ def var_corr(predictions,truths,new_run_folder,i,xlabels_extra):
                 #plt.scatter(predictions[:,i],predictions[:,j])
                 plt.xlabel(xlabels_extra[i])
                 plt.ylabel(xlabels_extra[j])
-                plt.savefig(os.path.join(new_run_folder, 'Variables: '+xlabels_extra[i]+' and '+xlabels_extra[j]+' Scatterplot_at_epoch_generated_{:04d}.png'.format(count)))
+                plt.savefig(os.path.join(new_run_folder, 'Variables: '+xlabels_extra[i]+' and '+xlabels_extra[j]+' Scatterplot_at_epoch_generated_{:04d}.png'.format(county)))
                 plt.close('all')
                 
                 
@@ -337,7 +327,7 @@ def var_corr(predictions,truths,new_run_folder,i,xlabels_extra):
                 #plt.scatter(truths[:,i],truths[:,j])
                 plt.xlabel(xlabels_extra[i])
                 plt.ylabel(xlabels_extra[j])
-                plt.savefig(os.path.join(new_run_folder, 'Variables: '+xlabels_extra[i]+' and '+xlabels_extra[j]+' Scatterplot_at_epoch_truth_{:04d}.png'.format(count)))
+                plt.savefig(os.path.join(new_run_folder, 'Variables: '+xlabels_extra[i]+' and '+xlabels_extra[j]+' Scatterplot_at_epoch_truth_{:04d}.png'.format(county)))
                 plt.close('all')
                 
     #Creating Combined Correlation Plot (Truth)
@@ -358,7 +348,7 @@ def var_corr(predictions,truths,new_run_folder,i,xlabels_extra):
         j=j+1
 
             
-    plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_truths_{:04d}.png'.format(count)))
+    plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_truths_{:04d}.png'.format(county)))
     plt.close('all')
  
     #Creating Correlation Plot (Truth)
@@ -379,7 +369,7 @@ def var_corr(predictions,truths,new_run_folder,i,xlabels_extra):
 
         j=j+1
 
-    plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_generated_{:04d}.png'.format(count)))
+    plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_generated_{:04d}.png'.format(county)))
     plt.close('all')
             
 def dimuon_calc(predictions,truths):
