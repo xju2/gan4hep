@@ -93,6 +93,7 @@ def train(
 
     loss_list=[]
     w_list=[]
+
     for i in range(max_epochs):
          
         from datetime import datetime
@@ -100,7 +101,7 @@ def train(
             
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
-            #print('train_loss',train_loss)
+            
         wdis, predictions = evaluate(flow_model, testing_truth,gen_evts)
         end_time = datetime.now()
         print('Generation Duration: {}'.format(end_time - start_time))
@@ -112,13 +113,33 @@ def train(
             outname = os.path.join(img_dir, str(i))
             hmumu_plot(predictions, testing_truth, outname, xlabels,test_truth_1,new_run_folder,i)
             ckpt_manager.save()
+            w_list.append(float(f"{wdis}"))
             #save_NF(flow_model,new_run_folder)
         elif i - min_iepoch > delta_stop:
             break
+        else:
+            w_list.append(float(f"{wdis}"))
 
         print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
-        loss_list.append(train_loss)
-        w_list.append(wdis)
+        
+        
+        loss_list.append(float(f"{train_loss}"))
+        
+    
+    
+    #Plot Log loss
+
+    plt.plot(loss_list)
+    plt.ylabel('Training Loss')
+    plt.xlabel('Epoch')
+    plt.savefig(os.path.join(new_run_folder, 'logloss.png'))
+    plt.clf()
+    plt.plot(w_list)
+    plt.ylabel('Wasserstein Distance')
+    print('Best Wasserstein Distance: ', wdis)
+    plt.xlabel('Epoch')
+    plt.savefig(os.path.join(new_run_folder, 'wasserstein.png'))
+    
 
 if __name__ == '__main__':
     import argparse
@@ -146,7 +167,7 @@ if __name__ == '__main__':
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 1000
+    max_epochs = 100
     print('max_epochs',max_epochs)
     out_dim = train_truth.shape[1]
     gen_evts=args.multi
