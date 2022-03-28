@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
+import matplotlib.pyplot as plt
 
 
 def shuffle(array: np.ndarray):
@@ -173,23 +174,66 @@ def dimuon_inclusive(filename, max_evts=1000000, testing_frac=0.1):
     truth_data_1 = df.to_numpy().astype(np.float32)
     print(f"reading dimuon {df.shape[0]} events from file {filename}")
 
+    
+    plt.hist(truth_data_1[:, 0], bins=100,  label='Truth',density=True)
+    plt.xlabel('pt lead before scalar_full_range')
+    #plt.yscale('log')
+    plt.savefig('ptlead_before_scalar_full_range')
+    plt.show()
+    plt.close('all')
+    
+    plt.hist(truth_data_1[:, 0], bins=100, range=[0,100] , label='Truth',density=True)
+    plt.xlabel('pt lead before scalar')
+    #plt.yscale('log')
+    plt.savefig('ptlead_before_scalar')
+    plt.show()
+    plt.close('all')
+    plt.hist(truth_data_1[:, 3], bins=100, range=[0,100]  ,label='Truth',density=True)
+    plt.xlabel('pt sub before scalar')
+    #plt.yscale('log')
+    plt.savefig('ptsub_before_scalar')
+    plt.show()
+    plt.close('all')
+    
+    print('max pt lead value', max(truth_data_1[:, 0]))
     scaler = MinMaxScaler(feature_range=(-1,1))
     truth_data = scaler.fit_transform(truth_data_1)
     # scales = np.array([10, 1, 1, 10, 1, 1], np.float32)
     # truth_data = truth_data / scales
-
+    
+    
+    
+    plt.hist(truth_data[:, 0], bins=100, range=[-1,0]  ,label='Truth',density=True)
+    plt.xlabel('pt lead after scalar_2')
+    #plt.yscale('log')
+    plt.savefig('ptlead_after_scalar')
+    plt.show()
+    plt.close('all')
+    plt.hist(truth_data[:, 3], bins=100,  range=[-1,0] ,label='Truth',density=True)
+    plt.xlabel('pt sub after scalar')
+    #plt.yscale('log')
+    plt.savefig( 'ptsub_after_scalar')
+    plt.show()
+    plt.close('all')
+    
+    
+    
+    
     shuffle(truth_data)
     shuffle(truth_data_1)
     
     truth_data=truth_data[:max_evts]
     truth_data_1=truth_data_1[:max_evts]
 
+
+    
     num_test_evts = int(truth_data.shape[0]*testing_frac)
     #if num_test_evts > max_evts: num_test_evts = max_evts
 
 
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
     test_truth_1, train_truth_1 = truth_data_1[:num_test_evts], truth_data_1[num_test_evts:max_evts]
+
 
     xlabels = ['leading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']] +\
               ['subleading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']]
