@@ -10,12 +10,13 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     #New Code
     #Creating Plots with range between -1 and 1
     num_of_variables=len(xlabelstemp)
-
+    county=i
+    '''
     fig, axs = plt.subplots(1, num_of_variables, figsize=(70, 10), constrained_layout=True)
     axs = axs.flatten()
     config = dict(histtype='step', lw=2)
     #Plot 1
-    county=i
+    
     for i in range(num_of_variables):
         idx=i
         ax = axs[idx]
@@ -34,6 +35,10 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
         #ax.set_yscale('log')
     plt.savefig(os.path.join(new_run_folder, 'normalized_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
+    '''
+    
+
+    
 
     #Apply Inverse Scaler to get original values back
     from sklearn.preprocessing import MinMaxScaler
@@ -42,6 +47,25 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     truth_data = scaler.fit_transform(truth_data)
     truths=scaler.inverse_transform(truths)
     predictions=scaler.inverse_transform(predictions)
+    
+    
+       
+    #plt.hist(truths[:, 0], bins=50, range=[-1,0],  label='Truth',density=True)
+    #plt.xlabel('pt lead after inverse scalar')
+    #plt.yscale('log')
+    #plt.savefig(os.path.join(new_run_folder,'ptlead_after_inverse_scalar'))
+    #plt.show()
+    #plt.close('all')
+    #plt.hist(truths[:, 3], bins=50, range=[-1,0],   label='Truth',density=True)
+    #plt.xlabel('pt sub before scalar_end')
+    #plt.yscale('log')
+    #plt.savefig(os.path.join(new_run_folder,'ptlead_after_inverse_scalar'))
+    #plt.show()
+    #plt.close('all')
+    
+    
+    
+    
     
     #Function to calculate invarient dimuon mass
     truths,predictions=dimuon_calc(predictions,truths)
@@ -82,8 +106,19 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
     
-    #Plot correlation plot   
-    var_corr(predictions_cut,truths_cut,new_run_folder,i,xlabels_extra,county)
+    #Plot correlation plot  
+    
+    #***
+    #---
+    #***
+    
+    #var_corr(predictions_cut,truths_cut,new_run_folder,i,xlabels_extra,county)
+    
+    #***
+    #---
+    #***
+    
+    
     #Reset Style
     plt.close('all')
     import matplotlib as mpl
@@ -237,17 +272,6 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     plt.savefig(os.path.join(new_run_folder, 'dimuon_pseudo_log_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
     
-    
-def sd_mean_calc(inputdata):
-    
-    #Calculate sd and mean for data (Currently unused)
-    counts, bins = np.histogram(inputdata)
-    mids = 0.5*(bins[1:] + bins[:-1])
-    probs = counts / np.sum(counts)
-
-    mean = np.sum(probs * mids)  
-    sd = np.sqrt(np.sum(probs * (mids - mean)**2))
-    return sd,mean    
       
 def selection_cuts(predictions,truths):
 
@@ -330,48 +354,7 @@ def var_corr(predictions,truths,new_run_folder,i,xlabels_extra,county):
                 plt.savefig(os.path.join(new_run_folder, 'Variables: '+xlabels_extra[i]+' and '+xlabels_extra[j]+' Scatterplot_at_epoch_truth_{:04d}.png'.format(county)))
                 plt.close('all')
                 
-    #Creating Combined Correlation Plot (Truth)
-    var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
-    fig, axes = plt.subplots(nrows=len(xlabels_extra), ncols=len(xlabels_extra), figsize=(40,40))
-    j=0
-    i=0
 
-    for i in range(len(xlabels_extra)):
-        j=0
-        for j in range(len(xlabels_extra)):
-            
-            plt.hist2d(truths[:,i],truths[:,j], (100, 100), cmap=plt.cm.jet)
-            plt.colorbar()
-            #axes[i][j].scatter( truths[:, i], truths[:, j])
-            axes[i][j].set_ylabel(xlabels_extra[i])
-            axes[i][j].set_xlabel(xlabels_extra[j])
-        j=j+1
-
-            
-    plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_truths_{:04d}.png'.format(county)))
-    plt.close('all')
- 
-    #Creating Correlation Plot (Truth)
-    fig, axes = plt.subplots(nrows=len(xlabels_extra), ncols=len(xlabels_extra), figsize=(40,40))
-    j=0
-    for i in range(len(xlabels_extra)):
-        j=0
-        for j in range(len(xlabels_extra)):
-
-            
-            plt.hist2d(predictions[:,i],predictions[:,j], (100, 100), cmap=plt.cm.jet)
-            plt.colorbar()
-                
-                
-            #axes[i][j].scatter( predictions[:, i], predictions[:, j])
-            axes[i][j].set_ylabel(xlabels_extra[i])
-            axes[i][j].set_xlabel(xlabels_extra[j])
-
-        j=j+1
-
-    plt.savefig(os.path.join(new_run_folder, 'correlation_at_epoch_generated_{:04d}.png'.format(county)))
-    plt.close('all')
-            
 def dimuon_calc(predictions,truths):
         
     #print(truths)
@@ -474,12 +457,7 @@ def dimuon_calc(predictions,truths):
         #Retrieve Pseudorapidity
         pseudo_true.append(parent_true[i].eta)
         
-        
-        
-        
-        
-        
-        
+          
     #print(pt_comb_true)     
         
     #Add mass arrays from each batch?    
