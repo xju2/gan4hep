@@ -30,8 +30,8 @@ python train_nf.py \
 #There will be a lot of plots!
   
   #image_at_epoch_xxx is the plot of the 6 original and 3 calculate variables with the x axis showing the original values
-  #normalised_image_at_epoch_xxx is the plot of the 6 original variables with the x axis having been scaled by StandardScalar
-  #Graph names that start with variables:... are heat plots for the combination of every variable and therefore make up most of the graphs
+  #normalised_image_at_epoch_xxx is the plot of the 6 original variables with the x axis having been scaled by StandardScalar -->Off By Default
+  #Graph names that start with variables:... are heat plots for the combination of every variable and therefore make up most of the graphs -->Off By Default
   #The three calculated variables each have 2 plots (one log and one non log) for themselves) (variables named 'dimuon' (invariant mass), 'dimuon_pt', and 'dimuon_pseudo')
-  #Heatmap_at_epoch_xxx shows the correlation plot for either generated or true data 
-  #Correlation_at_epoch_xxx shows a large grid of all the individual heat plots for every variable and is currently broken
+  #Heatmap_at_epoch_xxx shows the correlation plot for either generated or true data -->Off By Default
+
