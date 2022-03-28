@@ -53,4 +53,4 @@ This is due to the selection cuts making sure all eta and phi values are between
   #Graph names that start with variables:... are heat plots for the combination of every variable and therefore make up most of the graphs -->Off By Default
   #The three calculated variables each have 2 plots (one log and one non log) for themselves) (variables named 'dimuon' (invariant mass), 'dimuon_pt', and 'dimuon_pseudo')
   #Heatmap_at_epoch_xxx shows the correlation plot for either generated or true data -->Off By Default
-
+  # Log loss and best wasserstein distance record the respective values for each epoch and plots a graph at the end of the training run (Only produced if a run is complete)
