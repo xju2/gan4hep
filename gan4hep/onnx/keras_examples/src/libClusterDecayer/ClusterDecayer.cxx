@@ -21,6 +21,7 @@ HerwigClusterDecayer::HerwigClusterDecayer(const Config& config): m_cfg(config){
 
 void HerwigClusterDecayer::getDecayProducts(
     std::vector<float>& cluster4Vec,
+    float hadronMassOne, float hadronMassTwo,
     std::vector<float>& hadronOne4Vec,
     std::vector<float>& hadronTwo4Vec)
 {
@@ -92,7 +93,6 @@ void HerwigClusterDecayer::getDecayProducts(
     std::cout << std::endl;
 
     // convert the three output vectors
-    const float pionMass = 0.135;
     for(unsigned int idx=0; idx < m_numOfOutFeatures; idx++){
         scalerInv(outputData[idx], m_cfg.hadronMin[idx], m_cfg.hadronMax[idx]);
     }
@@ -102,24 +102,55 @@ void HerwigClusterDecayer::getDecayProducts(
 
     float phi = outputData[0];
     float theta = outputData[1];
-    float energy = outputData[2];
 
-    float momentum = sqrt(energy*energy - pionMass*pionMass);
+    // inverse boost, i.e. boost them back to the lab frame.
+    // first calculate direction of the cluster and lorentz factor
+    float p2 = cluster4Vec[1]*cluster4Vec[1] \
+        + cluster4Vec[2]*cluster4Vec[2] \
+        + cluster4Vec[3]*cluster4Vec[3];
+    float mass = sqrt(cluster4Vec[0]*cluster4Vec[0] - p2);
+    float gamma = cluster4Vec[0] / mass;
+    float v_mag = sqrt(p2) / gamma / mass;
+    std::vector<float> n{
+        cluster4Vec[1]/gamma/mass/v_mag, 
+        cluster4Vec[2]/gamma/mass/v_mag,
+        cluster4Vec[3]/gamma/mass/v_mag,
+        };
+
+    // Calculate the 4vector of the two outgoing pions in the cluster's frame, in which
+    // they are back-to-back.
+    float energy = (mass*mass + hadronMassOne*hadronMassOne - hadronMassTwo*hadronMassTwo) / (2*mass);
+    float momentum = sqrt(energy*energy - hadronMassOne*hadronMassOne);
     float px = momentum * sin(theta) * sin(phi);
     float py = momentum * sin(theta) * cos(phi);
     float pz = momentum * cos(theta);
+
+    auto invBoost = [&](float& energy_, float& px_, float& py_, float& pz_){
+        float n_dot_p = n[0]*px_ + n[1]*py_ + n[2]*pz_;
+        float new_energy = gamma * (energy_ + v_mag * n_dot_p);
+        px_ = px_ + (gamma - 1) * n_dot_p * n[0] + gamma * energy_ * v_mag * n[0];
+        py_ = py_ + (gamma - 1) * n_dot_p * n[1] + gamma * energy_ * v_mag * n[1];
+        pz_ = pz_ + (gamma - 1) * n_dot_p * n[2] + gamma * energy_ * v_mag * n[2];
+        energy_ = new_energy;
+    };
+
+    
+    float h1_e=energy, h1_px=px, h1_py=py, h1_pz=pz;
+    invBoost(h1_e, h1_px, h1_py, h1_pz);
     hadronOne4Vec.clear();
-    hadronOne4Vec.push_back(energy);
-    hadronOne4Vec.push_back(px);
-    hadronOne4Vec.push_back(py);
-    hadronOne4Vec.push_back(pz);
+    hadronOne4Vec.push_back(h1_e);
+    hadronOne4Vec.push_back(h1_px);
+    hadronOne4Vec.push_back(h1_py);
+    hadronOne4Vec.push_back(h1_pz);
 
     // now use 4 vector conservation to calculate the other hadron
+    float h2_e = mass-energy, h2_px=-px, h2_py=-py, h2_pz=-pz;
+    invBoost(h2_e, h2_px, h2_py, h2_pz);
     hadronTwo4Vec.clear();
-    hadronTwo4Vec.push_back(cluster4Vec[0] - energy);
-    hadronTwo4Vec.push_back(cluster4Vec[1] - px);
-    hadronTwo4Vec.push_back(cluster4Vec[2] - py);
-    hadronTwo4Vec.push_back(cluster4Vec[3] - pz);
+    hadronTwo4Vec.push_back(h2_e);
+    hadronTwo4Vec.push_back(h2_px);
+    hadronTwo4Vec.push_back(h2_py);
+    hadronTwo4Vec.push_back(h2_pz);
 }
 
 
