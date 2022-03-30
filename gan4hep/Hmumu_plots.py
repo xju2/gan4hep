@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pylorentz import Momentum4
 import os
+import pandas as pd
+import seaborn as sns
 
 def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i,
     xranges=None, xbins=None):
@@ -49,20 +51,20 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     predictions=scaler.inverse_transform(predictions)
     
     
-       
-    #plt.hist(truths[:, 0], bins=50, range=[-1,0],  label='Truth',density=True)
-    #plt.xlabel('pt lead after inverse scalar')
+    '''   
+    plt.hist(truths[:, 0], bins=50, range=[-1,0],  label='Truth',density=True)
+    plt.xlabel('pt lead after inverse scalar')
     #plt.yscale('log')
-    #plt.savefig(os.path.join(new_run_folder,'ptlead_after_inverse_scalar'))
-    #plt.show()
-    #plt.close('all')
-    #plt.hist(truths[:, 3], bins=50, range=[-1,0],   label='Truth',density=True)
-    #plt.xlabel('pt sub before scalar_end')
+    plt.savefig(os.path.join(new_run_folder,'ptlead_after_inverse_scalar'))
+    plt.show()
+    plt.close('all')
+    plt.hist(truths[:, 3], bins=50, range=[-1,0],   label='Truth',density=True)
+    plt.xlabel('pt sub before scalar_end')
     #plt.yscale('log')
-    #plt.savefig(os.path.join(new_run_folder,'ptlead_after_inverse_scalar'))
-    #plt.show()
-    #plt.close('all')
-    
+    plt.savefig(os.path.join(new_run_folder,'ptlead_after_inverse_scalar'))
+    plt.show()
+    plt.close('all')
+    '''
     
     
     
@@ -85,26 +87,52 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     num_of_variables=len(xlabels_extra)
     fig, axs = plt.subplots(1, num_of_variables, figsize=(70, 10), constrained_layout=True)
     axs = axs.flatten()
+    #config = dict(histtype='step', lw=2) 
     config = dict(histtype='step', lw=2)
     i=0
+    
     for i in range(num_of_variables): 
+
         idx=i
         ax = axs[idx]
-        x_range = [-np.pi, np.pi]
-        x_range_pt = [0, 1]
-        yvals, _, _ = ax.hist(truths[:, idx], bins=40,   label='Truth',density=True, **config)
+        yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])], label='Truth',density=True, **config)
         max_y = np.max(yvals) * 1.1
-        ax.hist(predictions_cut[:, idx], bins=40,  label='Generator',density=True, **config)
-        #ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
-        #ax.axvline(predictions_cut[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
+        ax.hist(predictions_cut[:, idx], bins=40,range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])], label='Generator',density=True, **config)
         ax.set_xlabel(xlabels_extra[i], fontsize=16)
-        #ax.set_ylim(0, max_y)
         ax.legend(['Truth', 'Generator'],loc=3)
         #ax.set_yscale('log')
         
         #Save Figures
     plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
+    
+    
+            
+   
+    var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
+    #Converting to numpy array
+    predictions=np.array(predictions)
+    truths=np.array(truths)
+    
+    #Converting to Pandas
+    df_truths = pd.DataFrame(truths[:,:], columns = xlabels_extra)
+    df_predictions = pd.DataFrame(predictions[:,:-1], columns = xlabels_extra)
+    
+    
+    #Correlation Plot for True Data
+    sns.set(font_scale=2.0)
+    plt.rcParams['figure.figsize'] = (40.0, 30.0)
+    sns.heatmap(df_truths.corr(),annot=True, vmin=-1, vmax=1, center=0)
+    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_truths_{:04d}.png'.format(county)))
+    plt.close('all')
+    
+    #Correlation Plot for Generated Data
+    plt.rcParams['figure.figsize'] = (40.0, 30.0)
+    sns.heatmap(df_predictions.corr(),annot=True, vmin=-1, vmax=1, center=0)
+    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_generated_{:04d}.png'.format(county)))
+    plt.close('all')
+    
+    plt.rcParams['figure.figsize'] = (10.0, 10.0)
     
     #Plot correlation plot  
     
@@ -124,7 +152,7 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     import matplotlib as mpl
     mpl.rcParams.update(mpl.rcParamsDefault)
 
-    
+    '''
     #Plot Just Dimuon But Big with mean and SD   
     fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
     #axs = axs.flatten()
@@ -271,7 +299,7 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
     plt.savefig(os.path.join(new_run_folder, 'dimuon_pseudo_log_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
-    
+    '''
       
 def selection_cuts(predictions,truths):
 
@@ -293,34 +321,8 @@ def selection_cuts(predictions,truths):
     return predictions_cut,truths,predictions,truths,select_cut_val
 
 def var_corr(predictions,truths,new_run_folder,i,xlabels_extra,county):
-    import pandas as pd
-    import seaborn as sns
-        
-   
-    var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
-    #Converting to numpy array
-    predictions=np.array(predictions)
-    truths=np.array(truths)
-    
-    #Converting to Pandas
-    df_truths = pd.DataFrame(truths[:,:], columns = xlabels_extra)
-    df_predictions = pd.DataFrame(predictions[:,:-1], columns = xlabels_extra)
-    
-    
-    #Correlation Plot for True Data
-    sns.set(font_scale=2.0)
-    plt.rcParams['figure.figsize'] = (4.0, 30.0)
-    sns.heatmap(df_truths.corr(),annot=True)
-    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_truths_{:04d}.png'.format(county)))
-    plt.close('all')
-    
-    #Correlation Plot for Generated Data
-    plt.rcParams['figure.figsize'] = (40.0, 30.0)
-    sns.heatmap(df_predictions.corr(),annot=True)
-    plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_generated_{:04d}.png'.format(county)))
-    plt.close('all')
-    
-    plt.rcParams['figure.figsize'] = (10.0, 10.0)
+
+
     #Creating plots for every combination of variables for generated data
     j=0
     i=0
