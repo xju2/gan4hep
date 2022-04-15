@@ -83,6 +83,8 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     xlabels_extra.append('DiMuon Invarient Mass')
     xlabels_extra.append('DiMuon P_t')
     xlabels_extra.append('DiMuon Pseudorapidity (Eta)')
+    #xlabels_extra.append('Eta Between the Two Muons')
+    #xlabels_extra.append('Phi Between the Two Muons')
 
     num_of_variables=len(xlabels_extra)
     fig, axs = plt.subplots(1, num_of_variables, figsize=(70, 10), constrained_layout=True)
@@ -105,6 +107,55 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
         #Save Figures
     plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
+    
+    
+    #Ratio Plots
+    
+    
+    num_of_variables=len(xlabels_extra)
+    fig, axs = plt.subplots(1, num_of_variables, figsize=(80, 10), constrained_layout=True)
+    axs = axs.flatten()
+    #config = dict(histtype='step', lw=2) 
+    config = dict(histtype='step', lw=2)
+    i=0
+    
+    for i in range(num_of_variables): 
+        ratio=[]
+        idx=i
+        ax = axs[idx]
+        
+        yvals, true1 = np.histogram(truths[:, idx], bins=40)
+
+        yvals2,pred1=np.histogram(predictions_cut[:, idx], bins=40)
+        
+        
+        #print(yvals,yvals2)
+        #print('yval_true',yvals)
+        #print('yval_pred',yvals2)
+        #print('true1',true1)
+        #print('true2',true2)
+            
+        #print(len(yvals),len(true1[:-1]))
+        ratio=yvals/yvals2
+        #print(ratio)
+        ax.scatter(true1[:-1],ratio)
+        max_y = np.max(yvals) * 1.1
+        
+        ax.set_xlabel('Ratio of true to generated events for :' +xlabels_extra[i], fontsize=18)
+        #ax.legend(['Truth', 'Generator'],loc=3)
+        #ax.set_yscale('log')
+        
+        #Save Figures
+    plt.savefig(os.path.join(new_run_folder, 'ratio_image_at_epoch_{:04d}.png'.format(county)))
+    plt.close('all')
+    
+    
+    
+    
+    
+    
+    
+    
     
     
             
@@ -382,6 +433,8 @@ def dimuon_calc(predictions,truths):
     mass_true=[]
     pt_comb_true=[]
     pseudo_true=[]
+    eta_angle_btwn_true=[]
+    phi_angle_btwn_true=[]
     
     
     for i in range(len(truths)):
@@ -404,7 +457,11 @@ def dimuon_calc(predictions,truths):
         #Retrieve Pseudorapidity
         pseudo_true.append(parent_true[i].eta)
         
-        
+        #Retrieve eta between the muons
+        eta_angle_btwn_true.append(muon_lead_true[i].eta-muon_sub_true[i].eta)
+         
+        #Retrieve eta between the muons
+        eta_angle_btwn_true.append(muon_lead_true[i].phi-muon_sub_true[i].phi)
         
 
     #Add mass arrays from each batch?    
@@ -414,6 +471,9 @@ def dimuon_calc(predictions,truths):
     truths = np.column_stack((truths, mass_true))
     truths = np.column_stack((truths, pt_comb_true))
     truths = np.column_stack((truths, pseudo_true))
+    #truths = np.column_stack((truths, eta_angle_btwn_true))
+    #truths = np.column_stack((truths, phi_angle_btwn_true))
+    
     
     #For Predictions
     masses_lead = np.full((len(predictions[:,0]), 1), m_u)
@@ -436,7 +496,8 @@ def dimuon_calc(predictions,truths):
     mass_true=[]
     pt_comb_true=[]
     pseudo_true=[]
-    
+    eta_angle_btwn_true=[]
+    phi_angle_btwn_true=[]
     
     
     for i in range(len(predictions)):
@@ -450,14 +511,18 @@ def dimuon_calc(predictions,truths):
         #Retrieve the Higgs Mass
         mass_true.append(parent_true[i].m)
 
-        
-        
         #Retrive PT
         pt_comb_true.append(parent_true[i].p_t)
         
         
         #Retrieve Pseudorapidity
         pseudo_true.append(parent_true[i].eta)
+        
+        #Retrieve eta between the muons
+        eta_angle_btwn_true.append(muon_lead_true[i].eta-muon_sub_true[i].eta)
+         
+        #Retrieve eta between the muons
+        eta_angle_btwn_true.append(muon_lead_true[i].phi-muon_sub_true[i].phi)
         
           
     #print(pt_comb_true)     
@@ -469,6 +534,8 @@ def dimuon_calc(predictions,truths):
     predictions = np.column_stack((predictions, mass_true))
     predictions = np.column_stack((predictions, pt_comb_true))
     predictions = np.column_stack((predictions, pseudo_true))
+    #predictions = np.column_stack((predictions, eta_angle_btwn_true))
+    #predictions = np.column_stack((predictions, phi_angle_btwn_true))
     
     return truths,predictions
     
