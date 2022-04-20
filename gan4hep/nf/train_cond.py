@@ -12,6 +12,7 @@ import numpy as np
 from scipy import stats
 
 from utils import train_density_estimation_cond
+from gan4hep.utils_plot import compare
 
 
 def evaluate(flow_model, testing_data, cond_kwargs):

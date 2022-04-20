@@ -33,11 +33,7 @@ def train_density_estimation_cond(distribution, optimizer, batch, condition, lay
     cond_kwargs = dict([(f"b{idx}", {"conditional_input": condition}) for idx in range(layers)])
     with tf.GradientTape() as tape:
         tape.watch(distribution.trainable_variables)
-        loss = -tf.reduce_mean(
-            distribution.log_prob(
-                batch, **cond_kwargs
-                # bijector_kwargs={'conditional_input': condition}
-                ))
+        loss = -tf.reduce_mean(distribution.log_prob(batch, bijector_kwargs=cond_kwargs))
 
     gradients = tape.gradient(loss, distribution.trainable_variables)
     optimizer.apply_gradients(zip(gradients, distribution.trainable_variables))
