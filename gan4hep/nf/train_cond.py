@@ -1,12 +1,11 @@
-"""Trainer for Conditional Normalizing Flow
+"""
+Trainer for Conditional Normalizing Flow
 """
 import os
+import time
+import re
 
 import tensorflow as tf
-import tensorflow_probability as tfp
-tfd = tfp.distributions
-tfb = tfp.bijectors
-tfk = tf.keras
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -14,56 +13,25 @@ from scipy import stats
 
 from utils import train_density_estimation_cond
 
-# %%
-def compare(predictions, truths, img_dir, idx=0):
-    fig, axs = plt.subplots(1, 2, figsize=(8, 4), constrained_layout=True)
-    axs = axs.flatten()
 
-    config = dict(histtype='step', lw=2, density=True)
-    # phi
-    idx=0
-    ax = axs[idx]
-    x_range = [-1, 1]
-    yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=x_range, label='Truth', **config)
-    max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-    ax.set_xlabel(r"$\phi$")
-    ax.set_ylim(0, max_y)
-    ax.legend()
-    
-    # theta
-    idx=1
-    ax = axs[idx]
-    yvals, _, _ = ax.hist(truths[:, idx],  bins=40, range=x_range, label='Truth', **config)
-    max_y = np.max(yvals) * 1.1
-    ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator', **config)
-    ax.set_xlabel(r"$theta$")
-    ax.set_ylim(0, max_y)
-    ax.legend()
-
-    plt.savefig(os.path.join(img_dir, f'image_at_epoch_{idx}.png'))
-    plt.close('all')
-
-
-def evaluate(flow_model, test_in, testing_data, layers):
+def evaluate(flow_model, testing_data, cond_kwargs):
     num_samples, num_dims = testing_data.shape
-    cond_kwargs = dict([(f"b{idx}", {"conditional_input": test_in}) for idx in range(layers)])
+    samples = flow_model.sample(num_samples, bijector_kwargs=cond_kwargs).numpy()
 
-    samples = flow_model.sample((num_samples,), 
-        **cond_kwargs).numpy()
     distances = [
         stats.wasserstein_distance(samples[:, idx], testing_data[:, idx]) \
             for idx in range(num_dims)
     ]
 
-    return sum(distances), samples
+    return np.average(distances), samples
 
-
-def train(train_in, train_truth, test_in, testing_truth, flow_model, layers, lr, batch_size, max_epochs, outdir):
+def train(train_in, train_truth, test_in, testing_truth,
+          flow_model, layers, lr, batch_size, max_epochs, outdir):
     base_lr = lr
     end_lr = 1e-5
-    learning_rate_fn = tfk.optimizers.schedules.PolynomialDecay(
-        base_lr, max_epochs, end_lr, power=0.5)
+    max_steps = max_epochs * train_in.shape[0] // batch_size
+    learning_rate_fn = tf.keras.optimizers.schedules.PolynomialDecay(
+        base_lr, max_steps, end_lr, power=0.5)
 
 
     # initialize checkpoints
@@ -73,7 +41,15 @@ def train(train_in, train_truth, test_in, testing_truth, flow_model, layers, lr,
     opt = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)  # optimizer
     checkpoint = tf.train.Checkpoint(optimizer=opt, model=flow_model)
     ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_directory, max_to_keep=None)
-    _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
+    latest_ckpt = ckpt_manager.latest_checkpoint
+    _ = checkpoint.restore(latest_ckpt).expect_partial()
+    print("Loading latest checkpoint from: {}".format(checkpoint_directory))
+    if latest_ckpt:
+        start_epoch = int(re.findall(r'\/ckpt-(.*)', latest_ckpt)[0]) + 1
+        print("Restored from {}".format(latest_ckpt))
+    else:
+        start_epoch = 0
+        print("Initializing from scratch.")
 
 
     AUTO = tf.data.experimental.AUTOTUNE
@@ -82,11 +58,22 @@ def train(train_in, train_truth, test_in, testing_truth, flow_model, layers, lr,
 
     img_dir = os.path.join(outdir, "imgs")
     os.makedirs(img_dir, exist_ok=True)
+    log_dir = os.path.join(outdir, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    csv_dir = os.path.join(outdir, "csv")
+    os.makedirs(csv_dir, exist_ok=True)
 
     # start training
+    summary_logfile = os.path.join(log_dir, 'results.txt')
+    tmp_res = "# Epoch, Time, WD (Wasserstein distance), Ltr (training loss), Lte (testing loss)" 
+    with open(summary_logfile, 'a') as f:
+        f.write(tmp_res + "\n")
+
     print("idx, train loss, distance, minimum distance, minimum epoch")
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
+    start_time = time.time()
+    cond_kwargs = dict([(f"b{idx}", {"conditional_input": test_in}) for idx in range(layers)])
 
     for i in range(max_epochs):
         for condition,batch in training_data:
@@ -101,7 +88,12 @@ def train(train_in, train_truth, test_in, testing_truth, flow_model, layers, lr,
             ckpt_manager.save()
         elif i - min_iepoch > delta_stop:
             break
+        ckpt_manager.save(checkpoint_number = i)
 
+
+        tmp_res = "* {:05d}, {:.1f}, {:.4f}, {:.4f}, {:.4f}".format(i, elapsed, wdis, avg_loss, test_loss)
+        with open(summary_logfile, 'a') as f:
+            f.write(tmp_res + "\n")
         print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
 
 
@@ -127,8 +119,10 @@ if __name__ == '__main__':
     lr = 1e-3
     batch_size = args.batch_size
     max_epochs = 1000
+    steps_per_epoch = train_in.shape[0]/batch_size
     conditional_event_shape=(4,)
+    input_dim = 6 # number of parameters to be generated
 
-    maf =  create_conditional_flow(hidden_shape, layers, conditional_event_shape, out_dim=2)
+    maf = create_conditional_flow(hidden_shape, layers, input_dim, conditional_event_shape)
 
     train(train_in, train_truth, test_in, test_truth, maf, layers, lr, batch_size, max_epochs, outdir)
