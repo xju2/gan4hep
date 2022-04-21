@@ -84,7 +84,6 @@ def create_flow(hidden_shape: list, layers: int, input_dim: int, with_condition:
         distribution=tfd.Sample(base_dist, sample_shape=[input_dim]),
         bijector=bijector,
     )
-    sys.exit()
     return maf
 
 
