@@ -4,71 +4,18 @@ from pylorentz import Momentum4
 import os
 import pandas as pd
 import seaborn as sns
+#from variables import max_epochs,xlabels
 
-def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i,
+
+
+def hmumu_plot(predictions, truths,outdir,epochs,xlabels,
     xranges=None, xbins=None):
-    
+
     xlabelstemp=xlabels[:6]
     #New Code
-    #Creating Plots with range between -1 and 1
     num_of_variables=len(xlabelstemp)
-    county=i
-    '''
-    fig, axs = plt.subplots(1, num_of_variables, figsize=(70, 10), constrained_layout=True)
-    axs = axs.flatten()
-    config = dict(histtype='step', lw=2)
-    #Plot 1
-    
-    for i in range(num_of_variables):
-        idx=i
-        ax = axs[idx]
-        x_range = [-1, 1]
-        x_range_pt = [0, 1]  
+    county=epochs
 
-        #Normalized Plots 
-        yvals, _, _ = ax.hist(truths[:, idx], bins=40,  range=x_range,  label='Truth',density=True, **config)
-        max_y = np.max(yvals) * 1.1
-        ax.hist(predictions[:, idx], bins=40, range=x_range, label='Generator',density=True, **config)
-        ax.axvline(truths[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
-        ax.axvline(predictions[:, idx].mean(), color='k', linestyle='dashed', linewidth=1)
-        ax.set_xlabel(xlabels[i])
-        #ax.set_ylim(0, max_y)
-        ax.legend(['Truth', 'Generator'],loc=3)
-        #ax.set_yscale('log')
-    plt.savefig(os.path.join(new_run_folder, 'normalized_image_at_epoch_{:04d}.png'.format(county)))
-    plt.close('all')
-    '''
-    
-
-    
-
-    #Apply Inverse Scaler to get original values back
-    from sklearn.preprocessing import MinMaxScaler
-    
-    scaler = MinMaxScaler(feature_range=(-1,1))
-    truth_data = scaler.fit_transform(truth_data)
-    truths=scaler.inverse_transform(truths)
-    predictions=scaler.inverse_transform(predictions)
-    
-    
-    '''   
-    plt.hist(truths[:, 0], bins=50, range=[-1,0],  label='Truth',density=True)
-    plt.xlabel('pt lead after inverse scalar')
-    #plt.yscale('log')
-    plt.savefig(os.path.join(new_run_folder,'ptlead_after_inverse_scalar'))
-    plt.show()
-    plt.close('all')
-    plt.hist(truths[:, 3], bins=50, range=[-1,0],   label='Truth',density=True)
-    plt.xlabel('pt sub before scalar_end')
-    #plt.yscale('log')
-    plt.savefig(os.path.join(new_run_folder,'ptlead_after_inverse_scalar'))
-    plt.show()
-    plt.close('all')
-    '''
-    
-    
-    
-    
     #Function to calculate invarient dimuon mass
     truths,predictions=dimuon_calc(predictions,truths)
 
@@ -86,14 +33,16 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
     #xlabels_extra.append('Eta Between the Two Muons')
     #xlabels_extra.append('Phi Between the Two Muons')
 
+
+    #Original Variables
     num_of_variables=len(xlabels_extra)
-    fig, axs = plt.subplots(1, num_of_variables, figsize=(70, 10), constrained_layout=True)
+    fig, axs = plt.subplots(1, len(xlabels), figsize=(50, 10), constrained_layout=True)
     axs = axs.flatten()
     #config = dict(histtype='step', lw=2) 
     config = dict(histtype='step', lw=2)
     i=0
     
-    for i in range(num_of_variables): 
+    for i in range(len(xlabels)):
 
         idx=i
         ax = axs[idx]
@@ -107,59 +56,102 @@ def hmumu_plot(predictions, truths, outname, xlabels,truth_data,new_run_folder,i
         #Save Figures
     plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
-    
-    
-    #Ratio Plots
-    
-    
-    num_of_variables=len(xlabels_extra)
-    fig, axs = plt.subplots(1, num_of_variables, figsize=(80, 10), constrained_layout=True)
+
+
+
+    #Calculated Variables
+    num_of_variables = len(xlabels_extra)
+    num_calc_var=num_of_variables - len(xlabels)
+    fig, axs = plt.subplots(1, num_calc_var, figsize=(20, 10), constrained_layout=True)
     axs = axs.flatten()
-    #config = dict(histtype='step', lw=2) 
+    # config = dict(histtype='step', lw=2)
     config = dict(histtype='step', lw=2)
-    i=0
-    
-    for i in range(num_of_variables): 
-        ratio=[]
-        idx=i
+    i = 0
+
+    for i in range(num_calc_var):
+        idx = i
         ax = axs[idx]
+        idx =idx+len(xlabels)
+        yvals, _, _ = ax.hist(truths[:, idx], bins=40,
+                              range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])], label='Truth',
+                              density=True, **config)
+        max_y = np.max(yvals) * 1.1
+        ax.hist(predictions_cut[:, idx], bins=40, range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])],
+                label='Generator', density=True, **config)
+        ax.set_xlabel(xlabels_extra[i+len(xlabels)], fontsize=16)
+        ax.legend(['Truth', 'Generator'], loc=3)
+        # ax.set_yscale('log')
+
+        # Save Figures
+    plt.savefig(os.path.join(new_run_folder, 'calc_image_at_epoch_{:04d}.png'.format(county)))
+    plt.close('all')
+    
+
+
+
+
+
+
+
+
+
+    #Ratio Plots
+
+    xlabelstemp = xlabels[:6]
+    # New Code
+    num_of_variables = len(xlabelstemp)
+    county = epochs
+    # Original Variables
+    num_of_variables = len(xlabels_extra)
+    fig, axs = plt.subplots(1, len(xlabels), figsize=(27, 5), constrained_layout=True)
+    axs = axs.flatten()
+    # config = dict(histtype='step', lw=2)
+    config = dict(histtype='step', lw=2)
+    i = 0
+
+    for i in range(len(xlabels)):
+        idx = i
+        ax = axs[idx]
+        ratio=[]
         
         yvals, true1 = np.histogram(truths[:, idx], bins=40)
-
         yvals2,pred1=np.histogram(predictions_cut[:, idx], bins=40)
-        
-        
-        #print(yvals,yvals2)
-        #print('yval_true',yvals)
-        #print('yval_pred',yvals2)
-        #print('true1',true1)
-        #print('true2',true2)
-            
-        #print(len(yvals),len(true1[:-1]))
+
         ratio=yvals/yvals2
-        #print(ratio)
         ax.scatter(true1[:-1],ratio)
         max_y = np.max(yvals) * 1.1
         
-        ax.set_xlabel('Ratio of true to generated events for :' +xlabels_extra[i], fontsize=18)
-        #ax.legend(['Truth', 'Generator'],loc=3)
-        #ax.set_yscale('log')
-        
-        #Save Figures
+        ax.set_xlabel('Ratio of true to generated events for :' +xlabels_extra[i], fontsize=8)
     plt.savefig(os.path.join(new_run_folder, 'ratio_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-            
-   
+
+    # Calculated Variables
+    num_of_variables = len(xlabels_extra)
+    num_calc_var = num_of_variables - len(xlabels)
+    fig, axs = plt.subplots(1, num_calc_var, figsize=(20, 10), constrained_layout=True)
+    axs = axs.flatten()
+    # config = dict(histtype='step', lw=2)
+    config = dict(histtype='step', lw=2)
+    i = 0
+
+    for i in range(num_calc_var):
+        idx = i
+        ax = axs[idx]
+        idx = idx + len(xlabels)
+        ratio = []
+
+        yvals, true1 = np.histogram(truths[:, idx], bins=40)
+
+        yvals2, pred1 = np.histogram(predictions_cut[:, idx], bins=40)
+
+        ratio = yvals / yvals2
+        ax.scatter(true1[:-1], ratio)
+        max_y = np.max(yvals) * 1.1
+
+        ax.set_xlabel('Ratio of true to generated events for :' + xlabels_extra[i+len(xlabels)], fontsize=10)
+    plt.savefig(os.path.join(new_run_folder, 'calc_ratio_image_at_epoch_{:04d}.png'.format(county)))
+    plt.close('all')
+
     var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
     #Converting to numpy array
     predictions=np.array(predictions)
@@ -412,7 +404,9 @@ def dimuon_calc(predictions,truths):
         
     #print(truths)
     #Define muon mass and create two arrays filled with this value
+
     m_u=1.883531627e-28
+
     masses_lead = np.full((len(truths[:,0]), 1), m_u)
     masses_sub = np.full((len(truths[:,0]), 1), m_u)
     
@@ -538,6 +532,31 @@ def dimuon_calc(predictions,truths):
     #predictions = np.column_stack((predictions, phi_angle_btwn_true))
     
     return truths,predictions
+
     
-    
+if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Normalizing Flow')
+    add_arg = parser.add_argument
+    add_arg('--bestepoch', help='Number of Epochs Used')
+    add_arg('--jetnum', help='Number of Jets in File')
+    args = parser.parse_args()
+
+    if args.jetnum==0:
+        xlabels=['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT', 'subleading Muon eta', 'subleading Muon phi']
+    else:
+        xlabels = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT',
+                   'subleading Muon eta', 'subleading Muon phi']
+
+
+    truths=np.load('truths.npy')
+    predictions = np.load('predictions.npy')
+    f = open("filename.txt", "r")
+    if f.mode == 'r':
+        new_run_folder= f.read()
+
+    print('new run',new_run_folder)
+    epochs=50
+    hmumu_plot(predictions, truths,new_run_folder,epochs,xlabels)
+
     
