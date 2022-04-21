@@ -12,18 +12,17 @@ tfk = tf.keras
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import stats
-
+import pandas as pd
 from utils import train_density_estimation
 from utils import nll
 from gan4hep.utils_plot import compare
-from gan4hep.Hmumu_plots import hmumu_plot
 
 
-def evaluate(flow_model, testing_data,multiplier):
+
+def evaluate(flow_model, testing_data):
     num_samples, num_dims = testing_data.shape
-    
-    num_samples=multiplier*num_samples
-
+    print('num samples',num_samples)
+    print('num_dims',num_dims)
     samples = flow_model.sample(num_samples).numpy()
     distances = [
         stats.wasserstein_distance(samples[:, idx], testing_data[:, idx]) \
@@ -39,6 +38,7 @@ def train(
     """
     The primary training loop
     """
+    print('outdir',outdir)
     base_lr = lr
     end_lr = 1e-5
     learning_rate_fn = tfk.optimizers.schedules.PolynomialDecay(
@@ -59,33 +59,35 @@ def train(
         train_truth).batch(batch_size).prefetch(AUTO)
 
     img_dir = os.path.join(outdir, "imgs")
-    
-    #summary_dir = os.path.join(log_dir, "logs")
-    #summary_writer = tf.summary.create_file_writer(summary_dir) #Creates a summary file writer for the given log directory.
 
-    #img_dir = os.path.join(log_dir, 'img')
-    #os.makedirs(img_dir, exist_ok=True)
+    # summary_dir = os.path.join(log_dir, "logs")
+    # summary_writer = tf.summary.create_file_writer(summary_dir) #Creates a summary file writer for the given log directory.
+
+    # img_dir = os.path.join(log_dir, 'img')
+    # os.makedirs(img_dir, exist_ok=True)
 
     import time
     import pathlib
     import datetime
 
-    #Making seperate folders for each run to store plots
-    #Get time and date of current run
+    # Making seperate folders for each run to store plots
+    # Get time and date of current run
     current_date_and_time = datetime.datetime.now()
     current_date_and_time_string = str(current_date_and_time)
 
     os.makedirs(img_dir, exist_ok=True)
-    #Create directory path
+    # Create directory path
     run_dir = os.path.join(img_dir, 'img')
-    
-    #Add GAN paramaters to time and date to create file name for current run
-    new_run_folder=run_dir+current_date_and_time_string+' Epoch_num: '+ str(max_epochs)
-    print('new_run_folder',new_run_folder)
+
+    # Add GAN paramaters to time and date to create file name for current run
+    new_run_folder = run_dir + current_date_and_time_string + ' Epoch_num: ' + str(max_epochs)
+    print('new_run_folder', new_run_folder)
     os.makedirs(new_run_folder, exist_ok=True)
-           
-    
-   
+
+
+    #print('training data', dir(training_data))
+    #print('training truth', train_truth.shape)
+    #print('training truth_1', train_truth_1.shape)
     # start training
     print("idx, train loss, distance, minimum distance, minimum epoch")
     min_wdis, min_iepoch = 9999, -1
@@ -93,16 +95,19 @@ def train(
 
     loss_list=[]
     w_list=[]
-
     for i in range(max_epochs):
          
         from datetime import datetime
         start_time = datetime.now()
             
         for batch in training_data:
+            #print('flow_model',flow_model)
+            #print('opt',opt)
+            #print('batch',batch)
+            #print('testing truth',testing_truth.shape)
             train_loss = train_density_estimation(flow_model, opt, batch)
-            
-        wdis, predictions = evaluate(flow_model, testing_truth,gen_evts)
+        wdis, predictions = evaluate(flow_model, testing_truth)
+        print(wdis)
         end_time = datetime.now()
         print('Generation Duration: {}'.format(end_time - start_time))
         
@@ -111,7 +116,7 @@ def train(
             min_wdis = wdis
             min_iepoch = i
             outname = os.path.join(img_dir, str(i))
-            hmumu_plot(predictions, testing_truth, outname, xlabels,test_truth_1,new_run_folder,i)
+            #hmumu_plot(predictions, testing_truth, outname, xlabels,test_truth_1,new_run_folder,i)
             ckpt_manager.save()
             w_list.append(float(f"{wdis}"))
             #save_NF(flow_model,new_run_folder)
@@ -119,13 +124,22 @@ def train(
             break
         else:
             w_list.append(float(f"{wdis}"))
-
+        train_loss=0
         print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
         
         
         loss_list.append(float(f"{train_loss}"))
         
     
+        
+
+    #Apply Inverse Scaler to get original values back
+    from sklearn.preprocessing import MinMaxScaler
+    
+    scaler = MinMaxScaler(feature_range=(-1,1))
+    test_truth_1 = scaler.fit_transform(test_truth_1)
+    truths=scaler.inverse_transform(testing_truth)
+    predictions=scaler.inverse_transform(predictions)
     
     #Plot Log loss
 
@@ -139,7 +153,43 @@ def train(
     print('Best Wasserstein Distance: ', wdis)
     plt.xlabel('Epoch')
     plt.savefig(os.path.join(new_run_folder, 'wasserstein.png'))
+
+    #Saving as txt files
+    truths = pd.DataFrame(truths)
+    predictions = pd.DataFrame(predictions)
+    truths.to_csv(sep=' ', index=False, header=True)
+    predictions.to_csv(sep=' ', index=False, header=True)
     
+    #np.savetxt('truths.txt', truths.values)
+    #np.savetxt('predictions.txt', predictions.values)
+
+    
+    summary_logfile = os.path.join(new_run_folder, 'truths.txt')
+    with open(summary_logfile, 'a') as f:
+        dfAsString = truths.to_string(header=True, index=False)
+        f.write(dfAsString)
+        
+    summary_logfile = os.path.join(new_run_folder, 'predictions.txt')
+
+    with open(summary_logfile, 'a') as f:
+        dfAsString = predictions.to_string(header=True, index=False)
+        f.write(dfAsString)
+
+    summary_logfile = os.path.join(new_run_folder, 'filename.txt')
+
+    with open(summary_logfile, 'a') as f:
+        dfAsString = new_run_folder
+        f.write(dfAsString)
+
+
+    #Saving as .npy files
+
+    np.save(os.path.join(new_run_folder, 'truths.npy'), truths)
+    np.save(os.path.join(new_run_folder, 'predictions.npy'), truths)
+
+    #For being called in the hmumu plots file
+    np.save('truths.npy',truths)
+    np.save('predictions.npy', predictions)
 
 if __name__ == '__main__':
     import argparse
@@ -162,16 +212,16 @@ if __name__ == '__main__':
     #
     train_in, train_truth, test_in, test_truth,  xlabels,test_truth_1,train_truth_1= eval(args.data)(
         args.filename, max_evts=args.max_evts)
+
     outdir = args.outdir
     hidden_shape = [128]*2
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 100
-    print('max_epochs',max_epochs)
+    max_epochs = 2
     out_dim = train_truth.shape[1]
     gen_evts=args.multi
-    maf =  create_flow(hidden_shape, layers, input_dim=out_dim, out_dim=2)
-    print(maf)
-    print('test_truth size',test_truth.shape)
+    print('')
+    maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
+    print('maf',maf)
     train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts)
