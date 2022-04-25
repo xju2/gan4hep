@@ -21,8 +21,6 @@ from gan4hep.utils_plot import compare
 
 def evaluate(flow_model, testing_data):
     num_samples, num_dims = testing_data.shape
-    print('num samples',num_samples)
-    print('num_dims',num_dims)
     samples = flow_model.sample(num_samples).numpy()
     distances = [
         stats.wasserstein_distance(samples[:, idx], testing_data[:, idx]) \
@@ -38,7 +36,6 @@ def train(
     """
     The primary training loop
     """
-    print('outdir',outdir)
     base_lr = lr
     end_lr = 1e-5
     learning_rate_fn = tfk.optimizers.schedules.PolynomialDecay(
@@ -84,10 +81,6 @@ def train(
     print('new_run_folder', new_run_folder)
     os.makedirs(new_run_folder, exist_ok=True)
 
-
-    #print('training data', dir(training_data))
-    #print('training truth', train_truth.shape)
-    #print('training truth_1', train_truth_1.shape)
     # start training
     print("idx, train loss, distance, minimum distance, minimum epoch")
     min_wdis, min_iepoch = 9999, -1
@@ -101,10 +94,6 @@ def train(
         start_time = datetime.now()
             
         for batch in training_data:
-            #print('flow_model',flow_model)
-            #print('opt',opt)
-            #print('batch',batch)
-            #print('testing truth',testing_truth.shape)
             train_loss = train_density_estimation(flow_model, opt, batch)
         wdis, predictions = evaluate(flow_model, testing_truth)
         print(wdis)
@@ -116,7 +105,6 @@ def train(
             min_wdis = wdis
             min_iepoch = i
             outname = os.path.join(img_dir, str(i))
-            #hmumu_plot(predictions, testing_truth, outname, xlabels,test_truth_1,new_run_folder,i)
             ckpt_manager.save()
             w_list.append(float(f"{wdis}"))
             #save_NF(flow_model,new_run_folder)
@@ -124,72 +112,49 @@ def train(
             break
         else:
             w_list.append(float(f"{wdis}"))
-        train_loss=0
         print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
         
         
         loss_list.append(float(f"{train_loss}"))
-        
-    
-        
 
     #Apply Inverse Scaler to get original values back
     from sklearn.preprocessing import MinMaxScaler
-    
     scaler = MinMaxScaler(feature_range=(-1,1))
     test_truth_1 = scaler.fit_transform(test_truth_1)
     truths=scaler.inverse_transform(testing_truth)
     predictions=scaler.inverse_transform(predictions)
-    
-    #Plot Log loss
 
-    plt.plot(loss_list)
-    plt.ylabel('Training Loss')
-    plt.xlabel('Epoch')
-    plt.savefig(os.path.join(new_run_folder, 'logloss.png'))
-    plt.clf()
-    plt.plot(w_list)
-    plt.ylabel('Wasserstein Distance')
     print('Best Wasserstein Distance: ', wdis)
-    plt.xlabel('Epoch')
-    plt.savefig(os.path.join(new_run_folder, 'wasserstein.png'))
-
-    #Saving as txt files
-    truths = pd.DataFrame(truths)
-    predictions = pd.DataFrame(predictions)
-    truths.to_csv(sep=' ', index=False, header=True)
-    predictions.to_csv(sep=' ', index=False, header=True)
-    
-    #np.savetxt('truths.txt', truths.values)
-    #np.savetxt('predictions.txt', predictions.values)
-
-    
-    summary_logfile = os.path.join(new_run_folder, 'truths.txt')
-    with open(summary_logfile, 'a') as f:
-        dfAsString = truths.to_string(header=True, index=False)
-        f.write(dfAsString)
-        
-    summary_logfile = os.path.join(new_run_folder, 'predictions.txt')
-
-    with open(summary_logfile, 'a') as f:
-        dfAsString = predictions.to_string(header=True, index=False)
-        f.write(dfAsString)
-
-    summary_logfile = os.path.join(new_run_folder, 'filename.txt')
-
-    with open(summary_logfile, 'a') as f:
-        dfAsString = new_run_folder
-        f.write(dfAsString)
 
 
-    #Saving as .npy files
-
+    #Save data to run data
     np.save(os.path.join(new_run_folder, 'truths.npy'), truths)
     np.save(os.path.join(new_run_folder, 'predictions.npy'), truths)
+    np.save(os.path.join(new_run_folder, 'loss_list.npy'), loss_list)
+    np.save(os.path.join(new_run_folder, 'w_list.npy'), w_list)
 
-    #For being called in the hmumu plots file
-    np.save('truths.npy',truths)
-    np.save('predictions.npy', predictions)
+    #Create temporary folder for using the plotting program
+    new_run_folder_2 = r'/eos/user/p/pfitzhug/Test/gan_work/Temp_Data'
+    if not os.path.exists(new_run_folder_2):
+        os.makedirs(new_run_folder_2)
+
+    #Save to temporary folder
+    np.save(os.path.join(new_run_folder_2, 'truths.npy'), truths)
+    np.save(os.path.join(new_run_folder_2, 'predictions.npy'), predictions)
+    np.save(os.path.join(new_run_folder_2, 'loss_list.npy'), loss_list)
+    np.save(os.path.join(new_run_folder_2, 'w_list.npy'), w_list)
+
+    #Saving file name
+    with open(new_run_folder_2+"/filename.txt", "w") as f:
+        f.write(new_run_folder)
+
+    with open(new_run_folder + "/filename.txt", "w") as f:
+        f.write(new_run_folder)
+
+
+    #with open(summary_logfile, 'a') as f:
+     #   dfAsString = new_run_folder
+      #  f.write(dfAsString)
 
 if __name__ == '__main__':
     import argparse
@@ -209,7 +174,6 @@ if __name__ == '__main__':
     from gan4hep.preprocess import dimuon_inclusive
     from made import create_flow
 
-    #
     train_in, train_truth, test_in, test_truth,  xlabels,test_truth_1,train_truth_1= eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
@@ -221,7 +185,5 @@ if __name__ == '__main__':
     max_epochs = 2
     out_dim = train_truth.shape[1]
     gen_evts=args.multi
-    print('')
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
-    print('maf',maf)
     train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts)
