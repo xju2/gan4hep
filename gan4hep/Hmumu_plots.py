@@ -11,57 +11,84 @@ import seaborn as sns
 def hmumu_plot(predictions, truths,outdir,epochs,xlabels,
     xranges=None, xbins=None):
 
-    xlabelstemp=xlabels[:6]
+    xlabels_extra=xlabels
+    xlabels_extra.append('DiMuon Invarient Mass')
+    xlabels_extra.append('DiMuon P_t')
+    xlabels_extra.append('DiMuon Pseudorapidity (Eta)')
+    xlabels=xlabels[:-3]
     #New Code
-    num_of_variables=len(xlabelstemp)
+    num_of_variables=len(xlabels)
     county=epochs
 
     #Function to calculate invarient dimuon mass
     truths,predictions=dimuon_calc(predictions,truths)
-
     #Applying Selection Cuts
     
     print('Length of predicted data set pre-cuts: ',len(predictions))
     print('Length of truth data set pre-cuts: ',len(truths))
     predictions_cut,truths,predictions,truths_cut,select_cut_val=selection_cuts(predictions,truths)
 
-    #Creating  Original Valued Plots
-    xlabels_extra=xlabelstemp
-    xlabels_extra.append('DiMuon Invarient Mass')
-    xlabels_extra.append('DiMuon P_t')
-    xlabels_extra.append('DiMuon Pseudorapidity (Eta)')
     #xlabels_extra.append('Eta Between the Two Muons')
     #xlabels_extra.append('Phi Between the Two Muons')
 
+    #Plots
+    # Plot Original Variables
+    original(predictions_cut,truths_cut,new_run_folder,xlabels_extra,county)
 
-    #Original Variables
-    num_of_variables=len(xlabels_extra)
+
+    # Plot Calculated Variables
+    calculated(predictions_cut,truths_cut,new_run_folder,xlabels_extra,xlabels,county)
+
+
+    # Plot ratio plots
+    ratio(predictions_cut,truths_cut,new_run_folder,xlabels_extra,xlabels,county)
+
+
+    # Plot correlation plots
+    heatmap(predictions_cut,truths_cut,new_run_folder,xlabels_extra,county)
+
+
+    #Plot Individual Heat Map plots
+    var_corr(predictions_cut,truths_cut,new_run_folder,xlabels_extra,county)
+
+
+    # Plot Large plots for calculated variables
+    large_calc_plots(truths,predictions_cut,xlabels_extra,county,new_run_folder)
+
+
+def original(predictions_cut,truths_cut,new_run_folder,xlabels_extra,county):
+
+    # Original Variables
+    num_of_variables = len(xlabels_extra)
     fig, axs = plt.subplots(1, len(xlabels), figsize=(50, 10), constrained_layout=True)
     axs = axs.flatten()
-    #config = dict(histtype='step', lw=2) 
+    # config = dict(histtype='step', lw=2)
     config = dict(histtype='step', lw=2)
-    i=0
-    
-    for i in range(len(xlabels)):
-
-        idx=i
+    i = 0
+    for i in range(len(xlabels)-3):
+        idx = i
         ax = axs[idx]
-        yvals, _, _ = ax.hist(truths[:, idx], bins=40, range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])], label='Truth',density=True, **config)
+        yvals, _, _ = ax.hist(truths[:, idx], bins=40,
+                              range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])], label='Truth',
+                              density=True, **config)
         max_y = np.max(yvals) * 1.1
-        ax.hist(predictions_cut[:, idx], bins=40,range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])], label='Generator',density=True, **config)
+        ax.hist(predictions_cut[:, idx], bins=40, range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])],
+                label='Generator', density=True, **config)
         ax.set_xlabel(xlabels_extra[i], fontsize=16)
-        ax.legend(['Truth', 'Generator'],loc=3)
-        #ax.set_yscale('log')
-        
-        #Save Figures
+        ax.legend(['Truth', 'Generator'], loc=3)
+        # ax.set_yscale('log')
+
+        # Save Figures
     plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
 
 
 
-    #Calculated Variables
+def calculated(predictions_cut,truths,new_run_folder,xlabels_extra,xlabels,county):
+
+    # Calculated Variables
     num_of_variables = len(xlabels_extra)
-    num_calc_var=num_of_variables - len(xlabels)
+    num_calc_var = num_of_variables - len(xlabels)
     fig, axs = plt.subplots(1, num_calc_var, figsize=(20, 10), constrained_layout=True)
     axs = axs.flatten()
     # config = dict(histtype='step', lw=2)
@@ -71,31 +98,24 @@ def hmumu_plot(predictions, truths,outdir,epochs,xlabels,
     for i in range(num_calc_var):
         idx = i
         ax = axs[idx]
-        idx =idx+len(xlabels)
+        idx = idx + len(xlabels)
         yvals, _, _ = ax.hist(truths[:, idx], bins=40,
                               range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])], label='Truth',
                               density=True, **config)
         max_y = np.max(yvals) * 1.1
         ax.hist(predictions_cut[:, idx], bins=40, range=[min(predictions_cut[:, idx]), max(predictions_cut[:, idx])],
                 label='Generator', density=True, **config)
-        ax.set_xlabel(xlabels_extra[i+len(xlabels)], fontsize=16)
+        ax.set_xlabel(xlabels_extra[i + len(xlabels)], fontsize=16)
         ax.legend(['Truth', 'Generator'], loc=3)
         # ax.set_yscale('log')
 
         # Save Figures
     plt.savefig(os.path.join(new_run_folder, 'calc_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
-    
 
 
-
-
-
-
-
-
-
-    #Ratio Plots
+def ratio (predictions_cut,truths,new_run_folder,xlabels_extra,xlabels,county):
+    # Ratio Plots
 
     xlabelstemp = xlabels[:6]
     # New Code
@@ -112,16 +132,16 @@ def hmumu_plot(predictions, truths,outdir,epochs,xlabels,
     for i in range(len(xlabels)):
         idx = i
         ax = axs[idx]
-        ratio=[]
-        
-        yvals, true1 = np.histogram(truths[:, idx], bins=40)
-        yvals2,pred1=np.histogram(predictions_cut[:, idx], bins=40)
+        ratio = []
 
-        ratio=yvals/yvals2
-        ax.scatter(true1[:-1],ratio)
+        yvals, true1 = np.histogram(truths[:, idx], bins=40)
+        yvals2, pred1 = np.histogram(predictions_cut[:, idx], bins=40)
+
+        ratio = yvals / yvals2
+        ax.scatter(true1[:-1], ratio)
         max_y = np.max(yvals) * 1.1
-        
-        ax.set_xlabel('Ratio of true to generated events for :' +xlabels_extra[i], fontsize=8)
+
+        ax.set_xlabel('Ratio of true to generated events for :' + xlabels_extra[i], fontsize=8)
     plt.savefig(os.path.join(new_run_folder, 'ratio_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
 
@@ -148,54 +168,42 @@ def hmumu_plot(predictions, truths,outdir,epochs,xlabels,
         ax.scatter(true1[:-1], ratio)
         max_y = np.max(yvals) * 1.1
 
-        ax.set_xlabel('Ratio of true to generated events for :' + xlabels_extra[i+len(xlabels)], fontsize=10)
+        ax.set_xlabel('Ratio of true to generated events for :' + xlabels_extra[i + len(xlabels)], fontsize=10)
     plt.savefig(os.path.join(new_run_folder, 'calc_ratio_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
 
-    var_name_list=['PT_Lead','Eta_Lead','Phi_Lead','PT_Sub','Eta_Sub','Phi_Sub','DIMuon Mass']
-    #Converting to numpy array
-    predictions=np.array(predictions)
-    truths=np.array(truths)
-    
-    #Converting to Pandas
-    df_truths = pd.DataFrame(truths[:,:], columns = xlabels_extra)
-    df_predictions = pd.DataFrame(predictions[:,:-1], columns = xlabels_extra)
-    
-    
-    #Correlation Plot for True Data
+    # Reset Style
+    plt.rcParams.update(plt.rcParamsDefault)
+
+
+def heatmap(predictions,truths,new_run_folder,xlabels_extra,county):
+    # Converting to numpy array
+    predictions = np.array(predictions)
+    truths = np.array(truths)
+
+    # Converting to Pandas
+    df_truths = pd.DataFrame(truths[:, :], columns=xlabels_extra)
+    df_predictions = pd.DataFrame(predictions[:, :], columns=xlabels_extra)
+
+    # Correlation Plot for True Data
     sns.set(font_scale=2.0)
     plt.rcParams['figure.figsize'] = (40.0, 30.0)
-    sns.heatmap(df_truths.corr(),annot=True, vmin=-1, vmax=1, center=0)
+    sns.heatmap(df_truths.corr(), annot=True, vmin=-1, vmax=1, center=0)
     plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_truths_{:04d}.png'.format(county)))
     plt.close('all')
-    
-    #Correlation Plot for Generated Data
+
+    # Correlation Plot for Generated Data
     plt.rcParams['figure.figsize'] = (40.0, 30.0)
-    sns.heatmap(df_predictions.corr(),annot=True, vmin=-1, vmax=1, center=0)
+    sns.heatmap(df_predictions.corr(), annot=True, vmin=-1, vmax=1, center=0)
     plt.savefig(os.path.join(new_run_folder, 'heatmap_at_epoch_generated_{:04d}.png'.format(county)))
     plt.close('all')
-    
-    plt.rcParams['figure.figsize'] = (10.0, 10.0)
-    
-    #Plot correlation plot  
-    
-    #***
-    #---
-    #***
-    
-    #var_corr(predictions_cut,truths_cut,new_run_folder,i,xlabels_extra,county)
-    
-    #***
-    #---
-    #***
-    
-    
-    #Reset Style
-    plt.close('all')
-    import matplotlib as mpl
-    mpl.rcParams.update(mpl.rcParamsDefault)
 
-    '''
+    # Reset Style
+    plt.rcParams.update(plt.rcParamsDefault)
+
+def large_calc_plots(truths,predictions_cut,xlabels_extra,county,new_run_folder):
+
+
     #Plot Just Dimuon But Big with mean and SD   
     fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
     #axs = axs.flatten()
@@ -240,18 +248,8 @@ def hmumu_plot(predictions, truths,outdir,epochs,xlabels,
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
     plt.savefig(os.path.join(new_run_folder, 'dimuon_log_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
-    
-    
-    
-    
-    
-    
-    mpl.rcParams.update(mpl.rcParamsDefault)
+    plt.rcParams.update(plt.rcParamsDefault)
 
-    
-    
-    
-    
      #Plot Dimuon Pt
     fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
     #axs = axs.flatten()
@@ -273,8 +271,7 @@ def hmumu_plot(predictions, truths,outdir,epochs,xlabels,
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
     plt.savefig(os.path.join(new_run_folder, 'dimuon_pt_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
-    
-    
+
     #Plot Dimuon Pt Log
     fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
     #axs = axs.flatten()
@@ -296,10 +293,9 @@ def hmumu_plot(predictions, truths,outdir,epochs,xlabels,
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
     plt.savefig(os.path.join(new_run_folder, 'dimuon_pt_log_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
-    
-    mpl.rcParams.update(mpl.rcParamsDefault)
+    plt.rcParams.update(plt.rcParamsDefault)
 
-     #Plot Dimuon Pseudorapidity
+    #Plot Dimuon Pseudorapidity
     fig, axs = plt.subplots(1, 1, figsize=(10,7), constrained_layout=True)
     #axs = axs.flatten()
     config = dict(histtype='step', lw=2)
@@ -342,15 +338,12 @@ def hmumu_plot(predictions, truths,outdir,epochs,xlabels,
     ax.legend(['Truth', 'Generator','Truth Mean','Generated SD','Truth SD','Generated Mean'])
     plt.savefig(os.path.join(new_run_folder, 'dimuon_pseudo_log_image_at_epoch_{:04d}.png'.format(county)))
     plt.close('all')
-    '''
+    plt.rcParams.update(plt.rcParamsDefault)
+
       
 def selection_cuts(predictions,truths):
 
-    listy=[]
-    for i in range(len(predictions)):
-        listy.append(i)
-                
-    predictions=np.c_[ predictions, listy ]
+    #predictions=np.c_[ predictions ]
     predictions_cut= predictions[(-1*np.pi<predictions[:,1]) & (predictions[:,1] < 1*np.pi)] 
     predictions_cut= predictions_cut[(-1*np.pi<predictions_cut[:,2]) & (predictions_cut[:,2] < 1*np.pi)] 
     predictions_cut= predictions_cut[(-1*np.pi<predictions_cut[:,4]) & (predictions_cut[:,4] < 1*np.pi)] 
@@ -358,14 +351,13 @@ def selection_cuts(predictions,truths):
 
     print('Length of predicted data set post-cuts: ',len(predictions_cut))
     print('Fraction of events lost : ',1-len(predictions_cut)/len(predictions))
-
     select_cut_val=1-len(predictions_cut)/len(predictions)
-    
+
     return predictions_cut,truths,predictions,truths,select_cut_val
 
-def var_corr(predictions,truths,new_run_folder,i,xlabels_extra,county):
+def var_corr(predictions,truths,new_run_folder,xlabels_extra,county):
 
-
+    print('')
     #Creating plots for every combination of variables for generated data
     j=0
     i=0
@@ -533,30 +525,57 @@ def dimuon_calc(predictions,truths):
     
     return truths,predictions
 
-    
+
+def end_of_run_plots(w_list,loss_list,epochs,new_run_folder):
+    #Plot Log loss
+    print('new run',new_run_folder)
+    plt.plot(loss_list)
+    plt.ylabel('Training Loss')
+    plt.xlabel('Epoch')
+    plt.savefig(os.path.join(new_run_folder, 'logloss.png'))
+    plt.clf()
+    #Plot Wasserstein Distance
+    plt.plot(w_list)
+    plt.ylabel('Wasserstein Distance')
+    plt.xlabel('Epoch')
+    plt.savefig(os.path.join(new_run_folder, 'wasserstein.png'))
+
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Normalizing Flow')
     add_arg = parser.add_argument
-    add_arg('--bestepoch', help='Number of Epochs Used')
-    add_arg('--jetnum', help='Number of Jets in File')
+    add_arg('--bestepoch',default=50, help='Epoch for best results')
+    add_arg('--jetnum', default=0, help='Number of Jets in File')
     args = parser.parse_args()
-
-    if args.jetnum==0:
+    jetnum=int(args.jetnum)
+    epochs=int(args.bestepoch)
+    #Define labels depending on number of jets (WiP)
+    if jetnum==0:
         xlabels=['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT', 'subleading Muon eta', 'subleading Muon phi']
+    elif jetnum==1:
+        xlabels = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT',
+                   'subleading Muon eta', 'subleading Muon phi', 'Jet 1 pT', 'Jet 1 eta', 'Jet 1 phi']
     else:
         xlabels = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT',
                    'subleading Muon eta', 'subleading Muon phi']
 
 
-    truths=np.load('truths.npy')
-    predictions = np.load('predictions.npy')
-    f = open("filename.txt", "r")
+    #Load Data from Temp_Data
+    truths=np.load('Temp_Data/truths.npy')
+    predictions = np.load('Temp_Data/predictions.npy')
+    w_list=np.load('Temp_Data/w_list.npy')
+    loss_list = np.load('Temp_Data/loss_list.npy')
+    f = open("Temp_Data/filename.txt", "r")
     if f.mode == 'r':
         new_run_folder= f.read()
 
-    print('new run',new_run_folder)
-    epochs=50
+    #Plot loss and wasserstein plots
+    end_of_run_plots(w_list,loss_list,epochs,new_run_folder)
+
+    #Plot everything else
     hmumu_plot(predictions, truths,new_run_folder,epochs,xlabels)
+
 
     
