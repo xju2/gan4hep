@@ -134,18 +134,17 @@ def train(
     np.save(os.path.join(new_run_folder, 'w_list.npy'), w_list)
 
     #Create temporary folder for using the plotting program
-    new_run_folder_2 = r'/eos/user/p/pfitzhug/Test/gan_work/Temp_Data'
-    if not os.path.exists(new_run_folder_2):
-        os.makedirs(new_run_folder_2)
+    if os.path.exists('Temp_Data')==False:
+        os.mkdir('Temp_Data')
 
     #Save to temporary folder
-    np.save(os.path.join(new_run_folder_2, 'truths.npy'), truths)
-    np.save(os.path.join(new_run_folder_2, 'predictions.npy'), predictions)
-    np.save(os.path.join(new_run_folder_2, 'loss_list.npy'), loss_list)
-    np.save(os.path.join(new_run_folder_2, 'w_list.npy'), w_list)
+    np.save(os.path.join('Temp_Data', 'truths.npy'), truths)
+    np.save(os.path.join('Temp_Data', 'predictions.npy'), predictions)
+    np.save(os.path.join('Temp_Data', 'loss_list.npy'), loss_list)
+    np.save(os.path.join('Temp_Data', 'w_list.npy'), w_list)
 
     #Saving file name
-    with open(new_run_folder_2+"/filename.txt", "w") as f:
+    with open('Temp_Data'+"/filename.txt", "w") as f:
         f.write(new_run_folder)
 
     with open(new_run_folder + "/filename.txt", "w") as f:
@@ -182,7 +181,7 @@ if __name__ == '__main__':
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 2
+    max_epochs = 100
     out_dim = train_truth.shape[1]
     gen_evts=args.multi
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
