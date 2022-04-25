@@ -60,7 +60,7 @@ def original(predictions_cut,truths_cut,new_run_folder,xlabels_extra,county):
 
     # Original Variables
     num_of_variables = len(xlabels_extra)
-    fig, axs = plt.subplots(1, len(xlabels), figsize=(50, 10), constrained_layout=True)
+    fig, axs = plt.subplots(1, len(xlabels)-3, figsize=(50, 10), constrained_layout=True)
     axs = axs.flatten()
     # config = dict(histtype='step', lw=2)
     config = dict(histtype='step', lw=2)
