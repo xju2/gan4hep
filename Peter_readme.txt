@@ -15,6 +15,7 @@ mkdir nf_work
 cd nf_work
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/train_nf.py
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/Hmumu_plots.py
+ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/run_trained_nf.py
 
 #Add the relevent .output file (mc16d_364100_dimuon_0Jets.output) to the nf_work folder then in nf_work run:
 
@@ -107,3 +108,16 @@ Each series of plots has its own function in Hmumu_plots.py that cna be commente
     large_calc_plots(truths,predictions_cut,xlabels_extra,county,new_run_folder)
 
     Plots larger histograms for the three calculate variables seperately with SD and mean lines included for both generated and true data
+    
+---------------
+***************
+---------------
+
+5)Generating New Events from A Saved Model
+
+To do this, type into the terminal:
+
+python run_trained_nf.py \
+ --data dimuon_inclusive mc16d_364100_dimuon_0Jets.output TestNP --num-gen-evts 10000
+ 
+ Where --num-gen-evts is used to specify the number of generated events to be created. The program will load the most recently saved model and generate a .npy file in /Generated_Data with the new data alongside a histogram of the generated data to check the quality.
