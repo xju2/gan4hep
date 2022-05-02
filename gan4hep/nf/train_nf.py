@@ -30,7 +30,7 @@ def evaluate(flow_model, testing_data):
 
 
 def train(
-        train_truth, testing_truth, flow_model, flow_model2,
+        train_truth, testing_truth, flow_model,
         lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts, start_time_full):
     """
     The primary training loop
@@ -95,7 +95,6 @@ def train(
 
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
-            # train_loss2 = train_density_estimation(flow_model2, opt, batch)
         wdis, predictions = evaluate(flow_model, testing_truth)
         print(wdis)
         end_time = datetime.now()
