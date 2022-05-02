@@ -23,7 +23,7 @@ import os
 
 def train(
     train_truth, testing_truth, flow_model,
-    lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts,num_gen_evts,start_time_full):
+    lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts,num_gen_evts):
 
     #Create timestamp for generated data
     import time
@@ -42,7 +42,7 @@ def train(
         base_lr, max_epochs, end_lr, power=0.5)
 
     # initialize checkpoints
-    checkpoint_directory = "{}/checkpoints2".format(outdir)
+    checkpoint_directory = "{}/checkpoints".format(outdir)
     os.makedirs(checkpoint_directory, exist_ok=True)
 
     opt = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)  # optimizer
@@ -51,11 +51,8 @@ def train(
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
 
     #Generate new data
-    print('flowmodel',flow_model)
-    print('')
     num_samples, num_dims = testing_truth.shape
-    num_samples=int(num_gen_evts)
-
+    num_samples=num_gen_evts
     samples = flow_model.sample(num_samples).numpy()
     predictions=samples
 
@@ -94,12 +91,6 @@ def train(
     plt.savefig(os.path.join('Generated_Data', 'image{:04d}.png'))
     plt.close('all')
 
-    end_time_full = datetime.now()
-    full_time_state='Total Generation Duration: {}'.format(end_time_full - start_time_full)
-    time_list.append(full_time_state)
-    with open('Generated_Data' + "/time.txt", "w") as f:
-        f.write(str(time_list))
-
 
 if __name__ == '__main__':
     import argparse
@@ -116,11 +107,6 @@ if __name__ == '__main__':
             choices=['herwig_angles', 'dimuon_inclusive', 'herwig_angles2'])
 
     args = parser.parse_args()
-
-    from datetime import datetime
-
-    start_time_full = datetime.now()
-
 
     from gan4hep.preprocess import herwig_angles
     from gan4hep.preprocess import dimuon_inclusive
@@ -139,4 +125,4 @@ if __name__ == '__main__':
     out_dim = train_truth.shape[1]
     gen_evts = args.multi
     maf = create_flow(hidden_shape, layers, input_dim=out_dim)
-    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,num_gen_evts,start_time_full)
+    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,num_gen_evts)
