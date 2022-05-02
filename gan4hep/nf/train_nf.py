@@ -2,9 +2,9 @@
 """
 import os
 
-
 import tensorflow as tf
 import tensorflow_probability as tfp
+
 tfd = tfp.distributions
 tfb = tfp.bijectors
 tfk = tf.keras
@@ -18,21 +18,20 @@ from utils import nll
 from gan4hep.utils_plot import compare
 
 
-
 def evaluate(flow_model, testing_data):
     num_samples, num_dims = testing_data.shape
     samples = flow_model.sample(num_samples).numpy()
     distances = [
         stats.wasserstein_distance(samples[:, idx], testing_data[:, idx]) \
-            for idx in range(num_dims)
+        for idx in range(num_dims)
     ]
 
     return sum(distances), samples
 
 
 def train(
-    train_truth, testing_truth, flow_model,
-    lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts):
+        train_truth, testing_truth, flow_model, flow_model2,
+        lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts, start_time_full):
     """
     The primary training loop
     """
@@ -42,14 +41,13 @@ def train(
         base_lr, max_epochs, end_lr, power=0.5)
 
     # initialize checkpoints
-    checkpoint_directory = "{}/checkpoints".format(outdir)
+    checkpoint_directory = "{}/checkpoints2".format(outdir)
     os.makedirs(checkpoint_directory, exist_ok=True)
 
     opt = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)  # optimizer
     checkpoint = tf.train.Checkpoint(optimizer=opt, model=flow_model)
     ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_directory, max_to_keep=None)
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
-
 
     AUTO = tf.data.experimental.AUTOTUNE
     training_data = tf.data.Dataset.from_tensor_slices(
@@ -86,77 +84,83 @@ def train(
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
-    loss_list=[]
-    w_list=[]
+    loss_list = []
+    w_list = []
+    time_list = []
+
     for i in range(max_epochs):
-         
+
         from datetime import datetime
         start_time = datetime.now()
-            
+
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
+            # train_loss2 = train_density_estimation(flow_model2, opt, batch)
         wdis, predictions = evaluate(flow_model, testing_truth)
         print(wdis)
         end_time = datetime.now()
-        print('Generation Duration: {}'.format(end_time - start_time))
-        
-        
+        print('Generation Duration for epoch ' + str(i) + ': {}'.format(end_time - start_time))
+        time_state = 'Generation Duration for epoch ' + str(i) + ': {}'.format(end_time - start_time)
+        time_list.append(time_state)
+
         if wdis < min_wdis:
             min_wdis = wdis
             min_iepoch = i
             outname = os.path.join(img_dir, str(i))
             ckpt_manager.save()
             w_list.append(float(f"{wdis}"))
-            #save_NF(flow_model,new_run_folder)
+
         elif i - min_iepoch > delta_stop:
             break
         else:
             w_list.append(float(f"{wdis}"))
         print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
-        
-        
+
         loss_list.append(float(f"{train_loss}"))
 
-    #Apply Inverse Scaler to get original values back
+    # Apply Inverse Scaler to get original values back
     from sklearn.preprocessing import MinMaxScaler
-    scaler = MinMaxScaler(feature_range=(-1,1))
+    scaler = MinMaxScaler(feature_range=(-1, 1))
     test_truth_1 = scaler.fit_transform(test_truth_1)
-    truths=scaler.inverse_transform(testing_truth)
-    predictions=scaler.inverse_transform(predictions)
+    truths = scaler.inverse_transform(testing_truth)
+    predictions = scaler.inverse_transform(predictions)
 
     print('Best Wasserstein Distance: ', wdis)
 
+    # Create temporary folder for using the plotting program
 
-    #Save data to run data
+    if os.path.exists('Temp_Data') == False:
+        os.mkdir('Temp_Data')
+
+    # Save data to run data
     np.save(os.path.join(new_run_folder, 'truths.npy'), truths)
     np.save(os.path.join(new_run_folder, 'predictions.npy'), truths)
     np.save(os.path.join(new_run_folder, 'loss_list.npy'), loss_list)
     np.save(os.path.join(new_run_folder, 'w_list.npy'), w_list)
 
-    #Create temporary folder for using the plotting program
-    if os.path.exists('Temp_Data')==False:
-        os.mkdir('Temp_Data')
-
-    #Save to temporary folder
+    # Save to temporary folder
     np.save(os.path.join('Temp_Data', 'truths.npy'), truths)
     np.save(os.path.join('Temp_Data', 'predictions.npy'), predictions)
     np.save(os.path.join('Temp_Data', 'loss_list.npy'), loss_list)
     np.save(os.path.join('Temp_Data', 'w_list.npy'), w_list)
 
-    #Saving file name
-    with open('Temp_Data'+"/filename.txt", "w") as f:
+    # Saving file name
+    with open('Temp_Data' + "/filename.txt", "w") as f:
         f.write(new_run_folder)
 
     with open(new_run_folder + "/filename.txt", "w") as f:
         f.write(new_run_folder)
 
+    end_time_full = datetime.now()
+    full_time_state = 'Total Generation Duration: {}'.format(end_time_full - start_time_full)
+    time_list.append(full_time_state)
+    with open(new_run_folder + "/time.txt", "w") as f:
+        f.write(str(time_list))
 
-    #with open(summary_logfile, 'a') as f:
-     #   dfAsString = new_run_folder
-      #  f.write(dfAsString)
 
 if __name__ == '__main__':
     import argparse
+
     parser = argparse.ArgumentParser(description='Normalizing Flow')
     add_arg = parser.add_argument
     add_arg('filename', help='Herwig input filename')
@@ -165,24 +169,30 @@ if __name__ == '__main__':
     add_arg("--batch-size", type=int, default=512, help="batch size")
     add_arg("--multi", type=int, default=1, help="Number times more of generated events")
     add_arg("--data", default='dimuon_inclusive',
-        choices=['herwig_angles', 'dimuon_inclusive', 'herwig_angles2'])
-    
+            choices=['herwig_angles', 'dimuon_inclusive', 'herwig_angles2'])
+
+    from datetime import datetime
+
+    start_time_full = datetime.now()
+
     args = parser.parse_args()
 
     from gan4hep.preprocess import herwig_angles
     from gan4hep.preprocess import dimuon_inclusive
     from made import create_flow
 
-    train_in, train_truth, test_in, test_truth,  xlabels,test_truth_1,train_truth_1= eval(args.data)(
+    train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1 = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
     outdir = args.outdir
-    hidden_shape = [128]*2
+    hidden_shape = [128] * 2
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 2
+    max_epochs = 5
+    print('max_epoch', max_epochs)
     out_dim = train_truth.shape[1]
-    gen_evts=args.multi
-    maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
-    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts)
+    gen_evts = args.multi
+    maf = create_flow(hidden_shape, layers, input_dim=out_dim)
+    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,
+          start_time_full)
