@@ -181,7 +181,7 @@ if __name__ == '__main__':
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 100
+    max_epochs = 2
     out_dim = train_truth.shape[1]
     gen_evts=args.multi
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
