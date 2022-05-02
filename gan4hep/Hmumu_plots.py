@@ -138,7 +138,10 @@ def ratio (predictions_cut,truths,new_run_folder,xlabels_extra,xlabels,county):
         yvals2, pred1 = np.histogram(predictions_cut[:, idx], bins=40)
 
         ratio = yvals / yvals2
+
+        error=np.sqrt(len(ratio))
         ax.scatter(true1[:-1], ratio)
+        ax.errorbar(true1[:-1], ratio, yerr=error, fmt='o')
         max_y = np.max(yvals) * 1.1
 
         ax.set_xlabel('Ratio of true to generated events for :' + xlabels_extra[i], fontsize=8)
@@ -165,7 +168,9 @@ def ratio (predictions_cut,truths,new_run_folder,xlabels_extra,xlabels,county):
         yvals2, pred1 = np.histogram(predictions_cut[:, idx], bins=40)
 
         ratio = yvals / yvals2
+        error = np.sqrt(len(ratio))
         ax.scatter(true1[:-1], ratio)
+        ax.errorbar(true1[:-1], ratio, yerr=error, fmt='o')
         max_y = np.max(yvals) * 1.1
 
         ax.set_xlabel('Ratio of true to generated events for :' + xlabels_extra[i + len(xlabels)], fontsize=10)
