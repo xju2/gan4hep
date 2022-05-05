@@ -1,8 +1,9 @@
+from ctypes import Union
 import os
 import pandas as pd
 import numpy as np
 import pickle
-from typing import Any
+from typing import Any, Union
 
 from sklearn.preprocessing import MinMaxScaler
 
@@ -63,9 +64,9 @@ class SpatialEncoder:
     Those particles appearing more often are assigned with large value.
     """
     def __init__(self):
-        pass
+        self.encoder = None
 
-    def encode(self, x):
+    def encode(self, x: Union[np.ndarray, float]) -> Union[np.ndarray, float]:
         if type(x) == np.ndarray:
             return np.array([self.encoder[x[i]] for i in range(x.shape[0])])
         else:
