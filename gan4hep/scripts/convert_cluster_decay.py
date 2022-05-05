@@ -10,60 +10,10 @@ import pandas as pd
 import numpy as np
 from sklearn.preprocessing import MinMaxScaler
 
-def read_dataframe(filename, sep=",", engine=None):
-    if type(filename) == list:
-        print(filename)
-        df_list = [
-            pd.read_csv(f, sep=sep, header=None, names=None, engine=engine)
-                for f in filename
-        ]
-        df = pd.concat(df_list, ignore_index=True)
-        filename = filename[0]
-    else:
-        df = pd.read_csv(filename, sep=sep, 
-                    header=None, names=None, engine=engine)
-    return df
+from gan4hep.io.utils import read_dataframe
+from gan4hep.preprocessing import InputScaler
+from gan4hep.preprocessing.booster import boost
 
-def calculate_mass(lorentz_vector):
-    sum_p2 = sum([lorentz_vector[idx]**2 for idx in range(1,4)])
-    return np.sqrt(lorentz_vector[0]**2 - sum_p2)
-
-
-def create_boost_fn(cluster_4vec: np.ndarray):
-    mass = calculate_mass(cluster_4vec)
-    E0, p0 = cluster_4vec[0], cluster_4vec[1:]
-    gamma = E0 / mass
-
-    velocity = p0 / gamma / mass
-    v_mag = np.sqrt(sum([velocity[idx]**2 for idx in range(3)]))
-    n = velocity / v_mag
-
-    def boost_fn(lab_4vec: np.ndarray):
-        """4vector [E, px, py, pz] in lab frame"""
-        E = lab_4vec[0]
-        p = lab_4vec[1:]
-        n_dot_p = np.sum((n * p))
-        E_prime = gamma * (E - v_mag * n_dot_p)
-        P_prime = p + (gamma - 1) * n_dot_p * n - gamma * E * v_mag * n
-        return np.array([E_prime]+ P_prime.tolist())
-    
-    def inv_boost_fn(boost_4vec: np.ndarray):
-        """4vecot [E, px, py, pz] in boost frame (aka cluster frame)"""
-        E_prime = boost_4vec[0]
-        P_prime = boost_4vec[1:]
-        n_dot_p = np.sum((n * P_prime))
-        E = gamma * (E_prime + v_mag * n_dot_p)
-        p = P_prime + (gamma - 1) * n_dot_p * n + gamma * E_prime * v_mag * n
-        return np.array([E]+ p.tolist())
-
-    return boost_fn, inv_boost_fn
-
-
-def boost(a_row: np.ndarray):
-    """boost hadron one and two to the cluster framework"""
-    boost_fn, _ = create_boost_fn(a_row[:4])
-    b_cluster, b_h1, b_h2 = [boost_fn(a_row[4*x: 4*(x+1)]) for x in range(3)]
-    return b_cluster.tolist() + b_h1.tolist() + b_h2.tolist()
 
 def read(filename, outname, mode=2, example=False):
     """
@@ -128,13 +78,10 @@ def read(filename, outname, mode=2, example=False):
 
     input_4vec = cluster
 
-    scaler = MinMaxScaler(feature_range=(-1,1))
+    scaler = InputScaler()
     # the input 4vector is the cluster 4vector
-    input_4vec = scaler.fit_transform(input_4vec)
-    pickle.dump(scaler, open(outname+"_scalar_input4vec.pkl", "wb"))
-
-    out_truth = scaler.fit_transform(out_truth)
-    pickle.dump(scaler, open(outname+"_scalar_outtruth.pkl", "wb"))
+    input_4vec = scaler.transform(input_4vec, outname+"_scalar_input4vec.pkl")
+    out_truth = scaler.transform(out_truth, outname+"_scalar_outtruth.pkl")
 
     np.savez(outname, input_4vec=input_4vec, out_truth=out_truth)
 
@@ -149,8 +96,8 @@ def check(outname, mode):
     plt.hist(truth_in[:, 1], bins=100, histtype='step', label='theta')
     plt.savefig("angles.png")
 
-    scaler_input = pickle.load(open(outname+"_scalar_input4vec.pkl", 'rb'))
-    scaler_output = pickle.load(open(outname+"_scalar_outtruth.pkl", 'rb'))
+    scaler_input = InputScaler(outname=outname+"_scalar_input4vec.pkl")
+    scaler_output = InputScaler(outname=outname+"_scalar_outtruth.pkl")
 
     def dump_scaler(scaler):
         print("Min and Max for inputs: {",\
@@ -158,9 +105,9 @@ def check(outname, mode):
             ", ".join(["{:.6f}".format(x) for x in scaler.data_max_]), "}")
 
     print("//---- inputs ----")
-    dump_scaler(scaler_input)
+    scaler_input.dump()
     print("//---- output ----")
-    dump_scaler(scaler_output)
+    scaler_output.dump()
     print("Total entries:", truth_in.shape[0])
 
 if __name__ == '__main__':

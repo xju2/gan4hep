@@ -10,7 +10,7 @@ description="Use GAN to generate particle physics events"
 
 setup(
     name="gan4hep",
-    version="0.3.0",
+    version="0.4.0",
     description=description,
     long_description=description,
     author="Xiangyang Ju",
