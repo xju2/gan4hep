@@ -28,3 +28,12 @@ def split_to_float(df, sep=','):
     if type(df.iloc[0]) == str:
         out = df.str.split(sep, expand=True).astype(np.float32)
     return out
+
+
+def xyz2hep(px, py, pz):
+    p = np.sqrt(px**2 + py**2 + pz**2)
+    pt = np.sqrt(px**2 + py**2)
+    phi = np.arctan2(py, px)
+    theta = np.arccos(pz/p)
+    eta = -np.log(np.tan(0.5*theta))
+    return pt,eta,phi
