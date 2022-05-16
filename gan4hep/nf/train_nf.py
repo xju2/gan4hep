@@ -21,16 +21,16 @@ from gan4hep.utils_plot import compare
 def evaluate(flow_model, testing_data):
     num_samples, num_dims = testing_data.shape
     samples = flow_model.sample(num_samples).numpy()
+
     distances = [
         stats.wasserstein_distance(samples[:, idx], testing_data[:, idx]) \
         for idx in range(num_dims)
     ]
-
     return sum(distances), samples
 
 
 def train(
-        train_truth, testing_truth, flow_model,
+        sample,train_truth, testing_truth, flow_model,
         lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts, start_time_full):
     """
     The primary training loop
@@ -87,6 +87,21 @@ def train(
     loss_list = []
     w_list = []
     time_list = []
+    sample_list=[]
+
+
+
+
+    sample_list=sample
+    sample_list = np.array(sample_list)
+    print('samplelist',sample_list)
+    print(len(sample_list))
+    county = 1
+    plt.hist(sample_list, bins=40)
+    #plt.plot(sample_list)
+    plt.savefig(os.path.join(new_run_folder, 'uhhhh_image_at_epoch_{:04d}.png'.format(county)))
+    plt.close('all')
+
 
     for i in range(max_epochs):
 
@@ -101,6 +116,35 @@ def train(
         print('Generation Duration for epoch ' + str(i) + ': {}'.format(end_time - start_time))
         time_state = 'Generation Duration for epoch ' + str(i) + ': {}'.format(end_time - start_time)
         time_list.append(time_state)
+
+
+        xlabels_extra = 7
+        # Original Variables
+
+        fig, axs = plt.subplots(1, 6, figsize=(50, 10), constrained_layout=True)
+        axs = axs.flatten()
+        # config = dict(histtype='step', lw=2)
+        config = dict(histtype='step', lw=2)
+        j = 0
+        county=i
+        for j in range(6):
+            idx = j
+            ax = axs[idx]
+            yvals, _, _ = ax.hist(testing_truth[:, idx], bins=40, range=[min(testing_truth[:, idx]), max(testing_truth[:, idx])], label='Truth',density=True, **config)
+            max_y = np.max(yvals) * 1.1
+            ax.hist(predictions[:, idx], bins=40,range=[min(testing_truth[:, idx]), max(testing_truth[:, idx])], label='Generator', density=True, **config)
+            #ax.set_xlabel(xlabels_extra[i], fontsize=16)
+            ax.legend(['Truth', 'Generator'], loc=3)
+            # ax.set_yscale('log')
+
+            # Save Figures
+        plt.savefig(os.path.join(new_run_folder, 'image_at_epoch_{:04d}.png'.format(county)))
+        plt.close('all')
+
+
+
+
+
 
         if wdis < min_wdis:
             min_wdis = wdis
@@ -123,10 +167,9 @@ def train(
     test_truth_1 = scaler.fit_transform(test_truth_1)
     truths = scaler.inverse_transform(testing_truth)
     predictions = scaler.inverse_transform(predictions)
-
     print('Best Wasserstein Distance: ', wdis)
 
-    # Create temporary folder for using the plotting program
+    # Create temporary folder for using the plotticng program
 
     if os.path.exists('Temp_Data') == False:
         os.mkdir('Temp_Data')
@@ -183,6 +226,7 @@ if __name__ == '__main__':
     train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1 = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
+    max_evts = args.max_evts
     outdir = args.outdir
     hidden_shape = [128] * 2
     layers = 10
@@ -190,8 +234,9 @@ if __name__ == '__main__':
     batch_size = args.batch_size
     max_epochs = 5
     print('max_epoch', max_epochs)
+    print('')
     out_dim = train_truth.shape[1]
     gen_evts = args.multi
-    maf = create_flow(hidden_shape, layers, input_dim=out_dim)
-    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,
+    maf,sample = create_flow(max_evts,hidden_shape, layers, input_dim=out_dim)
+    train(sample,train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,
           start_time_full)
