@@ -84,6 +84,41 @@ def train(
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
+
+
+
+    county=1
+    samples = flow_model.sample(10000).numpy()
+    print(samples)
+
+
+    fig, axs = plt.subplots(1, 6, figsize=(50, 10), constrained_layout=True)
+    axs = axs.flatten()
+    # config = dict(histtype='step', lw=2)
+    config = dict(histtype='step', lw=2)
+    j = 0
+    county = 1
+    for j in range(6):
+        idx = j
+        ax = axs[idx]
+        ax.hist(samples[:,idx], bins=40)
+        # plt.plot(sample_list)
+        # ax.set_yscale('log')
+
+
+
+    plt.savefig(os.path.join(new_run_folder, 'uhhhh2_image_at_epoch_{:04d}.png'.format(county)))
+    plt.close('all')
+
+
+
+
+
+
+
+
+
+
     loss_list = []
     w_list = []
     time_list = []
@@ -238,5 +273,12 @@ if __name__ == '__main__':
     out_dim = train_truth.shape[1]
     gen_evts = args.multi
     maf,sample = create_flow(max_evts,hidden_shape, layers, input_dim=out_dim)
+
+
+
+
+
+
+
     train(sample,train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,
           start_time_full)
