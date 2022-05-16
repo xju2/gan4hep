@@ -1,9 +1,10 @@
 """Masked Autoregressive Density Estimation
 """
 import numpy as np
-
+import os
 import tensorflow as tf
 import tensorflow_probability as tfp
+import matplotlib.pyplot as plt
 
 tfd = tfp.distributions
 tfb = tfp.bijectors
@@ -48,19 +49,23 @@ class Made(tfk.layers.Layer):
         return shift, tf.math.tanh(log_scale)
 
 
-def create_flow(hidden_shape: list, layers: int, input_dim: int, with_condition: bool =False):
+def create_flow(max_evts: int,hidden_shape: list, layers: int, input_dim: int, with_condition: bool =False):
     """Create Masked Autogressive Flow for density estimation
     Arguments:
     hidden_shape -- Multilayer Perceptron shape
     layers -- Number of bijectors
     """
 
+    print('max_evts',max_evts)
+    base_dist2 = tfd.Normal(loc=0.0, scale=1.0)
+    base_dist=tfd.Uniform(low=-1.0, high=1.0)
 
-    print('hidden shape',hidden_shape)
-    print('layers',layers)
-    print('input dim',input_dim)
+    sample = base_dist.sample(1000000)
 
-    base_dist = tfd.Normal(loc=0.0, scale=1.0)
+    print('sample',sample)
+    print('len sample',len(sample))
+    #base_dist3 = np.random.uniform(-1, 1,max_evts,name='Test')
+
     permutation = tf.cast(np.concatenate((
         np.arange(input_dim / 2, input_dim), np.arange(0, input_dim / 2))), tf.int32)
     bijectors = []
@@ -68,7 +73,6 @@ def create_flow(hidden_shape: list, layers: int, input_dim: int, with_condition:
         permutation = permutation
     else:
         permutation = permutation[:-1]
-    print('permutation',permutation)
 
     for _ in range(layers):
         bijectors.append(tfb.MaskedAutoregressiveFlow(
@@ -84,7 +88,7 @@ def create_flow(hidden_shape: list, layers: int, input_dim: int, with_condition:
         distribution=tfd.Sample(base_dist, sample_shape=[input_dim]),
         bijector=bijector,
     )
-    return maf
+    return maf,sample
 
 
 def create_conditional_flow(
