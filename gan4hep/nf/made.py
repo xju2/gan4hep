@@ -56,15 +56,7 @@ def create_flow(max_evts: int,hidden_shape: list, layers: int, input_dim: int, w
     layers -- Number of bijectors
     """
 
-    print('max_evts',max_evts)
-    base_dist2 = tfd.Normal(loc=0.0, scale=1.0)
-    base_dist=tfd.Uniform(low=-1.0, high=1.0)
-
-    sample = base_dist.sample(1000000)
-
-    print('sample',sample)
-    print('len sample',len(sample))
-    #base_dist3 = np.random.uniform(-1, 1,max_evts,name='Test')
+    base_dist = tfd.Normal(loc=0.0, scale=1.0)
 
     permutation = tf.cast(np.concatenate((
         np.arange(input_dim / 2, input_dim), np.arange(0, input_dim / 2))), tf.int32)
@@ -88,7 +80,7 @@ def create_flow(max_evts: int,hidden_shape: list, layers: int, input_dim: int, w
         distribution=tfd.Sample(base_dist, sample_shape=[input_dim]),
         bijector=bijector,
     )
-    return maf,sample
+    return maf
 
 
 def create_conditional_flow(
