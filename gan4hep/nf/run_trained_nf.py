@@ -42,7 +42,7 @@ def train(
         base_lr, max_epochs, end_lr, power=0.5)
 
     # initialize checkpoints
-    checkpoint_directory = "{}/checkpoints".format(outdir)
+    checkpoint_directory = "{}/checkpoints2".format(outdir)
     os.makedirs(checkpoint_directory, exist_ok=True)
 
     opt = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)  # optimizer
