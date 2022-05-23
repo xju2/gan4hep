@@ -30,7 +30,7 @@ def evaluate(flow_model, testing_data):
 
 
 def train(
-        sample,train_truth, testing_truth, flow_model,
+        train_truth, testing_truth, flow_model,
         lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts, start_time_full):
     """
     The primary training loop
@@ -85,57 +85,9 @@ def train(
     delta_stop = 1000
 
 
-
-
-    county=1
-    samples = flow_model.sample(10000).numpy()
-    print(samples)
-
-
-    fig, axs = plt.subplots(1, 6, figsize=(50, 10), constrained_layout=True)
-    axs = axs.flatten()
-    # config = dict(histtype='step', lw=2)
-    config = dict(histtype='step', lw=2)
-    j = 0
-    county = 1
-    for j in range(6):
-        idx = j
-        ax = axs[idx]
-        ax.hist(samples[:,idx], bins=40)
-        # plt.plot(sample_list)
-        # ax.set_yscale('log')
-
-
-
-    plt.savefig(os.path.join(new_run_folder, 'uhhhh2_image_at_epoch_{:04d}.png'.format(county)))
-    plt.close('all')
-
-
-
-
-
-
-
-
-
-
     loss_list = []
     w_list = []
     time_list = []
-    sample_list=[]
-
-
-
-
-    sample_list=sample
-    sample_list = np.array(sample_list)
-    print('samplelist',sample_list)
-    print(len(sample_list))
-    county = 1
-    plt.hist(sample_list, bins=40)
-    #plt.plot(sample_list)
-    plt.savefig(os.path.join(new_run_folder, 'uhhhh_image_at_epoch_{:04d}.png'.format(county)))
-    plt.close('all')
 
 
     for i in range(max_epochs):
@@ -272,7 +224,7 @@ if __name__ == '__main__':
     print('')
     out_dim = train_truth.shape[1]
     gen_evts = args.multi
-    maf,sample = create_flow(max_evts,hidden_shape, layers, input_dim=out_dim)
+    maf = create_flow(max_evts,hidden_shape, layers, input_dim=out_dim)
 
 
 
@@ -280,5 +232,5 @@ if __name__ == '__main__':
 
 
 
-    train(sample,train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,
+    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,
           start_time_full)
