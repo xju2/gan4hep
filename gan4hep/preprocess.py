@@ -173,7 +173,7 @@ def dimuon_inclusive(filename, max_evts=1000000, testing_frac=0.1):
     truth_data_1 = df.to_numpy().astype(np.float32)
     print(f"reading dimuon {df.shape[0]} events from file {filename}")
 
-    truth_data_1 = truth_data_1[truth_data_1[:, 0] < 5000]
+    truth_data_1 = truth_data_1[truth_data_1[:, 0] < 1000]
     print('Max pt lead value:', max(truth_data_1[:, 0]))
     scaler = MinMaxScaler(feature_range=(-1,1))
     truth_data = scaler.fit_transform(truth_data_1)
