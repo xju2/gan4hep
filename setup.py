@@ -28,6 +28,7 @@ setup(
         'scipy',
         'scikit-learn',
         'pyyaml>=5.1',
+        'pandas',
     ],
     # package_data = {
     #     "gan4hep": ["config/*.yaml"]
