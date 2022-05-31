@@ -17,9 +17,9 @@ for gpu in gpus:
 from tensorflow import keras
 from gan import GAN
 from cgan import CGAN
-from wgan import WGAN
+from gan4hep import io
 
-all_gans = ['GAN', 'CGAN', 'WGAN']
+all_gans = ['GAN', 'CGAN']
 all_readers = ['DiMuonsReader', 'HerwigReader']
 
 from utils import evaluate
@@ -250,7 +250,7 @@ if __name__ == '__main__':
 
     # prepare input data by calling those function implemented in 
     # gan4hep.preprocess.
-    train_in, train_truth, test_in, test_truth, xlabels = eval(args.reader)(
+    train_in, train_truth, test_in, test_truth, xlabels = getattr(io, args.reader)(
         args.filename, max_evts=args.max_evts)
 
     batch_size = args.batch_size
