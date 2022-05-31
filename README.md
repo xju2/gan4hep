@@ -16,6 +16,3 @@ Install the repository to get supports on reading files.
 ```
 pip install -e . 
 ```
-
-# Examples
-Please check the wiki page for examples.
