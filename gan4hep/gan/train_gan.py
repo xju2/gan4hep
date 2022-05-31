@@ -17,19 +17,12 @@ for gpu in gpus:
 from tensorflow import keras
 from gan import GAN
 from cgan import CGAN
-# from aae import AAE
+from wgan import WGAN
 
-# from wgan import WGAN
-
-all_gans = ['GAN', 'CGAN']
+all_gans = ['GAN', 'CGAN', 'WGAN']
 all_readers = ['DiMuonsReader', 'HerwigReader']
 
-from gan4hep.preprocess import herwig_angles
-from gan4hep.preprocess import herwig_angles2
-from gan4hep.preprocess import dimuon_inclusive
-
-
-from utils import evaluate, log_metrics
+from utils import evaluate
 from gan4hep.utils_plot import compare
 
 cross_entropy = keras.losses.BinaryCrossentropy(from_logits=False)
