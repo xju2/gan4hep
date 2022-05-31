@@ -1,10 +1,12 @@
+import numpy as np
+
 from gan4hep.io import GAN_INPUT_DATA_TYPE
 from gan4hep.io.utils import shuffle
 from gan4hep.io.utils import read_dataframe
 
 from gan4hep.preprocessing import InputScaler
 
-def dimuon_inclusive(filename, max_evts=None, testing_frac=0.1) -> GAN_INPUT_DATA_TYPE:
+def read(filename, max_evts=None, testing_frac=0.1) -> GAN_INPUT_DATA_TYPE:
     
     df = read_dataframe(filename, " ", None)
     truth_data = df.to_numpy().astype(np.float32)

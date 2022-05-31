@@ -1,5 +1,5 @@
 Scripts in this module only depend on the `gnn4hep.preprocess`, 
-which reads a given file and prepare input tensors for training these generative models.
+which reads a given file and prepare input tensors for training.
 
 The entrance script for training a GAN is `train_gan.py`. 
 Use `train_gan.py -h` to check various options.

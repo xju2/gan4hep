@@ -16,11 +16,13 @@ for gpu in gpus:
 
 from tensorflow import keras
 from gan import GAN
+from cgan import CGAN
 # from aae import AAE
-# from cgan import CGAN
+
 # from wgan import WGAN
 
-all_gans = ['GAN', "AAE", 'CGAN', 'WGAN']
+all_gans = ['GAN', 'CGAN']
+all_readers = ['DiMuonsReader', 'HerwigReader']
 
 from gan4hep.preprocess import herwig_angles
 from gan4hep.preprocess import herwig_angles2
@@ -230,6 +232,7 @@ if __name__ == '__main__':
     add_arg = parser.add_argument
     add_arg("model", choices=all_gans, help='gan model')
     add_arg("filename", help='input filename', default=None, nargs='+')
+    add_arg('reader', help='reader module', default='DiMuonsReader', choices=all_readers)
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
     add_arg("--num-test-evts", help='number of testing events', default=10000, type=int)
@@ -240,8 +243,6 @@ if __name__ == '__main__':
     add_arg("--batch-size", help='Batch size', type=int, default=512)
     add_arg("--gen-lr", help='generator learning rate', type=float, default=0.0001)
     add_arg("--disc-lr", help='discriminator learning rate', type=float, default=0.0001)
-    add_arg("--data", default='herwig_angles',
-        choices=['herwig_angles', 'dimuon_inclusive', 'herwig_angles2'])
 
     # model parameters
     add_arg("--noise-dim", type=int, default=4, help="noise dimension")
@@ -256,7 +257,7 @@ if __name__ == '__main__':
 
     # prepare input data by calling those function implemented in 
     # gan4hep.preprocess.
-    train_in, train_truth, test_in, test_truth, xlabels = eval(args.data)(
+    train_in, train_truth, test_in, test_truth, xlabels = eval(args.reader)(
         args.filename, max_evts=args.max_evts)
 
     batch_size = args.batch_size

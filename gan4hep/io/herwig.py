@@ -9,9 +9,7 @@ from gan4hep.io.utils import split_to_float
 from gan4hep.preprocessing import InputScaler
 from gan4hep.preprocessing.booster import boost
 
-def read_cluster_decay(filename,
-        max_evts=None,
-        testing_frac=0.1) -> GAN_INPUT_DATA_TYPE:
+def read(filename, max_evts=None, testing_frac=0.1) -> GAN_INPUT_DATA_TYPE:
     """
     This Herwig dataset is for the "ClusterDecayer" study.
     Each event has q1, q1, cluster, h1, h2.
@@ -22,8 +20,9 @@ def read_cluster_decay(filename,
     3) at least one quark with Pert=1
     """
     if type(filename) == list:
-        print(len(filename),"too many files")
+        print(len(filename),"too many files!")
         filename = filename[0]
+    
     arrays = np.load(filename)
     truth_in = arrays['out_truth']
     input_4vec = arrays['input_4vec']
@@ -71,14 +70,16 @@ def convert_cluster_decay(filename, outname, mode=2, example=False):
 
     if mode == 0:
         selections = (q1[5] == 1) & (q2[5] == 1)
+        print("mode 0: both q1, q2 are with Pert=1")
     elif mode == 1:
         selections = ((q1[5] == 1) & (q2[5] == 0)) | ((q1[5] == 0) & (q2[5] == 1))
+        print("mode 1: only one of q1 and q2 is with Pert=1")
     elif mode == 2:
         selections = (q1[5] == 0) & (q2[5] == 0)
-        print("both quarks with Pert=0")
+        print("mode 2: neither q1 nor q2 are with Pert=1")
     elif mode == 3:
         selections = ~(q1[5] == 0) & (q2[5] == 0)
-        print("at least one quark with Pert=1")
+        print("mode 3: at least one quark with Pert=1")
     else: pass
 
     outname = outname+f"_mode{mode}"
