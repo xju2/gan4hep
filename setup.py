@@ -20,7 +20,7 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        #'tensorflow >= 2.0.0',
+        'tensorflow >= 2.0.0',
         "graph_nets@ https://github.com/deepmind/graph_nets/tarball/master",
         "matplotlib",
         'tqdm',
@@ -29,15 +29,10 @@ setup(
         'scikit-learn',
         'pyyaml>=5.1',
     ],
-    # package_data = {
-    #     "gan4hep": ["config/*.yaml"]
-    # },
     setup_requires=[],
     classifiers=[
         "Programming Language :: Python :: 3.8",
     ],
     scripts=[
-        # 'gan4hep/scripts/train_gan4hep.py',
-        # 'gan4hep/scripts/apply_gan4hep.py',
     ],
 )
