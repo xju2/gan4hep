@@ -10,7 +10,7 @@ description="Use GAN to generate particle physics events"
 
 setup(
     name="gan4hep",
-    version="0.3.0",
+    version="0.4.0",
     description=description,
     long_description=description,
     author="Xiangyang Ju",
@@ -20,7 +20,8 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        #'tensorflow >= 2.0.0',
+        'tensorflow',
+        'tensorflow-probability',
         "graph_nets@ https://github.com/deepmind/graph_nets/tarball/master",
         "matplotlib",
         'tqdm',
@@ -30,15 +31,10 @@ setup(
         'pyyaml>=5.1',
         'pandas',
     ],
-    # package_data = {
-    #     "gan4hep": ["config/*.yaml"]
-    # },
     setup_requires=[],
     classifiers=[
         "Programming Language :: Python :: 3.8",
     ],
     scripts=[
-        # 'gan4hep/scripts/train_gan4hep.py',
-        # 'gan4hep/scripts/apply_gan4hep.py',
     ],
 )
