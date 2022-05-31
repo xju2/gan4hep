@@ -20,7 +20,8 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
-        'tensorflow >= 2.0.0',
+        'tensorflow',
+        'tensorflow-probability',
         "graph_nets@ https://github.com/deepmind/graph_nets/tarball/master",
         "matplotlib",
         'tqdm',
@@ -28,6 +29,7 @@ setup(
         'scipy',
         'scikit-learn',
         'pyyaml>=5.1',
+        'pandas',
     ],
     setup_requires=[],
     classifiers=[
