@@ -18,10 +18,11 @@ from utils import nll
 from gan4hep.utils_plot import compare
 
 
-def evaluate(flow_model, testing_data):
+def evaluate(flow_model, testing_data,gen_evts):
     num_samples, num_dims = testing_data.shape
+    num_samples=num_samples*gen_evts
+    print('Number of samples generated: ',num_samples)
     samples = flow_model.sample(num_samples).numpy()
-
     distances = [
         stats.wasserstein_distance(samples[:, idx], testing_data[:, idx]) \
         for idx in range(num_dims)
@@ -29,9 +30,47 @@ def evaluate(flow_model, testing_data):
     return sum(distances), samples
 
 
+
+
+def save_data(test_truth_1,w_list,loss_list,best_true_data,best_gen_data,wdis,new_run_folder):
+
+    # Apply Inverse Scaler to get original values back
+    from sklearn.preprocessing import MinMaxScaler
+    scaler = MinMaxScaler(feature_range=(-1, 1))
+    test_truth_1 = scaler.fit_transform(test_truth_1)
+    truths = scaler.inverse_transform(best_true_data)
+    predictions = scaler.inverse_transform(best_gen_data)
+    print('Best Wasserstein Distance: ', wdis)
+
+    # Create temporary folder for using the plotticng program
+    if os.path.exists('Temp_Data') == False:
+        os.mkdir('Temp_Data')
+
+    # Save data to run data folder
+    np.save(os.path.join(new_run_folder, 'truths.npy'), truths)
+    np.save(os.path.join(new_run_folder, 'predictions.npy'), truths)
+    np.save(os.path.join(new_run_folder, 'loss_list.npy'), loss_list)
+    np.save(os.path.join(new_run_folder, 'w_list.npy'), w_list)
+
+    # Save to temporary folder
+    np.save(os.path.join('Temp_Data', 'truths.npy'), truths)
+    np.save(os.path.join('Temp_Data', 'predictions.npy'), predictions)
+    np.save(os.path.join('Temp_Data', 'loss_list.npy'), loss_list)
+    np.save(os.path.join('Temp_Data', 'w_list.npy'), w_list)
+
+    # Saving file name to run data folder
+    with open('Temp_Data' + "/filename.txt", "w") as f:
+        f.write(new_run_folder)
+
+    with open(new_run_folder + "/filename.txt", "w") as f:
+        f.write(new_run_folder)
+
+
+
 def train(
-        train_truth, testing_truth, flow_model,
+        sample,train_truth, testing_truth, flow_model,
         lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts, start_time_full):
+
     """
     The primary training loop
     """
@@ -76,7 +115,7 @@ def train(
 
     # Add GAN paramaters to time and date to create file name for current run
     new_run_folder = run_dir + current_date_and_time_string + ' Epoch_num: ' + str(max_epochs)
-    print('new_run_folder', new_run_folder)
+    print('New Run Folder Created: ', new_run_folder)
     os.makedirs(new_run_folder, exist_ok=True)
 
     # start training
@@ -84,11 +123,9 @@ def train(
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
-
     loss_list = []
     w_list = []
     time_list = []
-
 
     for i in range(max_epochs):
 
@@ -97,16 +134,15 @@ def train(
 
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
-        wdis, predictions = evaluate(flow_model, testing_truth)
-        print(wdis)
+        wdis, predictions = evaluate(flow_model, testing_truth,gen_evts)
+
         end_time = datetime.now()
         print('Generation Duration for epoch ' + str(i) + ': {}'.format(end_time - start_time))
         time_state = 'Generation Duration for epoch ' + str(i) + ': {}'.format(end_time - start_time)
         time_list.append(time_state)
 
 
-        xlabels_extra = 7
-        # Original Variables
+        # Original Variables plot for each epoch
 
         fig, axs = plt.subplots(1, 6, figsize=(50, 10), constrained_layout=True)
         axs = axs.flatten()
@@ -114,6 +150,7 @@ def train(
         config = dict(histtype='step', lw=2)
         j = 0
         county=i
+
         for j in range(6):
             idx = j
             ax = axs[idx]
@@ -130,15 +167,17 @@ def train(
 
 
 
-
-
-
         if wdis < min_wdis:
             min_wdis = wdis
             min_iepoch = i
             outname = os.path.join(img_dir, str(i))
             ckpt_manager.save()
             w_list.append(float(f"{wdis}"))
+            best_gen_data=predictions
+            best_true_data=testing_truth
+
+            #Save Data for an improved model
+            save_data(test_truth_1,w_list,loss_list,best_true_data,best_gen_data,wdis,new_run_folder)
 
         elif i - min_iepoch > delta_stop:
             break
@@ -148,37 +187,6 @@ def train(
 
         loss_list.append(float(f"{train_loss}"))
 
-    # Apply Inverse Scaler to get original values back
-    from sklearn.preprocessing import MinMaxScaler
-    scaler = MinMaxScaler(feature_range=(-1, 1))
-    test_truth_1 = scaler.fit_transform(test_truth_1)
-    truths = scaler.inverse_transform(testing_truth)
-    predictions = scaler.inverse_transform(predictions)
-    print('Best Wasserstein Distance: ', wdis)
-
-    # Create temporary folder for using the plotticng program
-
-    if os.path.exists('Temp_Data') == False:
-        os.mkdir('Temp_Data')
-
-    # Save data to run data
-    np.save(os.path.join(new_run_folder, 'truths.npy'), truths)
-    np.save(os.path.join(new_run_folder, 'predictions.npy'), truths)
-    np.save(os.path.join(new_run_folder, 'loss_list.npy'), loss_list)
-    np.save(os.path.join(new_run_folder, 'w_list.npy'), w_list)
-
-    # Save to temporary folder
-    np.save(os.path.join('Temp_Data', 'truths.npy'), truths)
-    np.save(os.path.join('Temp_Data', 'predictions.npy'), predictions)
-    np.save(os.path.join('Temp_Data', 'loss_list.npy'), loss_list)
-    np.save(os.path.join('Temp_Data', 'w_list.npy'), w_list)
-
-    # Saving file name
-    with open('Temp_Data' + "/filename.txt", "w") as f:
-        f.write(new_run_folder)
-
-    with open(new_run_folder + "/filename.txt", "w") as f:
-        f.write(new_run_folder)
 
     end_time_full = datetime.now()
     full_time_state = 'Total Generation Duration: {}'.format(end_time_full - start_time_full)
@@ -210,7 +218,7 @@ if __name__ == '__main__':
     from gan4hep.preprocess import dimuon_inclusive
     from made import create_flow
 
-    train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1 = eval(args.data)(
+    train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1,full_data = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
     max_evts = args.max_evts
@@ -219,18 +227,13 @@ if __name__ == '__main__':
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 5
-    print('max_epoch', max_epochs)
-    print('')
+    max_epochs = 30
+    print('Number of Epochs: ', max_epochs)
+
     out_dim = train_truth.shape[1]
     gen_evts = args.multi
-    maf = create_flow(max_evts,hidden_shape, layers, input_dim=out_dim)
 
+    maf,sample = create_flow(max_evts,hidden_shape, layers, input_dim=out_dim)
 
-
-
-
-
-
-    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,
+    train(sample,train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,
           start_time_full)
