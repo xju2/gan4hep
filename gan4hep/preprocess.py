@@ -5,6 +5,9 @@ from sklearn.preprocessing import MinMaxScaler
 import matplotlib.pyplot as plt
 
 
+
+from pylorentz import Momentum4
+
 def shuffle(array: np.ndarray):
     from numpy.random import MT19937
     from numpy.random import RandomState, SeedSequence
@@ -166,14 +169,18 @@ def herwig_angles2(filename,
     return (train_in, train_truth, test_in, test_truth, xlabels)
 
 
+
 def dimuon_inclusive(filename, max_evts=1000000, testing_frac=0.1):
 
     df = read_dataframe(filename, " ", None)
     df=df[:-1]
     truth_data_1 = df.to_numpy().astype(np.float32)
+    full_data=df.to_numpy().astype(np.float32)
     print(f"reading dimuon {df.shape[0]} events from file {filename}")
 
     truth_data_1 = truth_data_1[truth_data_1[:, 0] < 1000]
+    full_data = full_data[full_data[:, 0] < 1000]
+
     print('Max pt lead value:', max(truth_data_1[:, 0]))
     scaler = MinMaxScaler(feature_range=(-1,1))
     truth_data = scaler.fit_transform(truth_data_1)
@@ -195,4 +202,4 @@ def dimuon_inclusive(filename, max_evts=1000000, testing_frac=0.1):
     xlabels = ['leading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']] +\
               ['subleading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']]
 
-    return (None, train_truth, None, test_truth, xlabels,test_truth_1,train_truth_1)
+    return (None, train_truth, None, test_truth, xlabels,test_truth_1,train_truth_1,full_data)
