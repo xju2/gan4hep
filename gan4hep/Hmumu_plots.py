@@ -465,71 +465,67 @@ def dimuon_calc(predictions,truths):
     #truths = np.column_stack((truths, eta_angle_btwn_true))
     #truths = np.column_stack((truths, phi_angle_btwn_true))
     
-    
-    #For Predictions
-    masses_lead = np.full((len(predictions[:,0]), 1), m_u)
-    masses_sub = np.full((len(predictions[:,0]), 1), m_u)
-    
-    #Take each column from the tru and generated data and rename to their parameter type
-    pts_lead_true = np.array(predictions[:, 0]).flatten()
-    etas_lead_true = np.array(predictions[:, 1]).flatten()
-    phis_lead_true = np.array(predictions[:, 2]).flatten()
-    pts_sub_true = np.array(predictions[:, 3]).flatten()
-    etas_sub_true =np.array(predictions[:, 4]).flatten()
-    phis_sub_true = np.array(predictions[:, 5]).flatten()
+    # For Predictions
+    masses_lead = np.full((len(predictions[:, 0]), 1), m_u)
+    masses_sub = np.full((len(predictions[:, 0]), 1), m_u)
 
-    #Create lists for 4 vector values
-    muon_lead_true=[]
-    muon_sub_true=[]
-    parent_true=[]
-    
-    #Create lists for invarient mass values
-    mass_true=[]
-    pt_comb_true=[]
-    pseudo_true=[]
-    eta_angle_btwn_true=[]
-    phi_angle_btwn_true=[]
-    
-    
+    # Take each column from the tru and generated data and rename to their parameter type
+    pts_lead_pred = np.array(predictions[:, 0]).flatten()
+    etas_lead_pred = np.array(predictions[:, 1]).flatten()
+    phis_lead_pred = np.array(predictions[:, 2]).flatten()
+    pts_sub_pred = np.array(predictions[:, 3]).flatten()
+    etas_sub_pred = np.array(predictions[:, 4]).flatten()
+    phis_sub_pred = np.array(predictions[:, 5]).flatten()
+
+    # Create lists for 4 vector values
+    muon_lead_pred = []
+    muon_sub_pred = []
+    parent_pred = []
+
+    # Create lists for invarient mass values
+    mass_pred = []
+    pt_comb_pred = []
+    pseudo_pred = []
+    eta_angle_btwn_pred = []
+    phi_angle_btwn_pred = []
+
     for i in range(len(predictions)):
-        #Use pylorentz to define 4 momentum arrays for each event
-        muon_lead_true.append(Momentum4.m_eta_phi_pt(masses_lead[i], etas_lead_true[i], phis_lead_true[i], pts_lead_true[i]))
-        muon_sub_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], etas_sub_true[i], phis_sub_true[i], pts_sub_true[i]))
+        # Use pylorentz to define 4 momentum arrays for each event
+        muon_lead_pred.append(
+            Momentum4.m_eta_phi_pt(masses_lead[i], etas_lead_pred[i], phis_lead_pred[i], pts_lead_pred[i]))
+        muon_sub_pred.append(Momentum4.m_eta_phi_pt(masses_sub[i], etas_sub_pred[i], phis_sub_pred[i], pts_sub_pred[i]))
 
-        #Calculate the Higgs boson 4 vector
-        parent_true.append(muon_lead_true[i] + muon_sub_true[i])
-        #print(parent_true)
-        #Retrieve the Higgs Mass
-        mass_true.append(parent_true[i].m)
+        # Calculate the Higgs boson 4 vector
+        parent_pred.append(muon_lead_pred[i] + muon_sub_pred[i])
+        # print(parent_true)
+        # Retrieve the Higgs Mass
+        mass_pred.append(parent_pred[i].m)
 
-        #Retrive PT
-        pt_comb_true.append(parent_true[i].p_t)
-        
-        
-        #Retrieve Pseudorapidity
-        pseudo_true.append(parent_true[i].eta)
-        
-        #Retrieve eta between the muons
-        eta_angle_btwn_true.append(muon_lead_true[i].eta-muon_sub_true[i].eta)
-         
-        #Retrieve eta between the muons
-        eta_angle_btwn_true.append(muon_lead_true[i].phi-muon_sub_true[i].phi)
-        
-          
-    #print(pt_comb_true)     
-        
-    #Add mass arrays from each batch?    
-    mass_true=np.concatenate( mass_true, axis=0 )
+        # Retrive PT
+        pt_comb_pred.append(parent_pred[i].p_t)
 
-    #Add to original dataset
-    predictions = np.column_stack((predictions, mass_true))
-    predictions = np.column_stack((predictions, pt_comb_true))
-    predictions = np.column_stack((predictions, pseudo_true))
-    #predictions = np.column_stack((predictions, eta_angle_btwn_true))
-    #predictions = np.column_stack((predictions, phi_angle_btwn_true))
-    
+        # Retrieve Pseudorapidity
+        pseudo_pred.append(parent_pred[i].eta)
+
+        # Retrieve eta between the muons
+        eta_angle_btwn_pred.append(muon_lead_pred[i].eta - muon_sub_pred[i].eta)
+
+        # Retrieve eta between the muons
+        eta_angle_btwn_pred.append(muon_lead_pred[i].phi - muon_sub_pred[i].phi)
+
+    # print(pt_comb_true)
+
+    # Add mass arrays from each batch?
+    mass_pred = np.concatenate(mass_pred, axis=0)
+
+    # Add to original dataset
+    predictions = np.column_stack((predictions, mass_pred))
+    predictions = np.column_stack((predictions, pt_comb_pred))
+    predictions = np.column_stack((predictions, pseudo_pred))
+    # predictions = np.column_stack((predictions, eta_angle_btwn_true))
+    # predictions = np.column_stack((predictions, phi_angle_btwn_true))
+
     return truths,predictions
-
 
 def end_of_run_plots(w_list,loss_list,epochs,new_run_folder):
     #Plot Log loss
@@ -551,12 +547,13 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Normalizing Flow')
     add_arg = parser.add_argument
-    add_arg('--bestepoch',default=50, help='Epoch for best results')
+    add_arg('--bestepoch',default=5000, help='Epoch for best results')
     add_arg('--jetnum', default=0, help='Number of Jets in File')
     args = parser.parse_args()
     jetnum=int(args.jetnum)
     epochs=int(args.bestepoch)
     #Define labels depending on number of jets (WiP)
+    print('ahhhhhhhhhh')
     if jetnum==0:
         xlabels=['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT', 'subleading Muon eta', 'subleading Muon phi']
     elif jetnum==1:
