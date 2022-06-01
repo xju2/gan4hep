@@ -23,7 +23,7 @@ import os
 
 def train(
     train_truth, testing_truth, flow_model,
-    lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts,num_gen_evts):
+    lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts,num_gen_evts,full_truth):
 
     #Create timestamp for generated data
     import time
@@ -50,13 +50,22 @@ def train(
     ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_directory, max_to_keep=None)
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
 
+    #Recording how long it takes to generate data
+    from datetime import datetime
+    start_time = datetime.now()
+
     #Generate new data
+
     num_samples, num_dims = testing_truth.shape
     num_samples=num_gen_evts
+    Print('Number of Generated Events: ', num_samples)
     samples = flow_model.sample(num_samples).numpy()
     predictions=samples
 
-    # Apply Inverse Scaler to get original values back
+    end_time = datetime.now()
+    print('Generation Duration for new events : {}'.format(end_time - start_time))
+
+    # Apply Inverse Scaler to get original value ranges back
     from sklearn.preprocessing import MinMaxScaler
     scaler = MinMaxScaler(feature_range=(-1, 1))
     test_truth_1 = scaler.fit_transform(test_truth_1)
@@ -67,11 +76,13 @@ def train(
     if os.path.exists('Generated_Data') == False:
         os.mkdir('Generated_Data')
     filename=str('predictions_'+ current_date_and_time_string+'_num_of_events_'+str(num_gen_evts)+'.npy')
+    filename2='truths.npy'
 
     # Save to folder
     np.save(os.path.join('Generated_Data', filename ), predictions)
+    np.save(os.path.join('Generated_Data', filename2), full_truth)
 
-    # Original Variables
+    # Plot of generated Variables
     num_of_variables = 9
     fig, axs = plt.subplots(1, 6, figsize=(50, 10), constrained_layout=True)
     axs = axs.flatten()
@@ -81,10 +92,12 @@ def train(
     for i in range(6):
         idx = i
         ax = axs[idx]
-        ax.hist(predictions[:, idx], bins=40, range=[min(predictions[:, idx]), max(predictions[:, idx])],
+        ax.hist(predictions[:, idx], bins=40,
+                label='Generator', density=True, **config)
+        ax.hist(full_truth[:, int(idx)], bins=40,
                 label='Generator', density=True, **config)
         #ax.set_xlabel(xlabels_extra[i], fontsize=16)
-        #ax.legend(['Truth', 'Generator'], loc=3)
+        ax.legend(['Truth', 'Generator'], loc=3)
         # ax.set_yscale('log')
 
         # Save Figures
@@ -112,17 +125,26 @@ if __name__ == '__main__':
     from gan4hep.preprocess import dimuon_inclusive
     from made import create_flow
 
-    train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1 = eval(args.data)(
+    train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1,full_data = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
+
     num_gen_evts=args.num_gen_evts
+
+
+    #If number of generated events is less than the length of the true dataset
+    if num_gen_evts<=2100000:
+        full_data = full_data[:num_gen_evts]
+
     outdir = args.outdir
     hidden_shape = [128] * 2
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 2
+    max_epochs = 90
     out_dim = train_truth.shape[1]
     gen_evts = args.multi
-    maf = create_flow(hidden_shape, layers, input_dim=out_dim)
-    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,num_gen_evts)
+    max_evts=args.max_evts
+
+    maf,sample = create_flow(max_evts,hidden_shape, layers=10, input_dim=out_dim)
+    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,num_gen_evts,full_data)
