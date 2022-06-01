@@ -57,6 +57,7 @@ def create_flow(max_evts: int,hidden_shape: list, layers: int, input_dim: int, w
     """
 
     base_dist = tfd.Normal(loc=0.0, scale=1.0)
+    sample = base_dist.sample(1)
 
     permutation = tf.cast(np.concatenate((
         np.arange(input_dim / 2, input_dim), np.arange(0, input_dim / 2))), tf.int32)
@@ -80,7 +81,7 @@ def create_flow(max_evts: int,hidden_shape: list, layers: int, input_dim: int, w
         distribution=tfd.Sample(base_dist, sample_shape=[input_dim]),
         bijector=bijector,
     )
-    return maf
+    return maf,sample
 
 
 def create_conditional_flow(
