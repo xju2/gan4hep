@@ -81,9 +81,12 @@ def train(train_truth, test_truth, model, gen_lr, disc_lr, batch_size,
     discriminator_optimizer = keras.optimizers.Adam(disc_lr)
 
     @tf.function
-    def train_step(gen_in_4vec, truth_4vec):
+    def train_step(cond, gen_in_4vec, truth_4vec):
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             gen_out_4vec = generator(gen_in_4vec, training=True)
+            if cond is not None and gan.name == "CGAN":
+                gen_out_4vec = tf.concat([cond, gen_out_4vec], axis=1)
+                truth_4vec = tf.concat([cond, truth_4vec], axis=1)
 
             real_output = discriminator(truth_4vec, training=True)
             fake_output = discriminator(gen_out_4vec, training=True)
@@ -133,7 +136,7 @@ def train(train_truth, test_truth, model, gen_lr, disc_lr, batch_size,
 
 
             dataset = tf.data.Dataset.from_tensor_slices(
-                (train_inputs, train_truth)).shuffle(2*batch_size).batch(
+                (train_in, train_inputs, train_truth)).shuffle(2*batch_size).batch(
                     batch_size, drop_remainder=False).prefetch(AUTO)
 
             tot_loss = []

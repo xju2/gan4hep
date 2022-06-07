@@ -24,8 +24,8 @@ def read(filename, max_evts=None, testing_frac=0.1) -> GAN_INPUT_DATA_TYPE:
         filename = filename[0]
     
     arrays = np.load(filename)
-    truth_in = arrays['out_truth']
-    input_4vec = arrays['input_4vec']
+    truth_in = arrays['out_truth'].astype(np.float32)
+    input_4vec = arrays['input_4vec'].astype(np.float32)
 
     shuffle(truth_in)
     shuffle(input_4vec)

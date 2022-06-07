@@ -9,7 +9,7 @@ from tensorflow.keras import layers
 class GAN():
     def __init__(self,
         noise_dim: int = 4, gen_output_dim: int = 2,
-        cond_dim: int = 0, **kwargs):
+        cond_dim: int = 0, name="GAN", **kwargs):
         """
         noise_dim: dimension of the noises
         gen_output_dim: output dimension
@@ -29,6 +29,7 @@ class GAN():
         # Build the generator
         self.generator = self.build_generator()
         self.generator.summary()
+        self.name = name
 
 
     def build_generator(self):
