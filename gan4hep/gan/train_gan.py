@@ -239,8 +239,6 @@ if __name__ == '__main__':
 
     # model parameters
     add_arg("--noise-dim", type=int, default=4, help="noise dimension")
-    add_arg("--gen-output-dim", type=int, default=2, help='generator output dimension')
-    add_arg("--cond-dim", type=int, default=0, help='dimension of conditional input')
     add_arg("--disable-tqdm", action="store_true", help='disable tqdm')
 
     args = parser.parse_args()
@@ -253,8 +251,17 @@ if __name__ == '__main__':
     train_in, train_truth, test_in, test_truth, xlabels = getattr(io, args.reader)(
         args.filename, max_evts=args.max_evts)
 
+    if train_truth is None or test_truth is None:
+        raise ValueError("No input data found")
+
     batch_size = args.batch_size
-    gan = eval(args.model)(**vars(args))
+
+    model_config = vars(args)
+    model_config['gen_output_dim'] = train_truth.shape[1]
+    model_config['cond_dim'] = test_in.shape[1] if test_in is not None else 0
+
+
+    gan = eval(args.model)(**model_config)
     if args.inference:
         inference(gan, test_in, test_truth, args.log_dir, xlabels)
     else:
