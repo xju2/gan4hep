@@ -249,8 +249,7 @@ if __name__ == '__main__':
     from tensorflow.compat.v1 import logging
     logging.set_verbosity(args.verbose)
 
-    # prepare input data by calling those function implemented in 
-    # gan4hep.preprocess.
+    # prepare input data by calling those function implemented in gan4hep.io
     train_in, train_truth, test_in, test_truth, xlabels = getattr(io, args.reader)(
         args.filename, max_evts=args.max_evts)
 

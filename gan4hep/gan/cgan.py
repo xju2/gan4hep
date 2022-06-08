@@ -36,33 +36,32 @@ class CGAN():
     def build_generator(self):
         gen_input_dim = self.gen_input_dim
 
-        model = keras.Sequential([
-            keras.Input(shape=(gen_input_dim,)),
-            layers.Dense(256),
-            layers.BatchNormalization(),
-            layers.LeakyReLU(),
-            
-            layers.Dense(256),
-            layers.BatchNormalization(),
-            
-            layers.Dense(self.gen_output_dim),
-            layers.Activation("tanh"),
-        ], name='Generator')
+        layer_size = 256
+        num_layers = 10
+        layer_list = [keras.Input(shape=(gen_input_dim,))]
+        for _ in range(num_layers):
+            layer_list += [
+                layers.Dense(layer_size),
+                layers.LayerNormalization(),
+                layers.Activation("tanh"),
+            ]
+        layer_list += [layers.Dense(self.gen_output_dim), layers.Activation("tanh")]
+        model = keras.Sequential(layer_list, name='Generator')
+
         return model
 
     def build_critic(self):
         gen_output_dim = self.gen_output_dim + self.cond_dim
 
-        model = keras.Sequential([
-            keras.Input(shape=(gen_output_dim,)),
-            layers.Dense(256),
-            layers.BatchNormalization(),
-            layers.LeakyReLU(),
-            
-            layers.Dense(256),
-            layers.BatchNormalization(),
-            layers.LeakyReLU(),
-
-            layers.Dense(1, activation='sigmoid'),
-        ], name='Discriminator')
+        layer_size = 256
+        num_layers = 10
+        layer_list = [keras.Input(shape=(gen_output_dim,))]
+        for _ in range(num_layers):
+            layer_list += [
+                layers.Dense(layer_size),
+                layers.LayerNormalization(),
+                layers.LeakyReLU(),
+            ]
+        layer_list += [layers.Dense(1, activation='sigmoid')]
+        model = keras.Sequential(layer_list, name='Discriminator')
         return model
