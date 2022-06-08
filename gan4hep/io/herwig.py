@@ -70,9 +70,6 @@ def convert_cluster_decay(filename, outname, mode=2, with_quark=False, example=F
     df = read_dataframe(filename, ";", 'python')
 
     q1,q2,c,h1,h2 = [split_to_float(df[idx]) for idx in range(5)]
-    if mode not in [0, 1, 2, 3]:
-        print(f"mode {mode} is not known! use mode 2")
-        mode = 2
 
     if mode == 0:
         selections = (q1[5] == 1) & (q2[5] == 1)
@@ -86,14 +83,16 @@ def convert_cluster_decay(filename, outname, mode=2, with_quark=False, example=F
     elif mode == 3:
         selections = ~(q1[5] == 0) & (q2[5] == 0)
         print("mode 3: at least one quark with Pert=1")
-    else: pass
+    else: 
+        ## no selections
+        selections = slice(None)
+        print("mode is not known! use all events")
 
     if with_quark:
         print("add quark information")
 
 
     outname = outname+f"_mode{mode}"+"_with_quark" if with_quark else outname+f"_mode{mode}"
-        
     cluster = c[[1, 2, 3, 4]][selections].values
     h1 = h1[[1, 2, 3, 4]][selections]
     h2 = h2[[1, 2, 3, 4]][selections]
