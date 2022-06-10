@@ -202,7 +202,7 @@ def generate_and_save_images(model, epoch, datasets, summary_writer, img_dir, xl
     # Notice `training` is set to False.
     # This is so all layers run in inference mode (batchnorm).
     predictions = []
-    truths = []
+    truths = []``
     for data in datasets:
         test_input, test_truth = data
         predictions.append(model(test_input, training=False))

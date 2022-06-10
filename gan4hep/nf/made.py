@@ -63,9 +63,12 @@ def create_flow(hidden_shape: list, layers: int, input_dim: int, with_condition:
     for _ in range(layers):
         bijectors.append(tfb.MaskedAutoregressiveFlow(
             shift_and_log_scale_fn=Made(
-                params=2, event_shape=[input_dim], hidden_units=hidden_shape, activation='relu')
+                params=2, event_shape=[input_dim],
+                hidden_units=hidden_shape, activation='relu')
         ))
         bijectors.append(tfb.Permute(permutation=permutation))
+
+    # bijectors.append(tfb.Tanh())
 
     bijector = tfb.Chain(bijectors=list(reversed(bijectors)), name='chain_of_MAF')
 

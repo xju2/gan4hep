@@ -1,6 +1,10 @@
 """Trainer for Normalizing Flow
 """
 import os
+import tqdm
+import time
+
+import numpy as np
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -23,19 +27,21 @@ def evaluate(flow_model, testing_data):
             for idx in range(num_dims)
     ]
 
-    return sum(distances), samples
+    return sum(distances)/num_dims, samples
 
 
 def train(
     train_truth, testing_truth, flow_model,
-    lr, batch_size, max_epochs, outdir, xlabels):
+    lr, batch_size, max_epochs, outdir, xlabels,
+    disable_tqdm=False, train_in=None, test_in=None):
     """
     The primary training loop
     """
+    num_steps = train_truth.shape[0] // batch_size
     base_lr = lr
-    end_lr = 1e-5
+    end_lr = 1e-6
     learning_rate_fn = tfk.optimizers.schedules.PolynomialDecay(
-        base_lr, max_epochs, end_lr, power=0.5)
+        base_lr, max_epochs*num_steps, end_lr, power=0.5)
 
 
     # initialize checkpoints
@@ -56,27 +62,53 @@ def train(
     os.makedirs(img_dir, exist_ok=True)
 
     # start training
-    print("idx, train loss, distance, minimum distance, minimum epoch")
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
+    time_stamp = time.strftime('%Y%m%d-%H%M%S', time.localtime())
+    summary_dir = os.path.join(outdir, "logs", f"{time_stamp}")
+    summary_writer = tf.summary.create_file_writer(summary_dir)
+    summary_logfile = os.path.join(summary_dir, f'results_{time_stamp}.txt')
 
-    for i in range(max_epochs):
-        for batch in training_data:
-            train_loss = train_density_estimation(flow_model, opt, batch)
 
-        wdis, predictions = evaluate(flow_model, testing_truth)
-        if wdis < min_wdis:
-            min_wdis = wdis
-            min_iepoch = i
-            outname = os.path.join(img_dir, str(i))
-            compare(predictions, testing_truth, outname, xlabels)
-            ckpt_manager.save()
-        elif i - min_iepoch > delta_stop:
-            break
+    with tqdm.trange(max_epochs, disable=disable_tqdm) as t0:
+        for epoch in t0:
+            
+            tot_loss = []
+            for batch in training_data:
+                train_loss = train_density_estimation(flow_model, opt, batch)
+                tot_loss.append(train_loss)
 
-        print(f"{i}, {train_loss:.4f}, {wdis:.4f}, {min_wdis:.4f}, {min_iepoch}")
+            tot_loss = np.array(tot_loss)
+            avg_loss = np.sum(tot_loss, axis=0) / tot_loss.shape[0]
 
+            log_dict = dict(t_loss=avg_loss)
+            wdis, predictions = evaluate(flow_model, testing_truth)
+
+
+            with summary_writer.as_default():
+                tf.summary.experimental.set_step(epoch)
+                tf.summary.scalar("avg_wasserstein_dis",
+                    wdis, description="average wasserstein distance")
+
+                for key,val in log_dict.items():
+                    tf.summary.scalar(key, val)
+
+            if wdis < min_wdis:
+                ckpt_manager.save()
+                min_wdis = wdis
+                min_iepoch = epoch
+                outname = os.path.join(img_dir, f"{epoch}.png")
+                compare(predictions, testing_truth, outname, xlabels)
+                with open(summary_logfile, 'a') as f:
+                    f.write(", ".join(["{:.4f}".format(x) 
+                        for x in [min_wdis, min_iepoch]]) + '\n')
+            elif epoch - min_iepoch > delta_stop:
+                print(f"Seen no improvement after training for more than {delta_stop} epochs")
+                print("stop the training")
+                break
+
+            t0.set_postfix(**log_dict, BestD=min_wdis, BestE=min_iepoch)
 
 if __name__ == '__main__':
     import argparse
