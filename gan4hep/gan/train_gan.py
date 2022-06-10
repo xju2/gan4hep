@@ -20,7 +20,6 @@ from cgan import CGAN
 from gan4hep import io
 
 all_gans = ['GAN', 'CGAN']
-all_readers = ['DiMuonsReader', 'HerwigReader']
 
 from utils import evaluate
 from gan4hep.utils_plot import compare
@@ -228,7 +227,7 @@ if __name__ == '__main__':
     add_arg = parser.add_argument
     add_arg("model", choices=all_gans, help='gan model')
     add_arg("filename", help='input filename', default=None, nargs='+')
-    add_arg('reader', help='reader module', default='DiMuonsReader', choices=all_readers)
+    add_arg('reader', help='reader module', default='DiMuonsReader', choices=io.__all__)
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
     add_arg("--num-test-evts", help='number of testing events', default=10000, type=int)

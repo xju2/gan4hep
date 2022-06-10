@@ -2,19 +2,16 @@
 """
 import os
 
-
 import tensorflow as tf
 import tensorflow_probability as tfp
 tfd = tfp.distributions
 tfb = tfp.bijectors
 tfk = tf.keras
 
-import matplotlib.pyplot as plt
-import numpy as np
+
 from scipy import stats
 
 from utils import train_density_estimation
-from utils import nll
 from gan4hep.utils_plot import compare
 
 
@@ -78,11 +75,15 @@ def train(
         elif i - min_iepoch > delta_stop:
             break
 
-        print(f"{i}, {train_loss}, {wdis}, {min_wdis}, {min_iepoch}")
+        print(f"{i}, {train_loss:.4f}, {wdis:.4f}, {min_wdis:.4f}, {min_iepoch}")
 
 
 if __name__ == '__main__':
     import argparse
+    from gan4hep import io
+    from made import create_flow
+
+
     parser = argparse.ArgumentParser(description='Normalizing Flow')
     add_arg = parser.add_argument
     add_arg('filename', help='Herwig input filename')
@@ -90,14 +91,12 @@ if __name__ == '__main__':
     add_arg("--max-evts", default=-1, type=int, help="maximum number of events")
     add_arg("--batch-size", type=int, default=512, help="batch size")
     add_arg("--data", default='herwig_angles',
-        choices=['herwig_angles', 'dimuon_inclusive', 'herwig_angles2'])
+        choices=io.__all__)
     
     args = parser.parse_args()
 
-    from gan4hep.preprocess import herwig_angles
-    from gan4hep.preprocess import dimuon_inclusive
-    from made import create_flow
-    train_in, train_truth, test_in, test_truth, xlabels = eval(args.data)(
+
+    train_in, train_truth, test_in, test_truth, xlabels = getattr(io, args.data)(
         args.filename, max_evts=args.max_evts)
 
     outdir = args.outdir
@@ -108,6 +107,6 @@ if __name__ == '__main__':
     max_epochs = 1000
     out_dim = train_truth.shape[1]
 
-    maf =  create_flow(hidden_shape, layers, input_dim=out_dim, out_dim=2)
+    maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
     print(maf)
     train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels)
