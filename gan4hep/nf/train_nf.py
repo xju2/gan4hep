@@ -16,6 +16,7 @@ tfk = tf.keras
 from scipy import stats
 
 from utils import train_density_estimation
+from utils import train_density_estimation_cond
 from gan4hep.utils_plot import compare
 
 
@@ -30,18 +31,17 @@ def evaluate(flow_model, testing_data):
     return sum(distances)/num_dims, samples
 
 
-def train(
-    train_truth, testing_truth, flow_model,
+def train(train_truth, testing_truth, flow_model, layers,
     lr, batch_size, max_epochs, outdir, xlabels,
+    end_lr=1e-4, power=0.5,
     disable_tqdm=False, train_in=None, test_in=None):
     """
     The primary training loop
     """
     num_steps = train_truth.shape[0] // batch_size
     base_lr = lr
-    end_lr = 1e-4
     learning_rate_fn = tfk.optimizers.schedules.PolynomialDecay(
-        base_lr, max_epochs*num_steps, end_lr, power=0.5)
+        base_lr, max_epochs*num_steps, end_lr, power=power)
 
 
     # initialize checkpoints
@@ -51,12 +51,25 @@ def train(
     opt = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)  # optimizer
     checkpoint = tf.train.Checkpoint(optimizer=opt, model=flow_model)
     ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_directory, max_to_keep=None)
-    _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
-
+    latest_ckpt = ckpt_manager.latest_checkpoint
+    _ = checkpoint.restore(latest_ckpt).expect_partial()
+    print("Loading latest checkpoint from: {}".format(checkpoint_directory))
+    if latest_ckpt:
+        start_epoch = int(re.findall(r'\/ckpt-(.*)', latest_ckpt)[0]) + 1
+        print("Restored from {}".format(latest_ckpt))
+    else:
+        start_epoch = 0
+        print("Initializing from scratch.")
 
     AUTO = tf.data.experimental.AUTOTUNE
-    training_data = tf.data.Dataset.from_tensor_slices(
-        train_truth).batch(batch_size).prefetch(AUTO)
+    with_condition = False
+    if train_in is not None:
+        with_condition = True
+        training_data = tf.data.Dataset.from_tensor_slices(
+            [train_in, train_truth]).batch(batch_size).prefetch(AUTO)
+    else:
+        training_data = tf.data.Dataset.from_tensor_slices(
+            train_truth).batch(batch_size).prefetch(AUTO)
 
     time_stamp = time.strftime('%Y%m%d-%H%M%S', time.localtime())
     img_dir = os.path.join(outdir, "imgs", f"{time_stamp}")
@@ -71,14 +84,21 @@ def train(
     summary_writer = tf.summary.create_file_writer(summary_dir)
     summary_logfile = os.path.join(summary_dir, f'results_{time_stamp}.txt')
 
-
+    cond_kwargs = dict([(f"b{idx}", {"conditional_input": test_in}) for idx in range(layers)])
     with tqdm.trange(max_epochs, disable=disable_tqdm) as t0:
         for epoch in t0:
             
             tot_loss = []
-            for batch in training_data:
-                train_loss = train_density_estimation(flow_model, opt, batch)
-                tot_loss.append(train_loss)
+            ## different training loop without or without conditional variables
+            if with_condition:
+                for condition,batch in training_data:
+                    train_loss = train_density_estimation_cond(
+                        flow_model, opt, batch, condition, cond_kwargs)
+                    tot_loss.append(train_loss)
+            else:
+                for batch in training_data:
+                    train_loss = train_density_estimation(flow_model, opt, batch)
+                    tot_loss.append(train_loss)
 
             tot_loss = np.array(tot_loss)
             avg_loss = np.sum(tot_loss, axis=0) / tot_loss.shape[0]
@@ -127,9 +147,13 @@ if __name__ == '__main__':
 
     ## hyperpaprameters
     add_arg("--lr", type=float, default=0.001, help="learning rate")
+    add_arg("--end-lr", type=float, default=1e-4, help="end learning rate")
+    add_arg("--power", type=float, default=0.5, help="learning rate decay power")
+
     add_arg("--max-epochs", type=int, default=2000, help="maximum number of epochs")
     add_arg("--hidden-shape", type=int, nargs='+', default=[128, 128], help="hidden shape")
     add_arg("--num-layers", type=int, default=10, help="number of layers")
+    
 
 
     args = parser.parse_args()
@@ -148,4 +172,6 @@ if __name__ == '__main__':
 
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
     print(maf)
-    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels)
+    train(train_truth, test_truth, maf, layers, lr,
+        batch_size, max_epochs, outdir, xlabels
+        end_lr=args.end_lr, power=args.power)

@@ -48,77 +48,43 @@ class Made(tfk.layers.Layer):
         return shift, tf.math.tanh(log_scale)
 
 
-def create_flow(hidden_shape: list, layers: int, input_dim: int, with_condition: bool =False):
+def create_flow(hidden_shape: list, layers: int,
+    input_dim: int,
+    with_condition: bool =False,
+    conditional_event_shape: tuple = None):
     """Create Masked Autogressive Flow for density estimation
 
     Arguments:
     hidden_shape -- Multilayer Perceptron shape
     layers -- Number of bijectors
     """
+    if with_condition and conditional_event_shape is None:
+        raise ValueError("conditional_event_shape must be specified")
 
     base_dist = tfd.Normal(loc=0.0, scale=1.0)
     permutation = tf.cast(np.concatenate((
         np.arange(input_dim / 2, input_dim), np.arange(0, input_dim / 2))), tf.int32)
     bijectors = []
-    for _ in range(layers):
+    for idx in range(layers):
         bijectors.append(tfb.MaskedAutoregressiveFlow(
             shift_and_log_scale_fn=Made(
                 params=2, event_shape=[input_dim],
-                hidden_units=hidden_shape, activation='relu')
+                hidden_units=hidden_shape, activation='relu'),
+                conditional=with_condition,
+                conditional_event_shape=conditional_event_shape,
+                name=f"b{idx}"
         ))
 
         ## https://homepages.inf.ed.ac.uk/imurray2/pub/17maf/maf.pdf
         ## finds that batch normalization reduces training time,
         ## increases stability, and improves performance.
         bijectors.append(tfb.BatchNormalization(training=False))
-
-        bijectors.append(tfb.Permute(permutation=permutation))
-
-    # bijectors.append(tfb.Tanh())
-
-    bijector = tfb.Chain(bijectors=list(reversed(bijectors)), name='chain_of_MAF')
-
-    maf = tfd.TransformedDistribution(
-        distribution=tfd.Sample(base_dist, sample_shape=[input_dim]),
-        bijector=bijector,
-    )
-
-    return maf
-
-
-def create_conditional_flow(
-        hidden_shape: list, layers: int,
-        input_dim: int,
-        conditional_event_shape: tuple):
-    """Create Conditional Masked Autogressive Flow for density estimation
-
-    Arguments:
-    hidden_shape -- Multilayer Perceptron shape
-    input_dim -- dimensions to be generated
-    layers -- Number of bijectors
-    conditional_event_shape -- dimentionality of conditions
-    """
-
-    base_dist = tfd.Normal(loc=0.0, scale=1.0)
-    bijectors = []
-    permutation = tf.cast(np.concatenate((
-        np.arange(input_dim // 2, input_dim), np.arange(0, input_dim // 2))), tf.int32)
-
-    for i in range(layers):
-        bijectors.append(tfb.MaskedAutoregressiveFlow(
-            shift_and_log_scale_fn=Made(
-                params=2,
-                event_shape=[input_dim],
-                conditional=True,
-                conditional_event_shape=conditional_event_shape,
-                hidden_units=hidden_shape, activation='relu'),
-            name=f"b{i}"
-        ))
         if input_dim > 1:
             bijectors.append(tfb.Permute(permutation=permutation))
 
-    bijector = tfb.Chain(
-        bijectors=list(reversed(bijectors)), name='chain_of_conditional_MAF')
+    # bijectors.append(tfb.Tanh())
+
+    bijector = tfb.Chain(bijectors=list(reversed(bijectors)), name='MAF')
 
     maf = tfd.TransformedDistribution(
         distribution=tfd.Sample(base_dist, sample_shape=[input_dim]),
@@ -126,3 +92,4 @@ def create_conditional_flow(
     )
 
     return maf
+
