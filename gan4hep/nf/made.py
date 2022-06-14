@@ -66,6 +66,12 @@ def create_flow(hidden_shape: list, layers: int, input_dim: int, with_condition:
                 params=2, event_shape=[input_dim],
                 hidden_units=hidden_shape, activation='relu')
         ))
+
+        ## https://homepages.inf.ed.ac.uk/imurray2/pub/17maf/maf.pdf
+        ## finds that batch normalization reduces training time,
+        ## increases stability, and improves performance.
+        bijectors.append(tfb.BatchNormalization(training=False))
+
         bijectors.append(tfb.Permute(permutation=permutation))
 
     # bijectors.append(tfb.Tanh())
@@ -112,7 +118,7 @@ def create_conditional_flow(
             bijectors.append(tfb.Permute(permutation=permutation))
 
     bijector = tfb.Chain(
-        bijectors=list(reversed(bijectors)), name='chain_of_MAF')
+        bijectors=list(reversed(bijectors)), name='chain_of_conditional_MAF')
 
     maf = tfd.TransformedDistribution(
         distribution=tfd.Sample(base_dist, sample_shape=[input_dim]),
