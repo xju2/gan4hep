@@ -39,7 +39,7 @@ def train(
     """
     num_steps = train_truth.shape[0] // batch_size
     base_lr = lr
-    end_lr = 1e-6
+    end_lr = 1e-4
     learning_rate_fn = tfk.optimizers.schedules.PolynomialDecay(
         base_lr, max_epochs*num_steps, end_lr, power=0.5)
 
@@ -58,14 +58,15 @@ def train(
     training_data = tf.data.Dataset.from_tensor_slices(
         train_truth).batch(batch_size).prefetch(AUTO)
 
-    img_dir = os.path.join(outdir, "imgs")
+    time_stamp = time.strftime('%Y%m%d-%H%M%S', time.localtime())
+    img_dir = os.path.join(outdir, "imgs", f"{time_stamp}")
     os.makedirs(img_dir, exist_ok=True)
 
     # start training
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
-    time_stamp = time.strftime('%Y%m%d-%H%M%S', time.localtime())
+    
     summary_dir = os.path.join(outdir, "logs", f"{time_stamp}")
     summary_writer = tf.summary.create_file_writer(summary_dir)
     summary_logfile = os.path.join(summary_dir, f'results_{time_stamp}.txt')
@@ -122,9 +123,15 @@ if __name__ == '__main__':
     add_arg("outdir", help='output directory')
     add_arg("--max-evts", default=-1, type=int, help="maximum number of events")
     add_arg("--batch-size", type=int, default=512, help="batch size")
-    add_arg("--data", default='herwig_angles',
-        choices=io.__all__)
-    
+    add_arg("--data", default='herwig_angles', choices=io.__all__)
+
+    ## hyperpaprameters
+    add_arg("--lr", type=float, default=0.001, help="learning rate")
+    add_arg("--max-epochs", type=int, default=2000, help="maximum number of epochs")
+    add_arg("--hidden-shape", type=int, nargs='+', default=[128, 128], help="hidden shape")
+    add_arg("--num-layers", type=int, default=10, help="number of layers")
+
+
     args = parser.parse_args()
 
 
@@ -132,11 +139,11 @@ if __name__ == '__main__':
         args.filename, max_evts=args.max_evts)
 
     outdir = args.outdir
-    hidden_shape = [128]*2
-    layers = 10
-    lr = 1e-3
+    hidden_shape = args.hidden_shape
+    layers = args.num_layers
+    lr = args.lr
     batch_size = args.batch_size
-    max_epochs = 1000
+    max_epochs = args.max_epochs
     out_dim = train_truth.shape[1]
 
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
