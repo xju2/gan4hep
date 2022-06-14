@@ -79,7 +79,7 @@ def train(train_in, train_truth, test_in, testing_truth,
     for i in range(max_epochs):
         for condition,batch in training_data:
             train_loss = train_density_estimation_cond(
-                flow_model, opt, batch, condition, layers)
+                flow_model, opt, batch, condition, cond_kwargs)
 
         wdis, predictions = evaluate(flow_model, test_in, testing_truth)
         if wdis < min_wdis:
