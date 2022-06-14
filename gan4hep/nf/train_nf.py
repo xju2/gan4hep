@@ -154,10 +154,7 @@ if __name__ == '__main__':
     add_arg("--hidden-shape", type=int, nargs='+', default=[128, 128], help="hidden shape")
     add_arg("--num-layers", type=int, default=10, help="number of layers")
     
-
-
     args = parser.parse_args()
-
 
     train_in, train_truth, test_in, test_truth, xlabels = getattr(io, args.data)(
         args.filename, max_evts=args.max_evts)
@@ -173,5 +170,5 @@ if __name__ == '__main__':
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
     print(maf)
     train(train_truth, test_truth, maf, layers, lr,
-        batch_size, max_epochs, outdir, xlabels
+        batch_size, max_epochs, outdir, xlabels,
         end_lr=args.end_lr, power=args.power)
