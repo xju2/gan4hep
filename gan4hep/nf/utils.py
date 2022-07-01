@@ -22,7 +22,7 @@ def train_density_estimation(distribution, optimizer, batch):
 
 
 @tf.function
-def train_density_estimation_cond(distribution, optimizer, batch, condition, layers):
+def train_density_estimation_cond(distribution, optimizer, batch, condition, cond_kwargs):
     """
     Train function for density estimation normalizing flows.
     :param distribution: TensorFlow distribution, e.g. tf.TransformedDistribution.
@@ -30,7 +30,7 @@ def train_density_estimation_cond(distribution, optimizer, batch, condition, lay
     :param batch: Batch of the train data.
     :return: loss.
     """
-    cond_kwargs = dict([(f"b{idx}", {"conditional_input": condition}) for idx in range(layers)])
+    # cond_kwargs = dict([(f"b{idx}", {"conditional_input": condition}) for idx in range(layers)])
     with tf.GradientTape() as tape:
         tape.watch(distribution.trainable_variables)
         loss = -tf.reduce_mean(distribution.log_prob(batch, bijector_kwargs=cond_kwargs))
