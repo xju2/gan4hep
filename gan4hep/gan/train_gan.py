@@ -20,7 +20,6 @@ from cgan import CGAN
 from gan4hep import io
 
 all_gans = ['GAN', 'CGAN']
-all_readers = ['DiMuonsReader', 'HerwigReader']
 
 from utils import evaluate
 from gan4hep.utils_plot import compare
@@ -81,9 +80,12 @@ def train(train_truth, test_truth, model, gen_lr, disc_lr, batch_size,
     discriminator_optimizer = keras.optimizers.Adam(disc_lr)
 
     @tf.function
-    def train_step(gen_in_4vec, truth_4vec):
+    def train_step(cond, gen_in_4vec, truth_4vec):
         with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
             gen_out_4vec = generator(gen_in_4vec, training=True)
+            if cond is not None and gan.name == "CGAN":
+                gen_out_4vec = tf.concat([cond, gen_out_4vec], axis=1)
+                truth_4vec = tf.concat([cond, truth_4vec], axis=1)
 
             real_output = discriminator(truth_4vec, training=True)
             fake_output = discriminator(gen_out_4vec, training=True)
@@ -133,7 +135,7 @@ def train(train_truth, test_truth, model, gen_lr, disc_lr, batch_size,
 
 
             dataset = tf.data.Dataset.from_tensor_slices(
-                (train_inputs, train_truth)).shuffle(2*batch_size).batch(
+                (train_in, train_inputs, train_truth)).shuffle(2*batch_size).batch(
                     batch_size, drop_remainder=False).prefetch(AUTO)
 
             tot_loss = []
@@ -225,7 +227,7 @@ if __name__ == '__main__':
     add_arg = parser.add_argument
     add_arg("model", choices=all_gans, help='gan model')
     add_arg("filename", help='input filename', default=None, nargs='+')
-    add_arg('reader', help='reader module', default='DiMuonsReader', choices=all_readers)
+    add_arg('reader', help='reader module', default='DiMuonsReader', choices=io.__all__)
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
     add_arg("--num-test-evts", help='number of testing events', default=10000, type=int)
@@ -239,8 +241,6 @@ if __name__ == '__main__':
 
     # model parameters
     add_arg("--noise-dim", type=int, default=4, help="noise dimension")
-    add_arg("--gen-output-dim", type=int, default=2, help='generator output dimension')
-    add_arg("--cond-dim", type=int, default=0, help='dimension of conditional input')
     add_arg("--disable-tqdm", action="store_true", help='disable tqdm')
 
     args = parser.parse_args()
@@ -248,13 +248,21 @@ if __name__ == '__main__':
     from tensorflow.compat.v1 import logging
     logging.set_verbosity(args.verbose)
 
-    # prepare input data by calling those function implemented in 
-    # gan4hep.preprocess.
+    # prepare input data by calling those function implemented in gan4hep.io
     train_in, train_truth, test_in, test_truth, xlabels = getattr(io, args.reader)(
         args.filename, max_evts=args.max_evts)
 
+    if train_truth is None or test_truth is None:
+        raise ValueError("No input data found")
+
     batch_size = args.batch_size
-    gan = eval(args.model)(**vars(args))
+
+    model_config = vars(args)
+    model_config['gen_output_dim'] = train_truth.shape[1]
+    model_config['cond_dim'] = test_in.shape[1] if test_in is not None else 0
+
+
+    gan = eval(args.model)(**model_config)
     if args.inference:
         inference(gan, test_in, test_truth, args.log_dir, xlabels)
     else:

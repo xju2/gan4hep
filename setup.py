@@ -36,5 +36,7 @@ setup(
         "Programming Language :: Python :: 3.8",
     ],
     scripts=[
+        'gan4hep/gan/train_gan.py',
+        'gan4hep/nf/train_nf.py',
     ],
 )
