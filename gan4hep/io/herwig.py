@@ -45,7 +45,8 @@ def read(filename, max_evts=None, testing_frac=0.1) -> GAN_INPUT_DATA_TYPE:
     return (train_in, train_truth, test_in, test_truth, xlabels)
 
 
-def convert_cluster_decay(filename, outname, mode=2, with_quark=False, example=False):
+def convert_cluster_decay(filename, outname, mode=2,
+    with_quark=False, example=False, do_check_only=False):
     """
     This function reads the original cluster decay files 
     and boost the two hadron decay prodcuts to the cluster frame in which
@@ -64,7 +65,12 @@ def convert_cluster_decay(filename, outname, mode=2, with_quark=False, example=F
         outname: the output file name
         mode: the mode of the dataset
         with_quark: add two quark angles in the center-of-mass frame as inputs
+        do_check_only: only check the converted data, do not convert
     """
+    outname = outname+f"_mode{mode}"+"_with_quark" if with_quark else outname+f"_mode{mode}"
+    if do_check_only:
+        check_converted_data(outname)
+        return
 
     print(f'reading from {filename}')
     df = read_dataframe(filename, ";", 'python')
@@ -91,8 +97,6 @@ def convert_cluster_decay(filename, outname, mode=2, with_quark=False, example=F
     if with_quark:
         print("add quark information")
 
-
-    outname = outname+f"_mode{mode}"+"_with_quark" if with_quark else outname+f"_mode{mode}"
     cluster = c[[1, 2, 3, 4]][selections].values
     h1 = h1[[1, 2, 3, 4]][selections]
     h2 = h2[[1, 2, 3, 4]][selections]
@@ -141,9 +145,8 @@ def convert_cluster_decay(filename, outname, mode=2, with_quark=False, example=F
     np.savez(outname, input_4vec=input_4vec, out_truth=out_truth)
 
 
-def check_converted_data(outname, mode):
+def check_converted_data(outname):
     import matplotlib.pyplot as plt
-    outname = outname+f"_mode{mode}"
 
     arrays = np.load(outname+".npz")
     truth_in = arrays['out_truth']
@@ -151,8 +154,8 @@ def check_converted_data(outname, mode):
     plt.hist(truth_in[:, 1], bins=100, histtype='step', label='theta')
     plt.savefig("angles.png")
 
-    scaler_input = InputScaler(outname=outname+"_scalar_input4vec.pkl")
-    scaler_output = InputScaler(outname=outname+"_scalar_outtruth.pkl")
+    scaler_input = InputScaler().load(outname+"_scalar_input4vec.pkl")
+    scaler_output = InputScaler().load(outname+"_scalar_outtruth.pkl")
 
     print("//---- inputs ----")
     scaler_input.dump()
@@ -173,9 +176,15 @@ if __name__ == '__main__':
     add_arg("-e", '--example', action='store_true', help='print an example event')
     args = parser.parse_args()
     
+<<<<<<< HEAD
     if args.check:
         check_converted_data(args.outname, args.mode)
     else:
         convert_cluster_decay(
             args.inname, args.outname,
             args.mode, args.with_quark, args.example)
+=======
+
+    convert_cluster_decay(args.inname, args.outname,
+        args.mode, args.with_quark, args.example, args.check)
+>>>>>>> herwig

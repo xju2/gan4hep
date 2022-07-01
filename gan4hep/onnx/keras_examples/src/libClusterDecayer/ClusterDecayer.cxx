@@ -25,7 +25,8 @@ void HerwigClusterDecayer::getDecayProducts(
     std::vector<float>& hadronOne4Vec,
     std::vector<float>& hadronTwo4Vec)
 {
-    assert(cluster4Vec.size() == m_cfg.numInputFeatures);
+    assert(cluster4Vec.size() == m_cfg.numInputFeatures && cluster4Vec.size() > 3);
+
     // does it live here?
     Ort::AllocatorWithDefaultOptions allocator;
     auto memoryInfo = Ort::MemoryInfo::CreateCpu(
@@ -43,6 +44,8 @@ void HerwigClusterDecayer::getDecayProducts(
     auto scalerInv = [=](float& xScaled, float xMin, float xMax){
         xScaled = (xScaled - scaledMin) / (scaledMax - scaledMin) * (xMax - xMin) + xMin;
     };
+
+    // scale the inputs
     std::vector<float> scaledCluster4Vec;
     for(unsigned int idx=0; idx < cluster4Vec.size(); idx++){
         scaledCluster4Vec.push_back(

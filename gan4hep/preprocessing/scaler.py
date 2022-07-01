@@ -14,9 +14,11 @@ class InputScaler:
 
     def save(self, outname):
         pickle.dump(self.scaler, open(outname, 'wb'))
+        return self
 
     def load(self, outname):
         self.scaler = pickle.load(open(outname, 'rb'))
+        return self
 
     def dump(self):
         print("Min and Max for inputs: {",\

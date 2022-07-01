@@ -24,6 +24,7 @@ public:
     virtual ~HerwigClusterDecayer() {}
 
     // It takes the cluster 4 vector as input
+    // it's optional to add other vectors to the input.
     // and produces two hadrons' 4vectors as output.
     // 4 vectors are in the order of [energy, px, py, pz]
     // two hadron masses are needed.
