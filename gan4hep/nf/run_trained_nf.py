@@ -58,7 +58,7 @@ def train(
 
     num_samples, num_dims = testing_truth.shape
     num_samples=num_gen_evts
-    Print('Number of Generated Events: ', num_samples)
+    print('Number of Generated Events: ', num_samples)
     samples = flow_model.sample(num_samples).numpy()
     predictions=samples
 
