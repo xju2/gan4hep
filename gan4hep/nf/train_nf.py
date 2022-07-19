@@ -17,6 +17,11 @@ from utils import train_density_estimation
 from utils import nll
 from gan4hep.utils_plot import compare
 
+import time
+import pathlib
+import datetime
+from datetime import datetime
+
 
 def evaluate(flow_model, testing_data,gen_evts):
     num_samples, num_dims = testing_data.shape
@@ -100,9 +105,6 @@ def train(
     # img_dir = os.path.join(log_dir, 'img')
     # os.makedirs(img_dir, exist_ok=True)
 
-    import time
-    import pathlib
-    import datetime
 
     # Making seperate folders for each run to store plots
     # Get time and date of current run
@@ -123,14 +125,15 @@ def train(
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
-    loss_list = []
-    w_list = []
+
+    
     time_list = []
 
     for i in range(max_epochs):
 
-        from datetime import datetime
         start_time = datetime.now()
+        loss_list = []
+        w_list = []
 
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
