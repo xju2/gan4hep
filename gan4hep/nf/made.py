@@ -69,11 +69,11 @@ def create_flow(hidden_shape: list, layers: int,
         bijectors.append(tfb.MaskedAutoregressiveFlow(
             shift_and_log_scale_fn=Made(
                 params=2, event_shape=[input_dim],
-                hidden_units=hidden_shape, activation='relu'),
+                hidden_units=hidden_shape, activation='relu',
                 conditional=with_condition,
-                conditional_event_shape=conditional_event_shape,
+                conditional_event_shape=conditional_event_shape),
                 name=f"b{idx}"
-        ))
+                ))
 
         ## https://homepages.inf.ed.ac.uk/imurray2/pub/17maf/maf.pdf
         ## finds that batch normalization reduces training time,
