@@ -176,15 +176,6 @@ if __name__ == '__main__':
     add_arg("-e", '--example', action='store_true', help='print an example event')
     args = parser.parse_args()
     
-<<<<<<< HEAD
-    if args.check:
-        check_converted_data(args.outname, args.mode)
-    else:
-        convert_cluster_decay(
-            args.inname, args.outname,
-            args.mode, args.with_quark, args.example)
-=======
 
     convert_cluster_decay(args.inname, args.outname,
         args.mode, args.with_quark, args.example, args.check)
->>>>>>> herwig

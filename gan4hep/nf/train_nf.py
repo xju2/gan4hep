@@ -22,7 +22,19 @@ from gan4hep.utils_plot import compare
 
 def evaluate(flow_model, testing_data):
     num_samples, num_dims = testing_data.shape
-    samples = flow_model.sample(num_samples).numpy()
+    max_batch_size = 50000 ## randomly chosen
+    if num_samples > max_batch_size:
+        samples = []
+
+        for _ in range(num_samples//max_batch_size):
+            samples.append(flow_model.sample(max_batch_size).numpy())
+        if num_samples % max_batch_size != 0:
+            samples.append(flow_model.sample(num_samples % max_batch_size).numpy())
+
+        samples = np.concatenate(samples, axis=0)
+    else:
+        samples = flow_model.sample(num_samples).numpy()
+
     distances = [
         stats.wasserstein_distance(samples[:, idx], testing_data[:, idx]) \
             for idx in range(num_dims)
