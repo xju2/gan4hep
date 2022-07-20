@@ -105,6 +105,11 @@ def train(
     # img_dir = os.path.join(log_dir, 'img')
     # os.makedirs(img_dir, exist_ok=True)
 
+    #Rosy added it 
+    import time
+    import pathlib
+    import datetime
+
 
     # Making seperate folders for each run to store plots
     # Get time and date of current run
@@ -130,6 +135,8 @@ def train(
     time_list = []
 
     for i in range(max_epochs):
+        # Rosy added it 
+        from datetime import datetime
 
         start_time = datetime.now()
         loss_list = []
@@ -230,7 +237,7 @@ if __name__ == '__main__':
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 30
+    max_epochs = 1000
     print('Number of Epochs: ', max_epochs)
 
     out_dim = train_truth.shape[1]
