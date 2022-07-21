@@ -133,14 +133,15 @@ def train(
 
     
     time_list = []
+    loss_list = []
+    w_list = []
 
     for i in range(max_epochs):
         # Rosy added it 
         from datetime import datetime
 
         start_time = datetime.now()
-        loss_list = []
-        w_list = []
+        
 
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
