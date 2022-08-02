@@ -57,7 +57,7 @@ def end_of_run_plots(w_list,loss_list):
     plt.xlabel('Epoch')
     plt.savefig(os.path.join('Plots', 'wasserstein.png'))
 
-    print('yay')
+    
 
 
 
