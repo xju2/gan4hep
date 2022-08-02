@@ -16,6 +16,7 @@ cd nf_work
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/train_nf.py
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/Hmumu_plots.py
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/run_trained_nf.py
+ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/atlas_plots.py
 
 #Add the relevent .output file (mc16d_364100_dimuon_0Jets.output) to the nf_work folder then in nf_work run:
 
@@ -46,7 +47,15 @@ These files will also be saved in the corresponding run folder in /TestNP/imgs i
 ***************
 ---------------
 
-3) Plotting
+4) Plotting (ROOT)
+
+Run python atlas_plots.py and plots with ATLAS style of the 6 main variables and 4 calculated variables will be created as pdfs in a new file called 'Plots' alongside the wassersteing and log loss plots.
+
+---------------
+***************
+---------------
+
+4) Plotting (NON-ROOT)
 
 To produce the required plots run:
 
@@ -63,7 +72,7 @@ Once run, all plots will be saved in the corresponding file saved in filename.tx
 ***************
 ---------------
 
-4)Graphs Guide
+5)Graphs Guide
 
 Whilst running you will recieve this printout
 
@@ -113,7 +122,7 @@ Each series of plots has its own function in Hmumu_plots.py that cna be commente
 ***************
 ---------------
 
-5)Generating New Events from A Saved Model
+6)Generating New Events from A Saved Model
 
 To do this, type into the terminal:
 
