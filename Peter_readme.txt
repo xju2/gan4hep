@@ -2,7 +2,7 @@ For running Peter's Normalising Flow branch
 
 1)Installation Instructions
 
-In lxplus (Requires python 3.9, tensorflow, and pylorentz)
+In lxplus (Requires python 3.9, tensorflow, and pylorentz and ROOT)
   
 mkdir AnyName
 cd AnyName
