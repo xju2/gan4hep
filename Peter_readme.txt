@@ -49,7 +49,12 @@ These files will also be saved in the corresponding run folder in /TestNP/imgs i
 
 4) Plotting (ROOT)
 
-Run python atlas_plots.py and plots with ATLAS style of the 6 main variables and 4 calculated variables will be created as pdfs in a new file called 'Plots' alongside the wassersteing and log loss plots.
+Run:
+
+python atlas_plots.py --jetnum 0
+
+
+With jetnum representing the number of jets in the original dataset and plots with ATLAS style of the 6+ main variables and 4 calculated variables will be created as pdfs in a new file called 'Plots' alongside the wassersteing and log loss plots.
 
 ---------------
 ***************
