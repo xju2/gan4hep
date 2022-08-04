@@ -57,9 +57,6 @@ def end_of_run_plots(w_list,loss_list):
     plt.xlabel('Epoch')
     plt.savefig(os.path.join('Plots', 'wasserstein.png'))
 
-    
-
-
 
 def dimuon_calc(predictions, truths):
     # print(truths)
@@ -308,7 +305,7 @@ def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, tit
     hist1.Draw()
     hist2.Draw()
 
-def main(truths,predictions,w_list,loss_list,new_run_folder,xlabels):
+def main(truths,predictions,w_list,loss_list,new_run_folder,xlabels,jetnum):
     xlabels_extra = xlabels
     xlabels_extra.append('DiMuon Invarient Mass')
     xlabels_extra.append('DiMuon P_t')
@@ -328,27 +325,69 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,xlabels):
     # predictions_cut=predictions
     # truths_cut=truths
     # truths_cut=truths_cut[:len(predictions_cut)]
-
     pt_lead = [0, 0, 250]
     pt_sub = [3, 0, 250]
     eta_lead = [1, -2.7, 2.7]
     eta_sub = [4, -2.7, 2.7]
     phi_lead = [2, -3.4, 3.4]
     phi_sub = [5, -3.4, 3.4]
-    dimuon_mass = [6, 110, 160]
-    pt_dimuon = [7, 0, 130]
-    dimuon_eta = [8, -5, 5]
-    cos_theta = [9, -1, 1]
 
-    var_name = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT', 'subleading Muon eta',
+
+    if jetnum==0:
+        dimuon_mass = [6, 110, 160]
+        pt_dimuon = [7, 0, 130]
+        dimuon_eta = [8, -5, 5]
+        cos_theta = [9, -1, 1]
+        var_name = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT', 'subleading Muon eta',
                 'subleading Muon phi', 'Dimuon Mass', 'Pt Dimuon', 'Dimuon eta', 'Cos theta *']
-    var_list = [pt_lead, eta_lead, phi_lead, pt_sub, eta_sub, phi_sub, dimuon_mass, pt_dimuon, dimuon_eta, cos_theta]
+        var_list = [pt_lead, eta_lead, phi_lead, pt_sub, eta_sub, phi_sub, dimuon_mass, pt_dimuon, dimuon_eta, cos_theta]
+    elif jetnum==1:
+        dimuon_mass = [9, 110, 160]
+        pt_dimuon = [10, 0, 130]
+        dimuon_eta = [11, -5, 5]
+        cos_theta = [12, -1, 1]
+        jet1_pt = [6, 0, 80]
+        jet1_eta = [7, -2.7, 2.7]
+        jet1_phi = [8, -3.4, 3.4]
+        var_name = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT', 'subleading Muon eta',
+                'subleading Muon phi', 'Jet 1 pT', 'Jet 1 eta', 'Jet 1 phi', 'Dimuon Mass', 'Pt Dimuon', 'Dimuon eta', 'Cos theta *']
+        var_list = [pt_lead, eta_lead, phi_lead, pt_sub, eta_sub, phi_sub,jet1_pt,jet1_eta,jet1_phi, dimuon_mass, pt_dimuon, dimuon_eta, cos_theta]
+    elif jetnum==2:
+        dimuon_mass = [12, 110, 160]
+        pt_dimuon = [13, 0, 130]
+        dimuon_eta = [14, -5, 5]
+        cos_theta = [15, -1, 1]
+        jet1_pt = [6, 0, 80]
+        jet1_eta = [7, -2.7, 2.7]
+        jet1_phi = [8, -3.4, 3.4]
+        jet2_pt = [9, 0, 80]
+        jet2_eta = [10, -2.7, 2.7]
+        jet2_phi = [11, -3.4, 3.4]
+        var_name = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT', 'subleading Muon eta',
+                'subleading Muon phi', 'Jet 1 pT', 'Jet 1 eta', 'Jet 1 phi', 'Jet 2 pT', 'Jet 2 eta', 'Jet 2 phi', 'Dimuon Mass', 'Pt Dimuon', 'Dimuon eta', 'Cos theta *']
+        var_list = [pt_lead, eta_lead, phi_lead, pt_sub, eta_sub, phi_sub,jet1_pt,jet1_eta,jet1_phi,jet2_pt,jet2_eta,jet2_phi, dimuon_mass, pt_dimuon, dimuon_eta, cos_theta]
+    else:
+        dimuon_mass = [6, 110, 160]
+        pt_dimuon = [7, 0, 130]
+        dimuon_eta = [8, -5, 5]
+        cos_theta = [9, -1, 1]
+        var_name = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT', 'subleading Muon eta',
+                'subleading Muon phi', 'Dimuon Mass', 'Pt Dimuon', 'Dimuon eta', 'Cos theta *']
+        var_list = [pt_lead, eta_lead, phi_lead, pt_sub, eta_sub, phi_sub, dimuon_mass, pt_dimuon, dimuon_eta, cos_theta]
     from IPython.display import IFrame
 
     for i in range(len(var_list)):
         Plotting(truths_cut, predictions_cut, var_list[i][0], var_list[i][1], var_list[i][2], var_name[i])
 
 if __name__ == '__main__':
+    import argparse
+    parser = argparse.ArgumentParser(description='Normalizing Flow')
+    add_arg = parser.add_argument
+    add_arg('--jetnum', default=0, help='Number of Jets in File')
+    args = parser.parse_args()
+    jetnum=int(args.jetnum)
+
+
 
     truths = np.load('Temp_Data/truths.npy')
     predictions = np.load('Temp_Data/predictions.npy')
@@ -359,12 +398,22 @@ if __name__ == '__main__':
     if f.mode == 'r':
         new_run_folder = f.read()
 
-    xlabels = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT', 'subleading Muon eta',
-                'subleading Muon phi']
+    if jetnum == 0:
+        xlabels = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT',
+                   'subleading Muon eta', 'subleading Muon phi']
+    elif jetnum == 1:
+        xlabels = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT',
+                   'subleading Muon eta', 'subleading Muon phi', 'Jet 1 pT', 'Jet 1 eta', 'Jet 1 phi']
+    elif jetnum == 1:
+        xlabels = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT',
+                   'subleading Muon eta', 'subleading Muon phi', 'Jet 1 pT', 'Jet 1 eta', 'Jet 1 phi' ,'Jet 2 pT', 'Jet 2 eta', 'Jet 2 phi']
+    else:
+        xlabels = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT',
+                   'subleading Muon eta', 'subleading Muon phi']
 
     os.makedirs('Plots', exist_ok=True)
 
-
+    print('len',len(truths[1]),len(predictions[1]))
 
     # Plot loss and wasserstein plots
     end_of_run_plots(w_list,loss_list)
@@ -374,4 +423,4 @@ if __name__ == '__main__':
     print('Number of Generated Events: ', len(predictions))
 
 
-    main(truths,predictions,w_list,loss_list,new_run_folder,xlabels)
+    main(truths,predictions,w_list,loss_list,new_run_folder,xlabels,jetnum)
