@@ -214,8 +214,8 @@ def inference(gan, test_in, test_truth, log_dir, xlabels):
     testing_data = tf.data.Dataset.from_tensor_slices(
         (test_in, test_truth)).batch(batch_size, drop_remainder=True).prefetch(AUTO)
 
-    summary_dir = os.path.join(log_dir, "logs_inference")
-    summary_writer = tf.summary.create_file_writer(summary_dir)
+    # summary_dir = os.path.join(log_dir, "logs_inference")
+    # summary_writer = tf.summary.create_file_writer(summary_dir)
 
     img_dir = os.path.join(log_dir, 'img_inference')
     os.makedirs(img_dir, exist_ok=True)
@@ -226,8 +226,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train The GAN')
     add_arg = parser.add_argument
     add_arg("model", choices=all_gans, help='gan model')
-    add_arg("filename", help='input filename', default=None, nargs='+')
     add_arg('reader', help='reader module', default='DiMuonsReader', choices=io.__all__)
+    add_arg("filename", help='input filename', default=None, nargs='+')
     add_arg("--epochs", help='number of maximum epochs', default=100, type=int)
     add_arg("--log-dir", help='log directory', default='log_training')
     add_arg("--num-test-evts", help='number of testing events', default=10000, type=int)

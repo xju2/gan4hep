@@ -3,6 +3,7 @@
 import os
 import tqdm
 import time
+import re
 
 import numpy as np
 
@@ -20,20 +21,17 @@ from utils import train_density_estimation_cond
 from gan4hep.utils_plot import compare
 
 
-def evaluate(flow_model, testing_data):
+def evaluate(flow_model, testing_data, condition=None, layers=None):
     num_samples, num_dims = testing_data.shape
-    max_batch_size = 50000 ## randomly chosen
-    if num_samples > max_batch_size:
-        samples = []
-
-        for _ in range(num_samples//max_batch_size):
-            samples.append(flow_model.sample(max_batch_size).numpy())
-        if num_samples % max_batch_size != 0:
-            samples.append(flow_model.sample(num_samples % max_batch_size).numpy())
-
-        samples = np.concatenate(samples, axis=0)
-    else:
+    if condition is None:
         samples = flow_model.sample(num_samples).numpy()
+    else:
+        if layers is None:
+            raise ValueError("layers must be specified when condition is not None")
+
+        cond_kwargs = dict([(f"b{idx}", {"conditional_input": condition}) for idx in range(layers)])
+        samples = flow_model.sample(
+            num_samples, bijector_kwargs=cond_kwargs).numpy()
 
     distances = [
         stats.wasserstein_distance(samples[:, idx], testing_data[:, idx]) \
@@ -42,10 +40,12 @@ def evaluate(flow_model, testing_data):
 
     return sum(distances)/num_dims, samples
 
+def ckpt_path(outdir):
+    return "{}/checkpoints".format(outdir)
 
 def train(train_truth, testing_truth, flow_model, layers,
     lr, batch_size, max_epochs, outdir, xlabels,
-    end_lr=1e-4, power=0.5,
+    end_lr=1e-6, power=0.5,
     disable_tqdm=False, train_in=None, test_in=None):
     """
     The primary training loop
@@ -57,7 +57,7 @@ def train(train_truth, testing_truth, flow_model, layers,
 
 
     # initialize checkpoints
-    checkpoint_directory = "{}/checkpoints".format(outdir)
+    checkpoint_directory = ckpt_path(outdir)
     os.makedirs(checkpoint_directory, exist_ok=True)
 
     opt = tf.keras.optimizers.Adam(learning_rate=learning_rate_fn)  # optimizer
@@ -65,6 +65,7 @@ def train(train_truth, testing_truth, flow_model, layers,
     ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_directory, max_to_keep=None)
     latest_ckpt = ckpt_manager.latest_checkpoint
     _ = checkpoint.restore(latest_ckpt).expect_partial()
+
     print("Loading latest checkpoint from: {}".format(checkpoint_directory))
     if latest_ckpt:
         start_epoch = int(re.findall(r'\/ckpt-(.*)', latest_ckpt)[0]) + 1
@@ -76,10 +77,12 @@ def train(train_truth, testing_truth, flow_model, layers,
     AUTO = tf.data.experimental.AUTOTUNE
     with_condition = False
     if train_in is not None:
+        print("Training with conditional NF")
         with_condition = True
         training_data = tf.data.Dataset.from_tensor_slices(
-            [train_in, train_truth]).batch(batch_size).prefetch(AUTO)
+            (train_in, train_truth)).batch(batch_size).prefetch(AUTO)
     else:
+        print("Training without conditions")
         training_data = tf.data.Dataset.from_tensor_slices(
             train_truth).batch(batch_size).prefetch(AUTO)
 
@@ -96,8 +99,7 @@ def train(train_truth, testing_truth, flow_model, layers,
     summary_writer = tf.summary.create_file_writer(summary_dir)
     summary_logfile = os.path.join(summary_dir, f'results_{time_stamp}.txt')
 
-    cond_kwargs = dict([(f"b{idx}", {"conditional_input": test_in}) for idx in range(layers)])
-    with tqdm.trange(max_epochs, disable=disable_tqdm) as t0:
+    with tqdm.trange(start_epoch, max_epochs, disable=disable_tqdm) as t0:
         for epoch in t0:
             
             tot_loss = []
@@ -105,7 +107,7 @@ def train(train_truth, testing_truth, flow_model, layers,
             if with_condition:
                 for condition,batch in training_data:
                     train_loss = train_density_estimation_cond(
-                        flow_model, opt, batch, condition, cond_kwargs)
+                        flow_model, opt, batch, condition, layers)
                     tot_loss.append(train_loss)
             else:
                 for batch in training_data:
@@ -116,7 +118,7 @@ def train(train_truth, testing_truth, flow_model, layers,
             avg_loss = np.sum(tot_loss, axis=0) / tot_loss.shape[0]
 
             log_dict = dict(t_loss=avg_loss)
-            wdis, predictions = evaluate(flow_model, testing_truth)
+            wdis, predictions = evaluate(flow_model, testing_truth, test_in, layers)
 
 
             with summary_writer.as_default():
@@ -155,7 +157,7 @@ if __name__ == '__main__':
     add_arg("outdir", help='output directory')
     add_arg("--max-evts", default=-1, type=int, help="maximum number of events")
     add_arg("--batch-size", type=int, default=512, help="batch size")
-    add_arg("--data", default='herwig_angles', choices=io.__all__)
+    add_arg("--data", default=None, choices=io.__all__)
 
     ## hyperpaprameters
     add_arg("--lr", type=float, default=0.001, help="learning rate")
@@ -165,8 +167,14 @@ if __name__ == '__main__':
     add_arg("--max-epochs", type=int, default=2000, help="maximum number of epochs")
     add_arg("--hidden-shape", type=int, nargs='+', default=[128, 128], help="hidden shape")
     add_arg("--num-layers", type=int, default=10, help="number of layers")
+
+    ## save models
+    add_arg("--save-model", action='store_true', help="save model")
     
     args = parser.parse_args()
+    if args.data is None:
+        print("Please specify data type")
+        exit(1)
 
     train_in, train_truth, test_in, test_truth, xlabels = getattr(io, args.data)(
         args.filename, max_evts=args.max_evts)
@@ -181,6 +189,13 @@ if __name__ == '__main__':
 
     maf =  create_flow(hidden_shape, layers, input_dim=out_dim)
     print(maf)
+    if args.save_model:
+        from utils import save_flow
+        save_flow(
+            maf, ckpt_path(outdir), os.path.join(outdir, "model_nf.onnx"),
+            cond_data=test_in, layers=layers)
+        exit(0)
+
     train(train_truth, test_truth, maf, layers, lr,
         batch_size, max_epochs, outdir, xlabels,
-        end_lr=args.end_lr, power=args.power)
+        end_lr=args.end_lr, power=args.power, train_in=train_in, test_in=test_in)

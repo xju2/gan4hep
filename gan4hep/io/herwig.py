@@ -20,7 +20,8 @@ def read(filename, max_evts=None, testing_frac=0.1) -> GAN_INPUT_DATA_TYPE:
     3) at least one quark with Pert=1
     """
     if type(filename) == list:
-        print(len(filename),"too many files!")
+        if len(filename) > 1:
+            print(len(filename),"too many files!")
         filename = filename[0]
     
     arrays = np.load(filename)
@@ -46,7 +47,7 @@ def read(filename, max_evts=None, testing_frac=0.1) -> GAN_INPUT_DATA_TYPE:
 
 
 def convert_cluster_decay(filename, outname, mode=2,
-    with_quark=False, example=False, do_check_only=False):
+    with_quark=False, with_pert=False, example=False, do_check_only=False):
     """
     This function reads the original cluster decay files 
     and boost the two hadron decay prodcuts to the cluster frame in which
@@ -68,6 +69,7 @@ def convert_cluster_decay(filename, outname, mode=2,
         do_check_only: only check the converted data, do not convert
     """
     outname = outname+f"_mode{mode}"+"_with_quark" if with_quark else outname+f"_mode{mode}"
+    outname = outname+"_with_pert" if with_pert else outname
     if do_check_only:
         check_converted_data(outname)
         return
@@ -92,14 +94,16 @@ def convert_cluster_decay(filename, outname, mode=2,
     else: 
         ## no selections
         selections = slice(None)
-        print("mode is not known! use all events")
-
-    if with_quark:
-        print("add quark information")
+        print(f"mode {mode} is not known! We will use all events.")
 
     cluster = c[[1, 2, 3, 4]][selections].values
     h1 = h1[[1, 2, 3, 4]][selections]
     h2 = h2[[1, 2, 3, 4]][selections]
+
+    ## to tell if the quark info is perserved to hadrons
+    pert1 = q1[5][selections]
+    pert2 = q2[5][selections]
+
     q1 = q1[[1, 2, 3, 4]][selections]
     q2 = q2[[1, 2, 3, 4]][selections]
 
@@ -129,13 +133,18 @@ def convert_cluster_decay(filename, outname, mode=2,
     phi, theta = get_angles(new_inputs[:, -4:])
     
     out_truth = np.stack([phi, theta], axis=1)
+    input_4vec = cluster
     if with_quark:
+        print("add quark information")
         ## <NOTE, assuming the two quarks are back-to-back, xju>
         q_phi, q_theta = get_angles(new_inputs[:, 4:8])
-        input_4vec = np.stack([q_phi, q_theta], axis=1)
-        input_4vec = np.concatenate([cluster, input_4vec], axis=1)
-    else:
-        input_4vec = cluster
+        quark_angles = np.stack([q_phi, q_theta], axis=1)
+        input_4vec = np.concatenate([input_4vec, quark_angles], axis=1)
+
+    if with_pert:
+        print("add pert information")
+        pert_inputs = np.stack([pert1, pert2], axis=1)
+        input_4vec = np.concatenate([input_4vec, pert_inputs], axis=1)
 
     scaler = InputScaler()
     # the input 4vector is the cluster 4vector
@@ -174,8 +183,9 @@ if __name__ == '__main__':
     add_arg('-q', '--with-quark', help='add quark angles', action='store_true')
     add_arg("-c", '--check', action='store_true', help="check outputs")
     add_arg("-e", '--example', action='store_true', help='print an example event')
+    add_arg("-p", '--with-pert', action='store_true', help='add perturbation information')
     args = parser.parse_args()
     
 
     convert_cluster_decay(args.inname, args.outname,
-        args.mode, args.with_quark, args.example, args.check)
+        args.mode, args.with_quark, args.with_pert, args.example, args.check)

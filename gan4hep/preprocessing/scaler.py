@@ -3,7 +3,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 # <TODO> Use different scaler methods
 class InputScaler:
-    def __init__(self, feature_range=(-1, 1)):
+    def __init__(self, feature_range=(-0.99999, 0.99999)):
         self.scaler = MinMaxScaler(feature_range=feature_range)
         
     def transform(self, df, outname=None):
