@@ -62,8 +62,12 @@ def create_flow(hidden_shape: list, layers: int,
         raise ValueError("conditional_event_shape must be specified")
 
     base_dist = tfd.Normal(loc=0.0, scale=1.0)
+    def init_once(x, name):
+        return tf.compat.v1.get_variable(name, initializer=x, trainable=False)
+
     permutation = tf.cast(np.concatenate((
         np.arange(input_dim / 2, input_dim), np.arange(0, input_dim / 2))), tf.int32)
+    
     bijectors = []
     for idx in range(layers):
         bijectors.append(tfb.MaskedAutoregressiveFlow(
@@ -79,10 +83,23 @@ def create_flow(hidden_shape: list, layers: int,
         ## finds that batch normalization reduces training time,
         ## increases stability, and improves performance.
         bijectors.append(tfb.BatchNormalization(training=False))
-        if input_dim > 1:
-            bijectors.append(tfb.Permute(permutation=permutation))
 
-    # bijectors.append(tfb.Tanh())
+        ## tf2onnx does not like GatherV2 in permute operation.
+        # Traceback (most recent call last):
+        #   File "/media/DataOcean/miniconda3/envs/tf2.7/lib/python3.8/site-packages/tf2onnx/tfonnx.py", line 292, in tensorflow_onnx_mapping
+        #     func(g, node, **kwargs, initialized_tables=initialized_tables, dequantize=dequantize)
+        #   File "/media/DataOcean/miniconda3/envs/tf2.7/lib/python3.8/site-packages/tf2onnx/onnx_opset/tensor.py", line 446, in version_1
+        #     utils.make_sure(node.inputs[2].is_const(), "Axis of GatherV2 node must be constant")
+        #   File "/media/DataOcean/miniconda3/envs/tf2.7/lib/python3.8/site-packages/tf2onnx/utils.py", line 260, in make_sure
+        #     raise ValueError("make_sure failure: " + error_msg % args)
+        # ValueError: make_sure failure: Axis of GatherV2 node must be constant
+
+        # if input_dim > 1:
+        #     bijectors.append(tfb.Permute(
+        #             permutation=init_once(permutation, name='permutation_bijector')
+        #             ))
+
+    bijectors.append(tfb.Tanh())
 
     bijector = tfb.Chain(bijectors=list(reversed(bijectors)), name='MAF')
 
@@ -92,4 +109,5 @@ def create_flow(hidden_shape: list, layers: int,
     )
 
     return maf
+
 
