@@ -23,6 +23,7 @@ import datetime
 from datetime import datetime
 
 
+
 def evaluate(flow_model, testing_data,gen_evts):
     num_samples, num_dims = testing_data.shape
     num_samples=num_samples*gen_evts
@@ -105,15 +106,9 @@ def train(
     # img_dir = os.path.join(log_dir, 'img')
     # os.makedirs(img_dir, exist_ok=True)
 
-    #Rosy added it 
-    import time
-    import pathlib
-    import datetime
-
-
     # Making seperate folders for each run to store plots
     # Get time and date of current run
-    current_date_and_time = datetime.datetime.now()
+    current_date_and_time = datetime.now()
     current_date_and_time_string = str(current_date_and_time)
 
     os.makedirs(img_dir, exist_ok=True)
@@ -130,18 +125,13 @@ def train(
     min_wdis, min_iepoch = 9999, -1
     delta_stop = 1000
 
-
-    
     time_list = []
     loss_list = []
     w_list = []
 
     for i in range(max_epochs):
-        # Rosy added it 
-        from datetime import datetime
 
         start_time = datetime.now()
-        
 
         for batch in training_data:
             train_loss = train_density_estimation(flow_model, opt, batch)
@@ -219,7 +209,6 @@ if __name__ == '__main__':
     add_arg("--data", default='dimuon_inclusive',
             choices=['herwig_angles', 'dimuon_inclusive', 'herwig_angles2'])
 
-    from datetime import datetime
 
     start_time_full = datetime.now()
 
@@ -238,7 +227,7 @@ if __name__ == '__main__':
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 1000
+    max_epochs = 10
     print('Number of Epochs: ', max_epochs)
 
     out_dim = train_truth.shape[1]
