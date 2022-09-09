@@ -385,7 +385,7 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
     if jetnum==0:
 
         var_name = xlabels_extra
-        var_list = [original_var_ranges+calc_var_ranges]
+        var_list = original_var_ranges+calc_var_ranges
         units=units+units_calc
     elif jetnum==1:
 
@@ -394,17 +394,17 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         units=units+units_jet+units_calc
     elif jetnum==2:
 
-        var_list = [original_var_ranges  + jet1_var_ranges +jet2_var_ranges+calc_var_ranges]
+        var_list = original_var_ranges  + jet1_var_ranges +jet2_var_ranges+calc_var_ranges
         var_name = xlabels_extra
         units=units+units_jet+units_jet+units_calc
     elif jetnum == 3:
 
-        var_list = [original_var_ranges + jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+calc_var_ranges]
+        var_list = original_var_ranges + jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+calc_var_ranges
         var_name = xlabels_extra
         units = units +units_jet + units_jet + units_jet+units_calc
     elif jetnum == 4:
 
-        var_list = [original_var_ranges +calc_var_ranges+ jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+ jet4_var_ranges]
+        var_list = original_var_ranges +calc_var_ranges+ jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+ jet4_var_ranges
         var_name = xlabels_extra
         units = units + units_calc+units_jet + units_jet + units_jet+units_jet
     else:
