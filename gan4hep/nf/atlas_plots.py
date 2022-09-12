@@ -56,7 +56,7 @@ def end_of_run_plots(w_list,loss_list):
     plt.savefig(os.path.join('Plots', 'wasserstein.png'))
 
 
-def dimuon_calc(truths):
+def dimuon_calc(truths,jetnum):
     # print(truths)
     # Define muon mass and create two arrays filled with this value
 
@@ -73,10 +73,10 @@ def dimuon_calc(truths):
     etas_sub_true = np.array(truths[:, 4]).flatten()
     phis_sub_true = np.array(truths[:, 5]).flatten()
 
-
-    jet1_pt_true=np.array(truths[:, 6]).flatten()
-    jet1_eta_true =np.array(truths[:, 7]).flatten()
-    jet1_phi_true =np.array(truths[:, 8]).flatten()
+    if jetnum==1:
+        jet1_pt_true=np.array(truths[:, 6]).flatten()
+        jet1_eta_true =np.array(truths[:, 7]).flatten()
+        jet1_phi_true =np.array(truths[:, 8]).flatten()
 
     # Create lists for 4 vector values
     muon_lead_true = []
@@ -101,9 +101,10 @@ def dimuon_calc(truths):
             Momentum4.m_eta_phi_pt(masses_lead[i], etas_lead_true[i], phis_lead_true[i], pts_lead_true[i]))
         muon_sub_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], etas_sub_true[i], phis_sub_true[i], pts_sub_true[i]))
 
-        #WARNING DONT KNOW MASS OF JETT SO PLACEHOLDER AT THE MOMENT
-        # Calculate Jet1 4 Vector
-        jet1_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], jet1_eta_true[i], jet1_phi_true[i], jet1_pt_true[i]))
+        if jetnum == 1:
+            #WARNING DONT KNOW MASS OF JETT SO PLACEHOLDER AT THE MOMENT
+            # Calculate Jet1 4 Vector
+            jet1_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], jet1_eta_true[i], jet1_phi_true[i], jet1_pt_true[i]))
 
         # Calculate the Higgs boson 4 vector
         parent_true.append(muon_lead_true[i] + muon_sub_true[i])
@@ -122,9 +123,9 @@ def dimuon_calc(truths):
 
         # Retrieve phi between the muons
         phi_angle_btwn_true.append(muon_lead_true[i].phi - muon_sub_true[i].phi)
-
+        if jetnum == 1:
         #azimuthal seperation between muons and jets
-        phi_seperation_true.append((muon_lead_true[i].phi - muon_sub_true[i].phi) - jet1_true[i].phi)
+            phi_seperation_true.append((muon_lead_true[i].phi - muon_sub_true[i].phi) - jet1_true[i].phi)
 
         # Calculate P12+-
 
@@ -152,7 +153,8 @@ def dimuon_calc(truths):
     truths = np.column_stack((truths, cos_theta_true))
     # truths = np.column_stack((truths, eta_angle_btwn_true))
     truths = np.column_stack((truths, phi_angle_btwn_true))
-    truths = np.column_stack((truths, phi_seperation_true))
+    if jetnum==1:
+        truths = np.column_stack((truths, phi_seperation_true))
 
     return truths
 
@@ -243,8 +245,8 @@ def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, tit
 def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
 
     # Function to calculate invarient dimuon mass + calculated variables
-    truths = dimuon_calc( truths)
-    predictions = dimuon_calc(predictions)
+    truths = dimuon_calc( truths,jetnum)
+    predictions = dimuon_calc(predictions,jetnum)
 
     # Applying Selection Cuts
     print('Length of predicted data set pre-cuts: ', len(predictions))
@@ -394,17 +396,17 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         units=units+units_jet+units_calc
     elif jetnum==2:
 
-        var_list = original_var_ranges  + jet1_var_ranges +jet2_var_ranges+calc_var_ranges
+        var_list = [original_var_ranges  + jet1_var_ranges +jet2_var_ranges+calc_var_ranges]
         var_name = xlabels_extra
         units=units+units_jet+units_jet+units_calc
     elif jetnum == 3:
 
-        var_list = original_var_ranges + jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+calc_var_ranges
+        var_list = [original_var_ranges + jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+calc_var_ranges]
         var_name = xlabels_extra
         units = units +units_jet + units_jet + units_jet+units_calc
     elif jetnum == 4:
 
-        var_list = original_var_ranges +calc_var_ranges+ jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+ jet4_var_ranges
+        var_list = [original_var_ranges +calc_var_ranges+ jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+ jet4_var_ranges]
         var_name = xlabels_extra
         units = units + units_calc+units_jet + units_jet + units_jet+units_jet
     else:
@@ -413,7 +415,6 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         var_list = [original_var_ranges+calc_var_ranges]
         units=units+units_calc
     from IPython.display import IFrame
-
 
     for i in range(len(var_list)):
         Plotting(truths_cut, predictions_cut, var_list[i][0], var_list[i][1], var_list[i][2], var_name[i],units)
