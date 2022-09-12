@@ -50,12 +50,18 @@ def train(
     ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_directory, max_to_keep=None)
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
 
+    print('')
+    print("Loading latest checkpoint from: {}".format(checkpoint_directory))
+    print('')
+    print("Restored from {}".format(ckpt_manager.latest_checkpoint))
+
+
+
     #Recording how long it takes to generate data
     from datetime import datetime
     start_time = datetime.now()
 
     #Generate new data
-
     num_samples, num_dims = testing_truth.shape
     num_samples=num_gen_evts
     print('Number of Generated Events: ', num_samples)
