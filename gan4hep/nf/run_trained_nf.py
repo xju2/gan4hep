@@ -23,7 +23,7 @@ import os
 
 def train(
     train_truth, testing_truth, flow_model,
-    lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts,num_gen_evts,full_truth):
+    lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts,num_gen_evts,full_truth,truth_data_1):
 
     #Create timestamp for generated data
     import time
@@ -50,18 +50,12 @@ def train(
     ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_directory, max_to_keep=None)
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
 
-    print('')
-    print("Loading latest checkpoint from: {}".format(checkpoint_directory))
-    print('')
-    print("Restored from {}".format(ckpt_manager.latest_checkpoint))
-
-
-
     #Recording how long it takes to generate data
     from datetime import datetime
     start_time = datetime.now()
 
     #Generate new data
+
     num_samples, num_dims = testing_truth.shape
     num_samples=num_gen_evts
     print('Number of Generated Events: ', num_samples)
@@ -74,7 +68,7 @@ def train(
     # Apply Inverse Scaler to get original value ranges back
     from sklearn.preprocessing import MinMaxScaler
     scaler = MinMaxScaler(feature_range=(-1, 1))
-    test_truth_1 = scaler.fit_transform(test_truth_1)
+    truth_data_1 = scaler.fit_transform(truth_data_1)
     truths = scaler.inverse_transform(testing_truth)
     predictions = scaler.inverse_transform(predictions)
 
@@ -90,18 +84,19 @@ def train(
 
     # Plot of generated Variables
     num_of_variables = 9
-    fig, axs = plt.subplots(1, 6, figsize=(50, 10), constrained_layout=True)
+    fig, axs = plt.subplots(1, 9, figsize=(50, 10), constrained_layout=True)
     axs = axs.flatten()
     # config = dict(histtype='step', lw=2)
     config = dict(histtype='step', lw=2)
     i = 0
-    for i in range(6):
+    for i in range(9):
         idx = i
         ax = axs[idx]
-        ax.hist(predictions[:, idx], bins=40,
+        ax.hist(full_truth[:, int(idx)], bins=40, range=[min(predictions[:, idx]), max(predictions[:, idx])],
+                label='Truth', density=True, **config)
+        ax.hist(predictions[:, idx], bins=40, range=[min(predictions[:, idx]), max(predictions[:, idx])],
                 label='Generator', density=True, **config)
-        ax.hist(full_truth[:, int(idx)], bins=40,
-                label='Generator', density=True, **config)
+
         #ax.set_xlabel(xlabels_extra[i], fontsize=16)
         ax.legend(['Truth', 'Generator'], loc=3)
         # ax.set_yscale('log')
@@ -131,7 +126,7 @@ if __name__ == '__main__':
     from gan4hep.preprocess import dimuon_inclusive
     from made import create_flow
 
-    train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1,full_data = eval(args.data)(
+    train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1,full_data,truth_data_1 = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
 
@@ -153,4 +148,4 @@ if __name__ == '__main__':
     max_evts=args.max_evts
 
     maf,sample = create_flow(max_evts,hidden_shape, layers=10, input_dim=out_dim)
-    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,num_gen_evts,full_data)
+    train(train_truth, test_truth, maf, lr, batch_size, max_epochs, outdir, xlabels, test_truth_1, gen_evts,num_gen_evts,full_data,truth_data_1)
