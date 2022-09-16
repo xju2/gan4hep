@@ -202,4 +202,4 @@ def dimuon_inclusive(filename, max_evts=1000000, testing_frac=0.1):
     xlabels = ['leading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']] +\
               ['subleading Muon {}'.format(name) for name in ['pT', 'eta', 'phi']]
 
-    return (None, train_truth, None, test_truth, xlabels,test_truth_1,train_truth_1,full_data)
+    return (None, train_truth, None, test_truth, xlabels,test_truth_1,train_truth_1,full_data,truth_data_1)
