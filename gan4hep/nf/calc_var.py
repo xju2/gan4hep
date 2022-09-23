@@ -213,12 +213,6 @@ if __name__ == '__main__':
     if f.mode == 'r':
         new_run_folder = f.read()
 
-
-
-    #Create Directory to store plots
-    os.makedirs('Plots', exist_ok=True)
-
-
     #Print Length of datasets
     print('Number of True Events: ', len(truths))
     print('Number of Generated Events: ', len(predictions))
