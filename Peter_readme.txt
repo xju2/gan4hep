@@ -17,12 +17,14 @@ ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/train_nf.py
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/Hmumu_plots.py
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/run_trained_nf.py
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/atlas_plots.py
+ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/calc_var.py
 
 #Add the relevent .output file (mc16d_364100_dimuon_0Jets.output) to the nf_work folder then in nf_work run:
 
 python train_nf.py \
 --data dimuon_inclusive mc16d_364100_dimuon_0Jets.output TestNP --max-evts 100000
 
+with max-evts determining how many events are used in the training and testing process, other variabes such as number of epochs and parameters in the model can be found in the python file.
 ---------------
 ***************
 ---------------
@@ -33,7 +35,7 @@ python train_nf.py \
 
 Current Epoch, Current Loss, Current Wasserstein Distance, Best Wasserstein Distance, Best Epoch
 
-At the end of the training, a file called Temp_Data should be created in the nf_work folder that contains 5 files:
+At the end of the training, a file called /Temp_Data/ should be created in the nf_work folder that contains 5 files:
 
 predictions.npy -- Contains the generated events from the best epoch
 truths.npy -- Contains the true test events used in the best epoch
@@ -43,24 +45,66 @@ filename.txt -- Contains the file name of the current run
 
 These files will also be saved in the corresponding run folder in /TestNP/imgs if you need to retrieve them later
 
+
 ---------------
 ***************
 ---------------
 
-4) Plotting (ROOT)
+3) Calculating Extra Variables
+
+Run:
+
+python calc_var.py --jetnum 0
+
+Running this file will retrieve the data from /Temp_Data/.
+
+etnum represents the number of jets in the original dataset and this file calculates 5 extra variables (Dimuon mass,pt,eta,phi,cos theta *) and appends them to the dataset. If there are jets included in the dataset more variables will be calculated relating to them (Not yet added). The data will be saved agin in /Temp_Data/.
+
+Whilst running you will recieve this printout
+
+Length of predicted data set pre-cuts:  9999
+Length of truth data set pre-cuts:  9999
+Length of predicted data set post-cuts:  9085
+Fraction of events lost :  0.09140914091409136
+
+This is due to the selection cuts making sure all eta and phi values are between -pi and pi and displaying what events get lost in the process
+
+---------------
+***************
+---------------
+
+5) Plotting (ROOT)
 
 Run:
 
 python atlas_plots.py --jetnum 0
 
-
-With jetnum representing the number of jets in the original dataset and plots with ATLAS style of the 6+ main variables and 4 calculated variables will be created as pdfs in a new file called 'Plots' alongside the wassersteing and log loss plots.
+With jetnum representing the number of jets in the original dataset and plots with ATLAS style of the main variables and calculated variables will be created as pdfs in a new file called 'Plots' alongside the wasserstein and log loss plots.
 
 ---------------
 ***************
 ---------------
 
-4) Plotting (NON-ROOT)
+6)Generating New Events from A Saved Model
+
+To do this, type into the terminal:
+
+python run_trained_nf.py \
+ --data dimuon_inclusive mc16d_364100_dimuon_0Jets.output TestNP --num-gen-evts 10000
+ 
+ Where --num-gen-evts is used to specify the number of generated events to be created. The program will load the most recently saved model and generate a .npy file in /Generated_Data which contains the new predicted data generated from the model, the old truth data alongside a histogram of the generated data to check the quality.
+ 
+---------------
+***************
+---------------
+
+Old Files and instructions:
+
+---------------
+***************
+---------------
+
+7) Plotting (NON-ROOT)
 
 To produce the required plots run:
 
@@ -77,7 +121,7 @@ Once run, all plots will be saved in the corresponding file saved in filename.tx
 ***************
 ---------------
 
-5)Graphs Guide
+7 (Cont.))Graphs Guide
 
 Whilst running you will recieve this printout
 
@@ -123,15 +167,4 @@ Each series of plots has its own function in Hmumu_plots.py that cna be commente
 
     Plots larger histograms for the three calculate variables seperately with SD and mean lines included for both generated and true data
     
----------------
-***************
----------------
 
-6)Generating New Events from A Saved Model
-
-To do this, type into the terminal:
-
-python run_trained_nf.py \
- --data dimuon_inclusive mc16d_364100_dimuon_0Jets.output TestNP --num-gen-evts 10000
- 
- Where --num-gen-evts is used to specify the number of generated events to be created. The program will load the most recently saved model and generate a .npy file in /Generated_Data with the new data alongside a histogram of the generated data to check the quality.
