@@ -218,7 +218,7 @@ if __name__ == '__main__':
     from gan4hep.preprocess import dimuon_inclusive
     from made import create_flow
 
-    train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1,full_data = eval(args.data)(
+    train_in, train_truth, test_in, test_truth, xlabels, test_truth_1, train_truth_1,full_data,truth_data_1 = eval(args.data)(
         args.filename, max_evts=args.max_evts)
 
     max_evts = args.max_evts
