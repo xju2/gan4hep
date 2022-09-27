@@ -180,10 +180,6 @@ def dimuon_inclusive(filename, max_evts=1000000, testing_frac=0.1):
 
     truth_data_1 = truth_data_1[truth_data_1[:, 0] < 1000]
     full_data = full_data[full_data[:, 0] < 1000]
-    truth_data_1 = truth_data_1[truth_data_1[:,3] < 1000]
-    full_data = full_data[full_data[:, 3] < 1000]
-    truth_data_1 = truth_data_1[truth_data_1[:, 6] < 1000]
-    full_data = full_data[full_data[:, 6] < 1000]
     print('Max pt lead value:', max(truth_data_1[:, 0]))
     scaler = MinMaxScaler(feature_range=(-1,1))
     truth_data = scaler.fit_transform(truth_data_1)
