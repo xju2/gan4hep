@@ -60,12 +60,21 @@ def dimuon_calc(truths,jetnum):
         jet1_eta_true =np.array(truths[:, 7]).flatten()
         jet1_phi_true =np.array(truths[:, 8]).flatten()
 
+    if jetnum == 2:
+        jet1_pt_true=np.array(truths[:, 6]).flatten()
+        jet1_eta_true =np.array(truths[:, 7]).flatten()
+        jet1_phi_true =np.array(truths[:, 8]).flatten()
+        jet2_pt_true=np.array(truths[:, 9]).flatten()
+        jet2_eta_true =np.array(truths[:, 10]).flatten()
+        jet2_phi_true =np.array(truths[:, 11]).flatten()
+
     # Create lists for 4 vector values
     muon_lead_true = []
     muon_sub_true = []
     parent_true = []
     jet1_true=[]
-
+    jet2_true=[]
+    dijet_true=[]
     # Create lists for invarient mass values
     mass_true = []
     pt_comb_true = []
@@ -74,6 +83,11 @@ def dimuon_calc(truths,jetnum):
     phi_angle_btwn_true = []
     cos_theta_true = []
     phi_seperation_true = []
+    phi_seperation_true_2jet = []
+    dijet_pt_true=[]
+    dijet_mass_true=[]
+    dijet_pseudo_true=[]
+    dijet_dimuon_seperation_true=[]
 
 
 
@@ -88,6 +102,14 @@ def dimuon_calc(truths,jetnum):
             # Calculate Jet1 4 Vector
             jet1_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], jet1_eta_true[i], jet1_phi_true[i], jet1_pt_true[i]))
 
+        if jetnum == 2:
+            #WARNING DONT KNOW MASS OF JETT SO PLACEHOLDER AT THE MOMENT
+            # Calculate Jet1 4 Vector
+            jet1_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], jet1_eta_true[i], jet1_phi_true[i], jet1_pt_true[i]))
+
+            jet2_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], jet2_eta_true[i], jet2_phi_true[i], jet2_pt_true[i]))
+
+            dijet_true.append(jet1_true[i] + jet2_true[i])
         # Calculate the Higgs boson 4 vector
         parent_true.append(muon_lead_true[i] + muon_sub_true[i])
 
@@ -109,6 +131,18 @@ def dimuon_calc(truths,jetnum):
         #azimuthal seperation between muons and jets
             phi_seperation_true.append((muon_lead_true[i].phi - muon_sub_true[i].phi) - jet1_true[i].phi)
 
+            pt_jet1_true.append(jet1_true_true[i].p_t)
+        if jetnum == 2:
+            # azimuthal seperation between muons and jets
+            phi_seperation_true.append((muon_lead_true[i].phi - muon_sub_true[i].phi) - jet1_true[i].phi)
+            # azimuthal seperation between muons and jets
+            phi_seperation_true_2jet.append((muon_lead_true[i].phi - muon_sub_true[i].phi) - jet2_true[i].phi)
+
+            dijet_pt_true.append(dijet_true[i].p_t)
+
+            dijet_pseudo_true.append(dijet_true[i].eta)
+
+            dijet_dimuon_seperation_true.append(dijet_true[i].phi-parent_true[i].phi)
         # Calculate P12+-
 
         P1_pos = (muon_lead_true[i].e + muon_lead_true[i].p_z) / np.sqrt(2)
@@ -137,7 +171,12 @@ def dimuon_calc(truths,jetnum):
     truths = np.column_stack((truths, phi_angle_btwn_true))
     if jetnum==1:
         truths = np.column_stack((truths, phi_seperation_true))
-
+    if jetnum==2:
+        truths = np.column_stack((truths, phi_seperation_true))
+        truths = np.column_stack((truths, phi_seperation_true_2jet))
+        truths = np.column_stack((truths, dijet_pt_true))
+        truths = np.column_stack((truths, dijet_pseudo_true))
+        truths = np.column_stack((truths, dijet_dimuon_seperation_true))
     return truths
 
 def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
