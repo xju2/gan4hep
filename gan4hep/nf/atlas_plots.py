@@ -116,12 +116,6 @@ def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, tit
 
 def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
 
-
-    # Applying Selection Cuts
-    print('Length of predicted data set pre-cuts: ', len(predictions))
-    print('Length of truth data set pre-cuts: ', len(truths))
-
-
     #Original Variables
     pt_lead = [0, 0, 250]
     eta_lead = [1, -2.8, 2.8]
@@ -185,8 +179,11 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
     elif jetnum == 2:
         xlabels_extra.append('Seperation Between Jet and Dimuon (Jet1)')
         xlabels_extra.append('Seperation Between Jet and Dimuon (Jet2)')
+        xlabels_extra.append('Dijet Transverse Momentum')
+        xlabels_extra.append('Dijet Pseudorapidity')
+        xlabels_extra.append('Dijet-Dimuon Seperation')
         units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
-        units_calc = ['GeV', 'GeV', '', '', 'Radians', '','']
+        units_calc = ['GeV', 'GeV', '', '', 'Radians', '','','GeV','','Radians']
         units_jet = ['GeV', '', 'Radians']
         # Calc Variables
         dimuon_mass = [12, 0, 250]
@@ -194,9 +191,13 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         dimuon_eta = [14, -5, 5]
         cos_theta = [15, -1, 1]
         dimuon_phi = [16, -5, 5]
-        jet1_sep = [17, -5, 5]
-        jet2_sep = [18, -5, 5]
-        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi, jet1_sep,jet2_sep]
+        jet1_sep = [17, -10, 10]
+        jet2_sep = [18, -10, 10]
+        dijet_pt=[19,0,250]
+        dijet_pseudo=[20,-10,10]
+        dijet_dimuon_seperation=[21,-7,7]
+
+        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi, jet1_sep,jet2_sep,dijet_pt,dijet_pseudo,dijet_dimuon_seperation]
     elif jetnum == 3:
         xlabels_extra.append('Seperation Between Jet and Dimuon (Jet1)')
         xlabels_extra.append('Seperation Between Jet and Dimuon (Jet2)')
@@ -264,17 +265,20 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         units=units+units_jet+units_calc
     elif jetnum==2:
 
-        var_list = [original_var_ranges  + jet1_var_ranges +jet2_var_ranges+calc_var_ranges]
+        var_list = original_var_ranges  + jet1_var_ranges +jet2_var_ranges+calc_var_ranges
         var_name = xlabels_extra
         units=units+units_jet+units_jet+units_calc
+        print(var_list)
+        print(var_name)
+        print(units)
     elif jetnum == 3:
 
-        var_list = [original_var_ranges + jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+calc_var_ranges]
+        var_list = original_var_ranges + jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+calc_var_ranges
         var_name = xlabels_extra
         units = units +units_jet + units_jet + units_jet+units_calc
     elif jetnum == 4:
 
-        var_list = [original_var_ranges +calc_var_ranges+ jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+ jet4_var_ranges]
+        var_list = original_var_ranges +calc_var_ranges+ jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+ jet4_var_ranges
         var_name = xlabels_extra
         units = units + units_calc+units_jet + units_jet + units_jet+units_jet
     else:
@@ -285,6 +289,7 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
     from IPython.display import IFrame
 
     for i in range(len(var_list)):
+        print(i)
         Plotting(truths, predictions, var_list[i][0], var_list[i][1], var_list[i][2], var_name[i],units)
 
     # Check if all elements in array are zero
