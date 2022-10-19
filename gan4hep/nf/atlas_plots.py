@@ -44,13 +44,13 @@ def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, tit
     sqroot.SetParameters(10, 4, 1, 20)
 
     # Randomly fill two histograms according to the above distribution
-    hist1 = root.TH1F("truths", "Random Histogram 1", 40, lower_range, upper_range)
+    hist1 = root.TH1F("truths", "Random Histogram 1", 20, lower_range, upper_range)
 
     for j in range(len(truths_cut)):
         hist1.Fill(truths_cut[j, col_num])
 
     # sqroot.SetParameters(10, 4, 1.1, 20)
-    hist2 = root.TH1F("predictions", "Random Histogram 2", 40, lower_range, upper_range)
+    hist2 = root.TH1F("predictions", "Random Histogram 2", 20, lower_range, upper_range)
 
     for j in range(len(predictions_cut)):
         hist2.Fill(predictions_cut[j, col_num])
@@ -68,8 +68,8 @@ def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, tit
     ax1.plot(hist1, linecolor=root.kRed + 1, label="Truth", labelfmt="L")
     ax1.plot(hist2, linecolor=root.kBlue + 1, label="Generated", labelfmt="L")
 
-    # Change to log scale
-    # ax1.set_yscale('log')
+    #Change to log scale
+    #ax1.set_yscale('log')
 
     # Draw line at y=1 in ratio panel
     line = root.TLine(ax1.get_xlim()[0], 1, ax1.get_xlim()[1], 1)
@@ -114,36 +114,51 @@ def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, tit
     hist1.Draw()
     hist2.Draw()
 
+def heatmap(predictions,truths,xlabels_extra):
+
+    # Reset Style
+    #plt.rcParams.update(plt.rcParamsDefault)
+    # Converting to numpy array
+    predictions = np.array(predictions)
+    truths = np.array(truths)
+
+    # Converting to Pandas
+    df_truths = pd.DataFrame(truths[:, :], columns=xlabels_extra)
+    df_predictions = pd.DataFrame(predictions[:, :], columns=xlabels_extra)
+    plt.close('all')
+    # Correlation Plot for True Data
+    sns.set(font_scale=2.0)
+    plt.rcParams['figure.figsize'] = (40.0, 30.0)
+    sns.heatmap(df_predictions.corr(), annot=True, vmin=-1, vmax=1, center=0)
+    plt.savefig(os.path.join('Plots', 'heatmap_at_epoch_predictions_{:04d}.png'))
+    plt.close('all')
+    #plt.rcParams.update(plt.rcParamsDefault)
+
+    # Correlation Plot for Generated Data
+    plt.rcParams['figure.figsize'] = (40.0, 30.0)
+    sns.heatmap(df_truths.corr(), annot=True, vmin=-1, vmax=1, center=0)
+    plt.savefig(os.path.join('Plots', 'heatmap_at_epoch_truths_{:04d}.png'))
+    plt.close('all')
+
 def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
 
     #Original Variables
-    pt_lead = [0, 0, 250]
+    pt_lead = [0, 0, 150]
     eta_lead = [1, -2.8, 2.8]
     phi_lead = [2, -3.4, 3.4]
-    pt_sub = [3, 0, 250]
+    pt_sub = [3, 0, 75]
     eta_sub = [4, -2.8, 2.8]
     phi_sub = [5, -3.4, 3.4]
 
     #Jet 1 Variables
-    jet1_pt = [6, 0, 80]
-    jet1_eta = [7, -5, 5]
-    jet1_phi = [8, -3.4, 3.4]
+    jet1_pt = [6, 20, 120]
+    jet1_eta = [7, -3.14, 3.14]
+    jet1_phi = [8, -3.44, 3.44]
 
     #Jet 2 Variables
-    jet2_pt = [9, 0, 80]
-    jet2_eta = [10, -5, 5]
-    jet2_phi = [11, -3.4, 3.4]
-
-    #Jet 3 Variables
-    jet3_pt = [12, 0, 80]
-    jet3_eta = [13, -5, 5]
-    jet3_phi = [14, -3.4, 3.4]
-
-    #Jet 4 Variables
-    jet4_pt = [15, 0, 80]
-    jet4_eta = [16, -5, 5]
-    jet4_phi = [17, -3.4, 3.4]
-
+    jet2_pt = [9, 20, 80]
+    jet2_eta = [10, -3.14, 3.14]
+    jet2_phi = [11, -3.14, 3.14]
 
     xlabels_extra = xlabels
     xlabels_extra.append('DiMuon Invarient Mass')
@@ -152,144 +167,101 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
     xlabels_extra.append('Cos theta *')
     xlabels_extra.append('Dimuon Phi')
 
-    if jetnum==0:
-        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
-        units_calc = ['GeV', 'GeV', '', '', 'Radians']
-        #Calc Variables
-        dimuon_mass = [6, 0, 250]
-        pt_dimuon = [7, 0, 250]
-        dimuon_eta = [8, -5, 5]
-        cos_theta = [9, -1, 1]
-        dimuon_phi = [10, -5, 5]
-
-        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi]
-    elif jetnum==1:
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet1)')
-        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
-        units_calc = ['GeV', 'GeV', '', '', 'Radians','']
-        units_jet = ['GeV', '', 'Radians']
-        #Calc Variables
-        dimuon_mass = [9, 0, 250]
-        pt_dimuon = [10, 0, 250]
-        dimuon_eta = [11, -5, 5]
-        cos_theta = [12, -1, 1]
-        dimuon_phi = [13, -5, 5]
-        jet1_sep = [14,-5, 5]
-        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi,jet1_sep]
-    elif jetnum == 2:
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet1)')
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet2)')
-        xlabels_extra.append('Dijet Transverse Momentum')
-        xlabels_extra.append('Dijet Pseudorapidity')
-        xlabels_extra.append('Dijet-Dimuon Seperation')
-        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
-        units_calc = ['GeV', 'GeV', '', '', 'Radians', '','','GeV','','Radians']
-        units_jet = ['GeV', '', 'Radians']
-        # Calc Variables
-        dimuon_mass = [12, 0, 250]
-        pt_dimuon = [13, 0, 250]
-        dimuon_eta = [14, -5, 5]
-        cos_theta = [15, -1, 1]
-        dimuon_phi = [16, -5, 5]
-        jet1_sep = [17, -10, 10]
-        jet2_sep = [18, -10, 10]
-        dijet_pt=[19,0,250]
-        dijet_pseudo=[20,-10,10]
-        dijet_dimuon_seperation=[21,-7,7]
-
-        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi, jet1_sep,jet2_sep,dijet_pt,dijet_pseudo,dijet_dimuon_seperation]
-    elif jetnum == 3:
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet1)')
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet2)')
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet3)')
-        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
-        units_calc = ['GeV', 'GeV', '', '', 'Radians', '','','']
-        units_jet = ['GeV', '', 'Radians']
-        # Calc Variables
-        dimuon_mass = [15, 0, 250]
-        pt_dimuon = [16, 0, 250]
-        dimuon_eta = [17, -5, 5]
-        cos_theta = [18, -1, 1]
-        dimuon_phi = [19, -5, 5]
-        jet1_sep = [20, -5, 5]
-        jet2_sep = [21, -5, 5]
-        jet3_sep = [22, -5, 5]
-        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi, jet1_sep,jet2,jet3_sep]
-    elif jetnum == 4:
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet1)')
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet2)')
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet3)')
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet4)')
-        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
-        units_calc = ['GeV', 'GeV', '', '', 'Radians', '','','','']
-        units_jet = ['GeV', '', 'Radians']
-        # Calc Variables
-        dimuon_mass = [18, 0, 250]
-        pt_dimuon = [19, 0, 250]
-        dimuon_eta = [20, -5, 5]
-        cos_theta = [21, -1, 1]
-        dimuon_phi = [22, -5, 5]
-        jet1_sep = [23, -5, 5]
-        jet2_sep = [24, -5, 5]
-        jet3_sep = [25, -5, 5]
-        jet4_sep = [26, -5, 5]
-        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi, jet1_sep,jet2_sep,jet3_sep,jet4_sep]
-    else:
-        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet1)')
-        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
-        units_calc = ['GeV', 'GeV', '', '', 'Radians']
-        # Calc Variables
-        dimuon_mass = [6, 0, 250]
-        pt_dimuon = [7, 0, 250]
-        dimuon_eta = [8, -5, 5]
-        cos_theta = [9, -1, 1]
-        dimuon_phi = [10, -5, 5]
 
     num_of_variables = len(xlabels_extra)
 
     original_var_ranges=[pt_lead,eta_lead,phi_lead,pt_sub,eta_sub,phi_sub]
     jet1_var_ranges = [jet1_pt,jet1_eta,jet1_phi]
     jet2_var_ranges = [jet2_pt, jet2_eta, jet2_phi]
-    jet3_var_ranges = [jet3_pt, jet3_eta, jet3_phi]
-    jet4_var_ranges = [jet4_pt, jet4_eta, jet4_phi]
-
     if jetnum==0:
+        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
+        units_calc = ['GeV', 'GeV', '', '', 'Radians']
+        #Calc Variables
+        dimuon_mass = [6, 0, 150]
+        pt_dimuon = [7, 0, 50]
+        dimuon_eta = [8, -5, 5]
+        cos_theta = [9, -1, 1]
+        dimuon_phi = [10, -5, 5]
+
+        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi]
 
         var_name = xlabels_extra
         var_list = original_var_ranges+calc_var_ranges
         units=units+units_calc
+
+        heatmap(predictions, truths, xlabels_extra)
+
     elif jetnum==1:
+        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet1)')
+        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
+        units_calc = ['GeV', 'GeV', '', '', 'Radians','']
+        units_jet = ['GeV', '', 'Radians']
+        #Calc Variables
+        dimuon_mass = [9, 0, 150]
+        pt_dimuon = [10, 0, 150]
+        dimuon_eta = [11, -4.4, 4.4]
+        cos_theta = [12, -1, 1]
+        dimuon_phi = [13, -4, 4]
+        jet1_sep = [14,-3.14, 3.14]
+        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi,jet1_sep]
 
         var_name = xlabels_extra
         var_list =original_var_ranges+ jet1_var_ranges+calc_var_ranges
         units=units+units_jet+units_calc
-    elif jetnum==2:
+
+        heatmap(predictions,truths,xlabels_extra)
+
+    elif jetnum == 2:
+        xlabels_extra.append('Delta Phi  Between Jet and Dimuon (Jet1)')
+        xlabels_extra.append('Delta Phi  Between Jet and Dimuon (Jet2)')
+        xlabels_extra.append('Dijet Transverse Momentum')
+        xlabels_extra.append('Dijet Pseudorapidity')
+        xlabels_extra.append('Delta Phi Between Dijet-Dimuon ')
+        xlabels_extra.append('Dijet-Mass')
+        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
+        units_calc = ['GeV', 'GeV', '', '', 'Radians', '','','GeV','','Radians','GeV']
+        units_jet = ['GeV', '', 'Radians']
+        # Calc Variables
+        dimuon_mass = [12, 0, 150]
+        pt_dimuon = [13, 0, 50]
+        dimuon_eta = [14, -4.4, 4.4]
+        cos_theta = [15, -1, 1]
+        dimuon_phi = [16, -3.24, 3.24]
+        jet1_sep = [17, -3.14, 3.14]
+        jet2_sep = [18, -3.14, 3.14]
+        dijet_pt=[19,0,100]
+        dijet_pseudo=[20,-8,8]
+        dijet_dimuon_seperation=[21,-3.14,3.14]
+        dijet_mass=[22,0,150]
+
+        calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi, jet1_sep,jet2_sep,dijet_pt,dijet_pseudo,dijet_dimuon_seperation,dijet_mass]
 
         var_list = original_var_ranges  + jet1_var_ranges +jet2_var_ranges+calc_var_ranges
         var_name = xlabels_extra
         units=units+units_jet+units_jet+units_calc
-        print(var_list)
-        print(var_name)
-        print(units)
-    elif jetnum == 3:
 
-        var_list = original_var_ranges + jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+calc_var_ranges
-        var_name = xlabels_extra
-        units = units +units_jet + units_jet + units_jet+units_calc
-    elif jetnum == 4:
+        heatmap(predictions, truths, xlabels_extra)
 
-        var_list = original_var_ranges +calc_var_ranges+ jet1_var_ranges + jet2_var_ranges +jet3_var_ranges+ jet4_var_ranges
-        var_name = xlabels_extra
-        units = units + units_calc+units_jet + units_jet + units_jet+units_jet
     else:
+        xlabels_extra.append('Seperation Between Jet and Dimuon (Jet1)')
+        units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
+        units_calc = ['GeV', 'GeV', '', '', 'Radians']
+        # Calc Variables
+        dimuon_mass = [6, 0, 250]
+        pt_dimuon = [7, 0, 250]
+        dimuon_eta = [8, -5, 5]
+        cos_theta = [9, -1, 1]
+        dimuon_phi = [10, -5, 5]
 
         var_name = xlabels_extra
         var_list = [original_var_ranges+calc_var_ranges]
         units=units+units_calc
+
+        heatmap(predictions, truths, xlabels_extra)
+
     from IPython.display import IFrame
 
-    for i in range(len(var_list)):
-        print(i)
+    for i in range(len(xlabels_extra)):
         Plotting(truths, predictions, var_list[i][0], var_list[i][1], var_list[i][2], var_name[i],units)
 
     # Check if all elements in array are zero
@@ -329,10 +301,6 @@ if __name__ == '__main__':
         print(xlabels)
     elif jetnum == 2:
         xlabels = xlabel_0jet+xlabel_1jet+xlabel_2jet
-    elif jetnum == 3:
-        xlabels = xlabel_0jet+xlabel_1jet+xlabel_2jet+xlabel_3jet
-    elif jetnum == 4:
-        xlabels = xlabel_0jet+xlabel_1jet+xlabel_2jet+xlabel_3jet+xlabel_4jet
     else:
         xlabels = xlabel_0jet
 
