@@ -87,14 +87,15 @@ def train(
     np.save(os.path.join('Generated_Data', filename ), predictions)
     np.save(os.path.join('Generated_Data', filename2), full_truth)
 
+    num=len(predictions[1,: ])
     # Plot of generated Variables
-    num_of_variables = 9
-    fig, axs = plt.subplots(1, 9, figsize=(50, 10), constrained_layout=True)
+    num_of_variables = num
+    fig, axs = plt.subplots(1, num, figsize=(50, 10), constrained_layout=True)
     axs = axs.flatten()
     # config = dict(histtype='step', lw=2)
     config = dict(histtype='step', lw=2)
     i = 0
-    for i in range(9):
+    for i in range(num):
         idx = i
         ax = axs[idx]
         ax.hist(full_truth[:, int(idx)], bins=20, range=[min(predictions[:, idx]), max(predictions[:, idx])],
