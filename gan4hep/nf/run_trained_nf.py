@@ -25,15 +25,22 @@ def train(
     train_truth, testing_truth, flow_model,
     lr, batch_size, max_epochs, outdir, xlabels,test_truth_1,gen_evts,num_gen_evts,full_truth,truth_data_1):
 
+
+
     #Create timestamp for generated data
     import time
     import pathlib
     import datetime
 
+
     # Making seperate folders for each run to store plots
     # Get time and date of current run
     current_date_and_time = datetime.datetime.now()
     current_date_and_time_string = str(current_date_and_time)
+
+    #Recording how long it takes to generate data
+    from datetime import datetime
+    start_time = datetime.now()
 
     #Define learning Rate
     base_lr = lr
@@ -50,12 +57,10 @@ def train(
     ckpt_manager = tf.train.CheckpointManager(checkpoint, checkpoint_directory, max_to_keep=None)
     _ = checkpoint.restore(ckpt_manager.latest_checkpoint).expect_partial()
 
-    #Recording how long it takes to generate data
-    from datetime import datetime
-    start_time = datetime.now()
+
 
     #Generate new data
-
+    print(flow_model)
     num_samples, num_dims = testing_truth.shape
     num_samples=num_gen_evts
     print('Number of Generated Events: ', num_samples)
@@ -92,11 +97,10 @@ def train(
     for i in range(9):
         idx = i
         ax = axs[idx]
-        ax.hist(full_truth[:, int(idx)], bins=40, range=[min(predictions[:, idx]), max(predictions[:, idx])],
+        ax.hist(full_truth[:, int(idx)], bins=20, range=[min(predictions[:, idx]), max(predictions[:, idx])],
                 label='Truth', density=True, **config)
-        ax.hist(predictions[:, idx], bins=40, range=[min(predictions[:, idx]), max(predictions[:, idx])],
+        ax.hist(predictions[:, idx], bins=20, range=[min(predictions[:, idx]), max(predictions[:, idx])],
                 label='Generator', density=True, **config)
-
         #ax.set_xlabel(xlabels_extra[i], fontsize=16)
         ax.legend(['Truth', 'Generator'], loc=3)
         # ax.set_yscale('log')
@@ -104,8 +108,6 @@ def train(
         # Save Figures
     plt.savefig(os.path.join('Generated_Data', 'image{:04d}.png'))
     plt.close('all')
-
-
 if __name__ == '__main__':
     import argparse
 
@@ -134,8 +136,8 @@ if __name__ == '__main__':
 
 
     #If number of generated events is less than the length of the true dataset
-    if num_gen_evts<=2100000:
-        full_data = full_data[:num_gen_evts]
+    #if num_gen_evts<=2100000:
+     #   full_data = full_data[:num_gen_evts]
 
     outdir = args.outdir
     hidden_shape = [128] * 2
