@@ -39,7 +39,6 @@ def selection_cuts(predictions, truths):
 
 
 def dimuon_calc(truths,jetnum):
-    # print(truths)
     # Define muon mass and create two arrays filled with this value
 
     m_u = 1.883531627e-28
@@ -98,7 +97,7 @@ def dimuon_calc(truths,jetnum):
         muon_sub_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], etas_sub_true[i], phis_sub_true[i], pts_sub_true[i]))
 
         if jetnum == 1:
-            #WARNING DONT KNOW MASS OF JETT SO PLACEHOLDER AT THE MOMENT
+            #WARNING DONT KNOW MASS OF JET SO PLACEHOLDER AT THE MOMENT
             # Calculate Jet1 4 Vector
             jet1_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], jet1_eta_true[i], jet1_phi_true[i], jet1_pt_true[i]))
 
@@ -110,6 +109,7 @@ def dimuon_calc(truths,jetnum):
             jet2_true.append(Momentum4.m_eta_phi_pt(masses_sub[i], jet2_eta_true[i], jet2_phi_true[i], jet2_pt_true[i]))
 
             dijet_true.append(jet1_true[i] + jet2_true[i])
+
         # Calculate the Higgs boson 4 vector
         parent_true.append(muon_lead_true[i] + muon_sub_true[i])
 
@@ -126,23 +126,21 @@ def dimuon_calc(truths,jetnum):
         eta_angle_btwn_true.append(muon_lead_true[i].eta - muon_sub_true[i].eta)
 
         # Retrieve phi between the muons
-        phi_angle_btwn_true.append(muon_lead_true[i].phi - muon_sub_true[i].phi)
+        phi_angle_btwn_true.append(parent_true[i].phi)
+
         if jetnum == 1:
         #azimuthal seperation between muons and jets
-            phi_seperation_true.append((muon_lead_true[i].phi - muon_sub_true[i].phi) - jet1_true[i].phi)
-
-            pt_jet1_true.append(jet1_true_true[i].p_t)
+            phi_seperation_true.append(parent_true[i].phi - jet1_true[i].phi)
         if jetnum == 2:
             # azimuthal seperation between muons and jets
-            phi_seperation_true.append((muon_lead_true[i].phi - muon_sub_true[i].phi) - jet1_true[i].phi)
-            # azimuthal seperation between muons and jets
-            phi_seperation_true_2jet.append((muon_lead_true[i].phi - muon_sub_true[i].phi) - jet2_true[i].phi)
+            phi_seperation_true.append(parent_true[i].phi-jet1_true[i].phi)
+            phi_seperation_true_2jet.append(parent_true[i].phi - jet2_true[i].phi)
 
             dijet_pt_true.append(dijet_true[i].p_t)
-
+            dijet_mass_true.append(dijet_true[i].m)
             dijet_pseudo_true.append(dijet_true[i].eta)
 
-            dijet_dimuon_seperation_true.append(dijet_true[i].phi-parent_true[i].phi)
+            dijet_dimuon_seperation_true.append(parent_true[i].phi-dijet_true[i].phi)
         # Calculate P12+-
 
         P1_pos = (muon_lead_true[i].e + muon_lead_true[i].p_z) / np.sqrt(2)
@@ -167,7 +165,6 @@ def dimuon_calc(truths,jetnum):
     truths = np.column_stack((truths, pt_comb_true))
     truths = np.column_stack((truths, pseudo_true))
     truths = np.column_stack((truths, cos_theta_true))
-    # truths = np.column_stack((truths, eta_angle_btwn_true))
     truths = np.column_stack((truths, phi_angle_btwn_true))
     if jetnum==1:
         truths = np.column_stack((truths, phi_seperation_true))
@@ -177,6 +174,7 @@ def dimuon_calc(truths,jetnum):
         truths = np.column_stack((truths, dijet_pt_true))
         truths = np.column_stack((truths, dijet_pseudo_true))
         truths = np.column_stack((truths, dijet_dimuon_seperation_true))
+        truths = np.column_stack((truths, dijet_mass_true))
     return truths
 
 def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
@@ -196,10 +194,10 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         os.mkdir('Temp_Data')
 
     # Save data to run data folder
-    np.save(os.path.join(new_run_folder, 'truths_calc.npy'), truths)
-    np.save(os.path.join(new_run_folder, 'predictions_calc.npy'), truths)
-    np.save(os.path.join(new_run_folder, 'loss_list.npy'), loss_list)
-    np.save(os.path.join(new_run_folder, 'w_list.npy'), w_list)
+    #np.save(os.path.join(new_run_folder, 'truths_calc.npy'), truths)
+    #np.save(os.path.join(new_run_folder, 'predictions_calc.npy'), truths)
+    #np.save(os.path.join(new_run_folder, 'loss_list.npy'), loss_list)
+    #np.save(os.path.join(new_run_folder, 'w_list.npy'), w_list)
 
     # Save to temporary folder
     np.save(os.path.join('Temp_Data', 'truths_calc.npy'), truths)
@@ -209,6 +207,7 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
 
     print('Number of True Events: ', len(truths))
     print('Number of Generated Events: ', len(predictions))
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Normalizing Flow')
@@ -217,14 +216,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
     jetnum=int(args.jetnum)
 
-
-
     truths = np.load('Temp_Data/truths.npy')
     predictions = np.load('Temp_Data/predictions.npy')
     w_list = np.load('Temp_Data/w_list.npy')
     loss_list = np.load('Temp_Data/loss_list.npy')
     f = open("Temp_Data/filename.txt", "r")
-
 
     xlabel_0jet = ['leading Muon pT', 'leading Muon eta', 'leading Muon phi', 'subleading Muon pT',
                    'subleading Muon eta', 'subleading Muon phi']
@@ -233,8 +229,6 @@ if __name__ == '__main__':
     xlabel_3jet = ['Jet 3 pT', 'Jet 3 eta', 'Jet 3 phi']
     xlabel_4jet = ['Jet 4 pT', 'Jet 4 eta', 'Jet 4 phi']
 
-
-
     if jetnum == 0:
         xlabels = xlabel_0jet
     elif jetnum == 1:
@@ -242,10 +236,6 @@ if __name__ == '__main__':
         print(xlabels)
     elif jetnum == 2:
         xlabels = xlabel_0jet+xlabel_1jet+xlabel_2jet
-    elif jetnum == 3:
-        xlabels = xlabel_0jet+xlabel_1jet+xlabel_2jet+xlabel_3jet
-    elif jetnum == 4:
-        xlabels = xlabel_0jet+xlabel_1jet+xlabel_2jet+xlabel_3jet+xlabel_4jet
     else:
         xlabels = xlabel_0jet
 
