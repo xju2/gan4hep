@@ -145,14 +145,15 @@ def train(
 
         # Original Variables plot for each epoch
 
-        fig, axs = plt.subplots(1, 6, figsize=(50, 10), constrained_layout=True)
+        num_var=len(testing_truth[1,:])
+        fig, axs = plt.subplots(1, num_var, figsize=(50, 10), constrained_layout=True)
         axs = axs.flatten()
         # config = dict(histtype='step', lw=2)
         config = dict(histtype='step', lw=2)
         j = 0
         county=i
 
-        for j in range(6):
+        for j in range(num_var):
             idx = j
             ax = axs[idx]
             yvals, _, _ = ax.hist(testing_truth[:, idx], bins=40, range=[min(testing_truth[:, idx]), max(testing_truth[:, idx])], label='Truth',density=True, **config)
@@ -227,7 +228,7 @@ if __name__ == '__main__':
     layers = 10
     lr = 1e-3
     batch_size = args.batch_size
-    max_epochs = 10
+    max_epochs = 3000
     print('Number of Epochs: ', max_epochs)
 
     out_dim = train_truth.shape[1]
