@@ -13,6 +13,7 @@ pip3 install pylorentz #If not already installed
 cd ..
 mkdir nf_work
 cd nf_work
+#Add the relevent files to the work folder (change path as required)
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/train_nf.py
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/Hmumu_plots.py
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/run_trained_nf.py
@@ -52,11 +53,13 @@ These files will also be saved in the corresponding run folder in /TestNP/imgs i
 
 3) Calculating Extra Variables
 
+##Warning! For using the FSR dataset, since it contains 7 original variables you need to specify, when running calc_var.py for the jetnum to be 99 e.g. python calc_var.py --jetnum 99 as otherwise the code will break (This is a temporary fix for the moment!)
+
 Run:
 
 python calc_var.py --jetnum 0
 
-Running this file will retrieve the data from /Temp_Data/.
+Running this file will retrieve the data from /Temp_Data/. jetnum is used to specify how many jets were in the original dataset
 
 etnum represents the number of jets in the original dataset and this file calculates 5 extra variables (Dimuon mass,pt,eta,phi,cos theta *) and appends them to the dataset. If there are jets included in the dataset more variables will be calculated relating to them (Not yet added). The data will be saved agin in /Temp_Data/.
 
