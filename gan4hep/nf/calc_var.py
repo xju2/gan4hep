@@ -67,6 +67,9 @@ def dimuon_calc(truths,jetnum):
         jet2_eta_true =np.array(truths[:, 10]).flatten()
         jet2_phi_true =np.array(truths[:, 11]).flatten()
 
+    if jetnum==99:
+        mass_true=np.array(truths[:, 6]).flatten()
+        print(mass_true)
     # Create lists for 4 vector values
     muon_lead_true = []
     muon_sub_true = []
@@ -75,7 +78,9 @@ def dimuon_calc(truths,jetnum):
     jet2_true=[]
     dijet_true=[]
     # Create lists for invarient mass values
-    mass_true = []
+    if jetnum !=99:
+        mass_true = []
+
     pt_comb_true = []
     pseudo_true = []
     eta_angle_btwn_true = []
@@ -113,8 +118,9 @@ def dimuon_calc(truths,jetnum):
         # Calculate the Higgs boson 4 vector
         parent_true.append(muon_lead_true[i] + muon_sub_true[i])
 
-        # Retrieve the Higgs Mass
-        mass_true.append(parent_true[i].m)
+        if jetnum !=99: #Only for non FSR datasets
+            # Retrieve the Higgs Mass
+            mass_true.append(parent_true[i].m)
 
         # Retrive PT
         pt_comb_true.append(parent_true[i].p_t)
@@ -158,10 +164,13 @@ def dimuon_calc(truths,jetnum):
         cos_theta_true.append(cos_theta)
 
     # Add mass arrays from each batch?
-    mass_true = np.concatenate(mass_true, axis=0)
+    if jetnum !=99:
+       
+        mass_true = np.concatenate(mass_true, axis=0)
 
     # Add to original dataset
-    truths = np.column_stack((truths, mass_true))
+    if jetnum !=99:
+        truths = np.column_stack((truths, mass_true))
     truths = np.column_stack((truths, pt_comb_true))
     truths = np.column_stack((truths, pseudo_true))
     truths = np.column_stack((truths, cos_theta_true))
@@ -228,7 +237,7 @@ if __name__ == '__main__':
     xlabel_2jet = ['Jet 2 pT', 'Jet 2 eta', 'Jet 2 phi']
     xlabel_3jet = ['Jet 3 pT', 'Jet 3 eta', 'Jet 3 phi']
     xlabel_4jet = ['Jet 4 pT', 'Jet 4 eta', 'Jet 4 phi']
-
+    xlabel_fsr=['Invariant Mass']
     if jetnum == 0:
         xlabels = xlabel_0jet
     elif jetnum == 1:
@@ -236,6 +245,8 @@ if __name__ == '__main__':
         print(xlabels)
     elif jetnum == 2:
         xlabels = xlabel_0jet+xlabel_1jet+xlabel_2jet
+    elif jetnum == 99: #For the 7 variable FSR dataset
+        xlabels = xlabel_0jet + xlabel_fsr
     else:
         xlabels = xlabel_0jet
 
