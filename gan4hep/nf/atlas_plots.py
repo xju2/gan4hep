@@ -31,7 +31,7 @@ def end_of_run_plots(w_list,loss_list):
 
 
 
-def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, title,units):
+def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, title,units,bin_size):
 
     # Set the ATLAS Style
     aplt.set_atlas_style()
@@ -44,13 +44,13 @@ def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, tit
     sqroot.SetParameters(10, 4, 1, 20)
 
     # Randomly fill two histograms according to the above distribution
-    hist1 = root.TH1F("truths", "Random Histogram 1", 20, lower_range, upper_range)
+    hist1 = root.TH1F("truths", "Random Histogram 1", bin_size, lower_range, upper_range)
 
     for j in range(len(truths_cut)):
         hist1.Fill(truths_cut[j, col_num])
 
     # sqroot.SetParameters(10, 4, 1.1, 20)
-    hist2 = root.TH1F("predictions", "Random Histogram 2", 20, lower_range, upper_range)
+    hist2 = root.TH1F("predictions", "Random Histogram 2", bin_size, lower_range, upper_range)
 
     for j in range(len(predictions_cut)):
         hist2.Fill(predictions_cut[j, col_num])
@@ -88,12 +88,12 @@ def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, tit
     ax1.add_margins(top=0.16, bottom=0.16)
 
     # Set axis titles
+    #for i in range(len(predictions_cut[1,:])):
+    #    if i==col_num:
+    ax2.set_xlabel(str(title) +"/" + str(units[col_num]), labelsize=20)
 
     ax1.set_ylabel("Normalised Events ", labelsize=20)
     ax2.set_ylabel("Truth / Generated", loc="top", labelsize=20)
-    for i in range(len(predictions_cut[1,:])):
-        if i==col_num:
-            ax2.set_xlabel(title +'/ '+ units[i], labelsize=20)
 
     # Add extra space at top and bottom of ratio panel
     ax2.add_margins(top=0.1, bottom=0.1)
@@ -177,8 +177,8 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         units = ['GeV,', '', 'Radians', 'GeV', '', 'Radians']
         units_calc = ['GeV', 'GeV', '', '', 'Radians']
         #Calc Variables
-        dimuon_mass = [6, 0, 150]
-        pt_dimuon = [7, 0, 50]
+        dimuon_mass = [6, 110, 160]
+        pt_dimuon = [7, 0, 100]
         dimuon_eta = [8, -5, 5]
         cos_theta = [9, -1, 1]
         dimuon_phi = [10, -5, 5]
@@ -189,6 +189,9 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         var_list = original_var_ranges+calc_var_ranges
         units=units+units_calc
 
+        bin_size=[75,40,40,75,40,40,25,50,40,40,40]
+
+        print(xlabels_extra)
         heatmap(predictions, truths, xlabels_extra)
 
     elif jetnum==1:
@@ -208,6 +211,7 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         var_name = xlabels_extra
         var_list =original_var_ranges+ jet1_var_ranges+calc_var_ranges
         units=units+units_jet+units_calc
+        bin_size=[75,40,40,75,40,40,75,40,40,75,50,40,40,40]
 
         heatmap(predictions,truths,xlabels_extra)
 
@@ -233,12 +237,14 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         dijet_pseudo=[20,-8,8]
         dijet_dimuon_seperation=[21,-3.14,3.14]
         dijet_mass=[22,0,150]
+        
 
         calc_var_ranges = [dimuon_mass, pt_dimuon, dimuon_eta, cos_theta, dimuon_phi, jet1_sep,jet2_sep,dijet_pt,dijet_pseudo,dijet_dimuon_seperation,dijet_mass]
 
         var_list = original_var_ranges  + jet1_var_ranges +jet2_var_ranges+calc_var_ranges
         var_name = xlabels_extra
         units=units+units_jet+units_jet+units_calc
+        bin_size=[75,40,40,75,40,40,75,40,40,75,40,40,75,50,40,40,40]
 
         heatmap(predictions, truths, xlabels_extra)
 
@@ -256,13 +262,14 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
         var_name = xlabels_extra
         var_list = [original_var_ranges+calc_var_ranges]
         units=units+units_calc
+        bin_size=[75,40,40,75,40,40,75,50,40,40,40]
 
         heatmap(predictions, truths, xlabels_extra)
 
     from IPython.display import IFrame
 
     for i in range(len(xlabels_extra)):
-        Plotting(truths, predictions, var_list[i][0], var_list[i][1], var_list[i][2], var_name[i],units)
+        Plotting(truths, predictions, var_list[i][0], var_list[i][1], var_list[i][2], var_name[i],units,bin_size[i])
 
     # Check if all elements in array are zero
     #for i in xrange(len(predictions_cut[1,:])):
@@ -293,12 +300,10 @@ if __name__ == '__main__':
     xlabel_4jet = ['Jet 4 pT', 'Jet 4 eta', 'Jet 4 phi']
 
 
-
     if jetnum == 0:
         xlabels = xlabel_0jet
     elif jetnum == 1:
         xlabels = xlabel_0jet+xlabel_1jet
-        print(xlabels)
     elif jetnum == 2:
         xlabels = xlabel_0jet+xlabel_1jet+xlabel_2jet
     else:
