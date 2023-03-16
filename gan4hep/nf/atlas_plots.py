@@ -18,13 +18,25 @@ import atlasplots as aplt
 def end_of_run_plots(w_list,loss_list):
 
     #Plot Log loss
+    w_max=99999
+    max_w_list=[]
+    epoch_list=[]
+    for i in range(len(w_list)):
+        if w_list[i]<w_max:
+            max_w_list.append(w_list[i])
+            epoch_list.append(i)
+            w_max=w_list[i]
+        
     plt.plot(loss_list)
     plt.ylabel('Training Loss')
     plt.xlabel('Epoch')
     plt.savefig(os.path.join('Plots', 'logloss.png'))
     plt.clf()
     #Plot Wasserstein Distance
-    plt.plot(w_list)
+    plt.plot(w_list,label='Wasserstein Distance')
+    plt.plot(epoch_list,max_w_list,label='Best Wasserstein Distance')
+    plt.scatter(epoch_list,max_w_list,label='Best Wasserstein Distance: '+str(w_max))
+    plt.legend(loc="upper right")
     plt.ylabel('Wasserstein Distance')
     plt.xlabel('Epoch')
     plt.savefig(os.path.join('Plots', 'wasserstein.png'))
@@ -191,7 +203,6 @@ def main(truths,predictions,w_list,loss_list,new_run_folder,jetnum,xlabels):
 
         bin_size=[75,40,40,75,40,40,25,50,40,40,40]
 
-        print(xlabels_extra)
         heatmap(predictions, truths, xlabels_extra)
 
     elif jetnum==1:
