@@ -116,7 +116,12 @@ def Plotting(truths_cut, predictions_cut, col_num, lower_range, upper_range, tit
     # Add the ATLAS Label
     # aplt.atlas_label(text="Internal", loc="upper left")
     aplt.atlas_label(text='Simulated Data', loc='upper left')
+    
+    pred_std=np.std(predictions_cut[col_num,:])
+    truth_std=np.std(truths_cut[col_num,:])
 
+    aplt.atlas_label(text='Generated Events Standard Deviation: '+str(pred_std)+' Truth Events Standard Deviation: '+str(truth_std), loc='lower right',size=10)
+    
     # Add legend
     ax1.legend(loc=(0.70, 0.78, 1, 0.90))
 
