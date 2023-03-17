@@ -192,7 +192,9 @@ def dimuon_inclusive(filename, max_evts=1000000, testing_frac=0.1):
 
     num_test_evts = int(truth_data.shape[0]*testing_frac)
     #if num_test_evts > max_evts: num_test_evts = max_evts
-
+    
+    validation_data = np.setdiff1d(full_data, truth_data)
+    np.save('vallidation_data.npy',validation_data)
 
     test_truth, train_truth = truth_data[:num_test_evts], truth_data[num_test_evts:max_evts]
     test_truth_1, train_truth_1 = truth_data_1[:num_test_evts], truth_data_1[num_test_evts:max_evts]
