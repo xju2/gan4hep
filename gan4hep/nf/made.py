@@ -78,11 +78,12 @@ def create_flow(hidden_shape: list, layers: int,
                 conditional_event_shape=conditional_event_shape),
                 name=f"b{idx}"
                 ))
+        bijectors.append(tfb.Permute(permutation=init_once(permutation, name='permutation_bijector')))
 
         ## https://homepages.inf.ed.ac.uk/imurray2/pub/17maf/maf.pdf
         ## finds that batch normalization reduces training time,
         ## increases stability, and improves performance.
-        bijectors.append(tfb.BatchNormalization(training=False))
+        # bijectors.append(tfb.BatchNormalization(training=False))
 
         ## tf2onnx does not like GatherV2 in permute operation.
         # Traceback (most recent call last):
