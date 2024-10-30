@@ -2,7 +2,7 @@ For running Peter's Normalising Flow branch
 
 1)Installation Instructions
 
-In lxplus (Requires python 3.9, tensorflow, and pylorentz and ROOT)
+In lxplus (Requires ONLY python 3.9, tensorflow, and pylorentz and ROOT)
   
 mkdir AnyName
 cd AnyName
@@ -21,6 +21,13 @@ ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/atlas_plots.py
 ln -s /eos/user/p/pfitzhug/AnyName/gan4hep/gan4hep/nf/calc_var.py
 
 #Add the relevent .output file (mc16d_364100_dimuon_0Jets.output) to the nf_work folder then in nf_work run:
+
+Make sure that the following tensorflow versions are installed since the most up-to-date version will not work:
+
+    - tensorflow==2.7.0
+    - tensorflow-probability==0.15.0
+
+To run the code:
 
 python train_nf.py \
 --data dimuon_inclusive mc16d_364100_dimuon_0Jets.output TestNP --max-evts 100000
